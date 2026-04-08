@@ -1,13 +1,13 @@
-# Contributing to Antigravity
+# Contributing to Dionysys
 
-First off, thank you for considering contributing to Antigravity! It's people like you that make high-performance UI frameworks possible.
+First off, thank you for considering contributing to Dionysys! It's people like you that make high-performance UI frameworks possible.
 
 ## 🏗 Development Workflow
 
 ### 1. Fork and Clone
 ```bash
-git clone https://github.com/your-org/antigravity.git
-cd antigravity
+git clone https://github.com/your-org/dionysys.git
+cd dionysys
 npm install
 ```
 
@@ -21,7 +21,7 @@ npm install
 
 ### 3. Standards
 - **TypeScript**: All new code must be type-safe.
-- **Tests**: If you add a new feature to `@antigravity/core`, add a corresponding Vitest test in the package.
+- **Tests**: If you add a new feature to `@dionysys/core`, add a corresponding Vitest test in the package.
 - **Documentation**: If you change an API, update the relevant MD files in `docs/`.
 
 ## 🛠 Proposing Changes
@@ -34,4 +34,4 @@ npm install
 
 ## 💬 Code of Conduct
 
-Help us keep Antigravity a welcoming and inclusive community. Please be respectful and professional in all interactions.
+Help us keep Dionysys a welcoming and inclusive community. Please be respectful and professional in all interactions.

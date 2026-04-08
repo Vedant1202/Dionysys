@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createContext, useContext, useEffect } from 'react';
 import { createStore, useStore, StoreApi } from 'zustand';
-import { InferenceConfig, InferenceEngine, PolicyConfig, PolicyEngine, AdaptiveUIDefinition } from '@antigravity/core';
+import { InferenceConfig, InferenceEngine, PolicyConfig, PolicyEngine, AdaptiveUIDefinition } from '@dionysys/core';
 
 export interface AdaptiveUIState {
   currentVariant: string;

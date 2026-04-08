@@ -1,5 +1,5 @@
 import type { IEvent } from '../db/IDatabaseAdapter.js';
-import { RewardEngine } from '@antigravity/core';
+import { RewardEngine } from '@dionysys/core';
 
 export interface RewardResult {
   sessionId: string;

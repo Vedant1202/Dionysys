@@ -1,5 +1,5 @@
 import type { IEvent } from '../db/IDatabaseAdapter.js';
-import { InferenceEngine } from '@antigravity/core';
+import { InferenceEngine } from '@dionysys/core';
 
 export const PERSONAS = ['neutral', 'draw_first', 'text_first', 'guided_novice', 'power_user'] as const;
 export type Persona = typeof PERSONAS[number];

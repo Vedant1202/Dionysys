@@ -1,4 +1,4 @@
-import { AdaptiveProvider } from '@antigravity/react';
+import { AdaptiveProvider } from '@dionysys/react';
 import { EditorShell } from './components/EditorShell';
 import './App.css';
 

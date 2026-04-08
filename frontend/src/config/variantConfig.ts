@@ -1,5 +1,5 @@
 export type UiVariant = 'neutral' | 'draw_first' | 'text_first' | 'guided_novice' | 'power_user';
-import { type AdaptiveUIDefinition } from '@antigravity/core';
+import { type AdaptiveUIDefinition } from '@dionysys/core';
 
 export interface VariantUIConfig extends Omit<AdaptiveUIDefinition, 'variant' | 'mainMenu'> {
   showWelcomeScreen: boolean;

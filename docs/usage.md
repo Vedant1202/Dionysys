@@ -1,13 +1,13 @@
 # Usage Guide
 
-This guide walks you through integrating `@antigravity/react` into your frontend and `@antigravity/core` into your backend algorithms.
+This guide walks you through integrating `@dionysys/react` into your frontend and `@dionysys/core` into your backend algorithms.
 
 ## 1. Setup the Backend Inference Service
 
 In your external Node.js backend (or edge function), route your analytics telemetry through the core `InferenceEngine`.
 
 ```typescript
-import { InferenceEngine } from '@antigravity/core';
+import { InferenceEngine } from '@dionysys/core';
 
 // See docs/configuration.md for configuration setup
 const myInferenceEngine = new InferenceEngine(myConfig);
@@ -26,7 +26,7 @@ export async function processTelemetryQueue(events: any[]) {
 At the root of your React component tree, wrap your app in `<AdaptiveProvider>`.
 
 ```tsx
-import { AdaptiveProvider } from '@antigravity/react';
+import { AdaptiveProvider } from '@dionysys/react';
 
 function App() {
   return (
@@ -56,7 +56,7 @@ function App() {
 Anywhere within your internal child components, you can use the `useAdaptiveUI` hook to reshape the interface on the fly based on the backend probabilities.
 
 ```tsx
-import { useAdaptiveUI } from '@antigravity/react';
+import { useAdaptiveUI } from '@dionysys/react';
 import { uiVariantConfigurations } from './uiConfigs';
 
 export function MyAdaptiveCanvas() {

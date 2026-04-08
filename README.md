@@ -1,8 +1,8 @@
-# 🌌 Antigravity
+# 🌌 Dionysys
 
 **Autonomous Adaptive UI & Contextual Bandits Framework**
 
-Antigravity is a high-performance, modular monorepo framework designed to build user interfaces that adapt in real-time based on user behavior. It leverages an Epsilon-Greedy bandit policy and an extensible inference engine to serve the most effective UI variants for specific user personas.
+Dionysys is a high-performance, modular monorepo framework designed to build user interfaces that adapt in real-time based on user behavior. It leverages an Epsilon-Greedy bandit policy and an extensible inference engine to serve the most effective UI variants for specific user personas.
 
 ---
 
@@ -15,8 +15,8 @@ Antigravity is a high-performance, modular monorepo framework designed to build 
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/antigravity.git
-cd antigravity
+git clone https://github.com/vedant1202/Dionysys.git
+cd Dionysys
 
 # Install all dependencies
 npm install

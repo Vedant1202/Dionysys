@@ -6,7 +6,7 @@ The true power of the modular framework is that you do not need to rewrite A/B t
 The `InferenceEngine` relies on a declarative configuration to score behaviors.
 
 ```typescript
-import { InferenceEngine, InferenceConfig } from '@antigravity/core';
+import { InferenceEngine, InferenceConfig } from '@dionysys/core';
 
 const myConfig: InferenceConfig = {
   // 1. Define your valid personas
@@ -47,7 +47,7 @@ const engine = new InferenceEngine(myConfig);
 The `PolicyEngine` transforms the mapped probabilities into definitive decisions using contextual bandit algorithms.
 
 ```typescript
-import { PolicyEngine, PolicyConfig } from '@antigravity/core';
+import { PolicyEngine, PolicyConfig } from '@dionysys/core';
 
 const policyConfig: PolicyConfig = {
   personas: ['neutral', 'draw_first', 'text_first'],

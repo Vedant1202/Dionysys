@@ -1,5 +1,5 @@
 {
-  "name": "antigravity-adaptive-ui",
+  "name": "dionysys-adaptive-ui",
   "private": true,
   "workspaces": [
     "packages/*",

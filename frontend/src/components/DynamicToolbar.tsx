@@ -11,7 +11,7 @@ import {
   Eraser,
   Diamond
 } from 'lucide-react';
-import { useAdaptiveUI } from '@antigravity/react';
+import { useAdaptiveUI } from '@dionysys/react';
 import { VARIANT_CONFIGS } from '../config/variantConfig';
 
 interface DynamicToolbarProps {

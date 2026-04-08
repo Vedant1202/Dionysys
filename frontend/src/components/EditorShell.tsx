@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
-import { useAdaptiveUI } from '@antigravity/react';
+import { useAdaptiveUI } from '@dionysys/react';
 import { DebugPanel } from './DebugPanel';
 import { eventCollector, MOCK_SESSION_ID } from '../core/eventCollector';
 import { DynamicToolbar } from './DynamicToolbar';
@@ -44,7 +44,7 @@ export function EditorShell() {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-base-200">
       <div className="navbar bg-base-100 shadow-md z-50">
         <div className="flex-1">
-          <a className="btn btn-ghost text-xl font-bold tracking-tight">Antigravity <span className="text-primary">Adaptive UI</span></a>
+          <a className="btn btn-ghost text-xl font-bold tracking-tight">Dionysys <span className="text-primary">Adaptive UI</span></a>
         </div>
         <div className="flex-none gap-2 px-4 italic text-sm opacity-60">
            Session: {MOCK_SESSION_ID}

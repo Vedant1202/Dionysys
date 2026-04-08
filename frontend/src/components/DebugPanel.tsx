@@ -1,4 +1,4 @@
-import { useAdaptiveUI } from '@antigravity/react';
+import { useAdaptiveUI } from '@dionysys/react';
 
 export function DebugPanel() {
   const { currentVariant, personaProbs, eventsSentCount, isPolicyLocked, _store } = useAdaptiveUI();
