@@ -1,5 +1,0 @@
-- [ ] Phase 1 Task 1: Define Zod schemas and TypeScript interfaces for the Integration Language (`uiSchema.ts`).
-- [ ] Phase 1 Task 2: Refactor `variantConfig.ts` to implement the `AdaptiveUIDefinition`.
-- [ ] Phase 2 Task 3: Build `DynamicToolbar` component referencing the schema and `excalidrawAPI`.
-- [ ] Phase 3 Task 4: Integrate `DynamicToolbar` into `EditorShell.tsx`.
-- [ ] Phase 3 Task 5: Suppress or hide the native Excalidraw toolbar.
