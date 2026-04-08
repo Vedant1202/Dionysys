@@ -63,7 +63,7 @@ This project is managed as an **npm monorepo**:
 
 ## 📖 Documentation
 
-For detailed architecture diagrams, configuration schemas, and usage guides, please visit our **[Web Documentation Hub](http://localhost:3000)** (run `npm run docs` to launch).
+For detailed architecture diagrams, configuration schemas, and usage guides, please visit **[Web Documentation Hub @ http://localhost:3000](http://localhost:3000)** (run `npm run docs` to launch on local machine).
 
 ---
 
