@@ -1,6 +1,7 @@
-import { type UiVariant } from '../state/sessionStore';
+export type UiVariant = 'neutral' | 'draw_first' | 'text_first' | 'guided_novice' | 'power_user';
+import { type AdaptiveUIDefinition } from '@antigravity/core';
 
-export interface VariantUIConfig {
+export interface VariantUIConfig extends Omit<AdaptiveUIDefinition, 'variant' | 'mainMenu'> {
   showWelcomeScreen: boolean;
   canvasActions: {
     saveAsImage?: boolean;
@@ -11,9 +12,13 @@ export interface VariantUIConfig {
   mainMenuItems: ('saveAsImage' | 'export' | 'clearCanvas' | 'help' | 'toggleTheme')[];
 }
 
+const DRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'eraser'];
+const TEXT_TOOLS = ['selection', 'text', 'eraser'];
+
 export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   neutral: {
     showWelcomeScreen: false,
+    toolbar: { mode: 'blocklist', tools: [] },
     canvasActions: {
       saveAsImage: true,
       clearCanvas: true,
@@ -23,6 +28,7 @@ export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   },
   guided_novice: {
     showWelcomeScreen: true,
+    toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
     canvasActions: {
       saveAsImage: false,
       clearCanvas: false,
@@ -32,6 +38,7 @@ export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   },
   power_user: {
     showWelcomeScreen: false,
+    toolbar: { mode: 'blocklist', tools: [] },
     canvasActions: {
       saveAsImage: true,
       saveToActiveFile: true,
@@ -42,6 +49,7 @@ export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   },
   draw_first: {
     showWelcomeScreen: false,
+    toolbar: { mode: 'allowlist', tools: DRAW_TOOLS },
     canvasActions: {
       saveAsImage: true,
       clearCanvas: true,
@@ -50,6 +58,7 @@ export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   },
   text_first: {
     showWelcomeScreen: false,
+    toolbar: { mode: 'allowlist', tools: TEXT_TOOLS },
     canvasActions: {
       toggleTheme: true,
     },

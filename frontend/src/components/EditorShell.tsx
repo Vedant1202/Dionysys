@@ -1,62 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
-import { useSessionStore, type UiVariant } from '../state/sessionStore';
+import { useAdaptiveUI } from '@antigravity/react';
 import { DebugPanel } from './DebugPanel';
 import { eventCollector, MOCK_SESSION_ID } from '../core/eventCollector';
+import { DynamicToolbar } from './DynamicToolbar';
 import { VARIANT_CONFIGS } from '../config/variantConfig';
 
-const VALID_VARIANTS: UiVariant[] = ['neutral', 'draw_first', 'text_first', 'guided_novice', 'power_user'];
-
 export function EditorShell() {
-  const [, setExcalidrawAPI] = useState<any>(null);
-  const {
-    currentVariant,
-    setPersonaProbs,
-    eventsSentCount,
-    isPolicyLocked,
-    lockPolicy,
-  } = useSessionStore();
+  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
+  const { currentVariant, incrementEventsSent } = useAdaptiveUI();
 
-  const config = VARIANT_CONFIGS[currentVariant];
+  const config = VARIANT_CONFIGS[currentVariant as keyof typeof VARIANT_CONFIGS];
 
   useEffect(() => {
-    const interval = window.setInterval(async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/api/inference/${MOCK_SESSION_ID}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.probabilities) {
-            setPersonaProbs(data.probabilities);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to poll inference', err);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [setPersonaProbs]);
-
-  useEffect(() => {
-    const MIN_EVENTS = 5;
-    if (eventsSentCount >= MIN_EVENTS && !isPolicyLocked) {
-      fetch('http://localhost:3001/api/policy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: MOCK_SESSION_ID })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.chosenVariant) {
-          const variant = VALID_VARIANTS.find(v => v === data.chosenVariant);
-          if (variant) {
-            lockPolicy(variant);
-          }
-        }
-      })
-      .catch(console.error);
-    }
-  }, [eventsSentCount, isPolicyLocked, lockPolicy]);
+    eventCollector.onFlush = incrementEventsSent;
+    return () => {
+      eventCollector.onFlush = undefined;
+    };
+  }, [incrementEventsSent]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -96,6 +58,15 @@ export function EditorShell() {
       </div>
 
       <div className="flex-grow relative border-t border-base-300">
+        <DynamicToolbar excalidrawAPI={excalidrawAPI} />
+        {config.toolbar?.mode === 'allowlist' && (
+          <style>{`
+            .excalidraw .App-toolbar { 
+              opacity: 0 !important; 
+              pointer-events: none !important; 
+            }
+          `}</style>
+        )}
         <Excalidraw
           excalidrawAPI={(api) => setExcalidrawAPI(api)}
           UIOptions={getUIOptions()}

@@ -1,11 +1,10 @@
-import React from 'react';
-import { useSessionStore, type UiVariant } from '../state/sessionStore';
+import { useAdaptiveUI } from '@antigravity/react';
 
 export function DebugPanel() {
-  const { currentVariant, setVariant, personaProbs, eventsSentCount, isPolicyLocked } = useSessionStore();
+  const { currentVariant, personaProbs, eventsSentCount, isPolicyLocked, _store } = useAdaptiveUI();
 
   const handleVariantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setVariant(e.target.value as UiVariant);
+    _store.setState({ currentVariant: e.target.value });
   };
 
   return (

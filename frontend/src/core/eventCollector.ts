@@ -11,6 +11,7 @@ class EventCollector {
   private backendUrl = 'http://localhost:3001/api/events';
   private batch: AppEvent[] = [];
   private intervalId: number | null = null;
+  public onFlush?: (count: number) => void;
 
   constructor() {
     // Register plugins
@@ -53,10 +54,10 @@ class EventCollector {
           events: itemsToSend
         }),
       });
-      // Fire increment on Zustand via global store access
-      import('../state/sessionStore').then(({ useSessionStore }) => {
-        useSessionStore.getState().incrementEvents(itemsToSend.length);
-      });
+      // Fire callback if set
+      if (this.onFlush) {
+        this.onFlush(itemsToSend.length);
+      }
     } catch (e) {
       console.error('Failed to flush events', e);
       // Restore items so they're retried on the next flush cycle

@@ -1,64 +1,84 @@
 import type { IEvent } from '../db/IDatabaseAdapter.js';
+import { RewardEngine } from '@antigravity/core';
 
 export interface RewardResult {
   sessionId: string;
   reward: number; // normalized 0-1
   metrics: {
-    timeToFirstElement?: number; // ms
-    totalElementsCreated?: number;
-    textToShapeRatio?: number;
-    sessionDurationMs?: number;
+    timeToFirstElement?: number | undefined; // ms
+    totalElementsCreated?: number | undefined;
+    textToShapeRatio?: number | undefined;
+    sessionDurationMs?: number | undefined;
+    [key: string]: number | undefined;
   };
 }
 
+export const drawingAppRewardEngine = new RewardEngine({
+  rewardFormula: (baseline, events, sessionStartMs) => {
+    if (events.length === 0) return 0;
+    
+    let reward = 0.5;
+
+    const drawnEvents = baseline.eventCountsByType['element_drawn'] || 0;
+    const textEvents = baseline.eventCountsByType['text_added'] || 0;
+    const totalElementsCreated = drawnEvents + textEvents;
+
+    const firstCreativeEvent = events.find(
+      e => e.eventType === 'element_drawn' || e.eventType === 'text_added'
+    );
+
+    if (firstCreativeEvent) {
+      const timeToFirstElement = firstCreativeEvent.timestamp - sessionStartMs;
+      if (timeToFirstElement < 10_000) reward = 1.0;
+      else if (timeToFirstElement < 30_000) reward = 0.8;
+      else if (timeToFirstElement < 60_000) reward = 0.6;
+      else reward = 0.3;
+    }
+
+    if (totalElementsCreated > 5) {
+      reward += 0.1;
+    }
+
+    return reward;
+  }
+});
+
 export class RewardService {
   /**
-   * Calculates a 0-1 reward score from session events.
-   * Higher score = user reached productive engagement faster.
+   * Calculates a 0-1 reward score from session events using the generic RewardEngine.
    */
   static calculate(sessionId: string, events: IEvent[], sessionStartTime: Date): RewardResult {
-    const metrics: RewardResult['metrics'] = {};
-
     if (events.length === 0) {
-      return { sessionId, reward: 0, metrics };
+      return { sessionId, reward: 0, metrics: {} };
     }
 
     const startMs = sessionStartTime.getTime();
 
-    // Time to first creative element (drawn or text)
-    const firstCreativeEvent = events.find(
+    // Map IEvent (Date) to native timestamp (number) for the generic engine
+    const normalizedEvents = events.map(e => ({
+      eventType: e.eventType,
+      timestamp: e.timestamp.getTime(),
+      payload: e.payload
+    }));
+
+    const { reward, metrics } = drawingAppRewardEngine.calculate(normalizedEvents, startMs);
+
+    // Compute application-specific metrics that extend the generic baseline
+    const drawnEvents = metrics['element_drawn'] || 0;
+    const textEvents = metrics['text_added'] || 0;
+    
+    const firstCreativeEvent = normalizedEvents.find(
       e => e.eventType === 'element_drawn' || e.eventType === 'text_added'
     );
-    if (firstCreativeEvent) {
-      metrics.timeToFirstElement = firstCreativeEvent.timestamp.getTime() - startMs;
-    }
 
-    // Summary counts
-    const drawnEvents = events.filter(e => e.eventType === 'element_drawn');
-    const textEvents = events.filter(e => e.eventType === 'text_added');
-    metrics.totalElementsCreated = drawnEvents.length + textEvents.length;
-    metrics.textToShapeRatio =
-      drawnEvents.length > 0 ? textEvents.length / drawnEvents.length : textEvents.length > 0 ? 1 : 0;
+    const finalMetrics = {
+      sessionDurationMs: metrics['sessionDurationMs'],
+      totalElementsCreated: drawnEvents + textEvents,
+      timeToFirstElement: firstCreativeEvent ? firstCreativeEvent.timestamp - startMs : undefined,
+      textToShapeRatio: drawnEvents > 0 ? textEvents / drawnEvents : (textEvents > 0 ? 1 : 0),
+      ...metrics
+    };
 
-    // Session duration
-    const lastEvent = events[events.length - 1]!;
-    metrics.sessionDurationMs = lastEvent.timestamp.getTime() - startMs;
-
-    // Normalize reward:
-    // - Fast time-to-first-element → higher reward (under 30s is great)
-    let reward = 0.5; // baseline
-
-    if (metrics.timeToFirstElement !== undefined) {
-      const ttfe = metrics.timeToFirstElement;
-      if (ttfe < 10_000) reward = 1.0;       // < 10s = perfect
-      else if (ttfe < 30_000) reward = 0.8;  // < 30s = great
-      else if (ttfe < 60_000) reward = 0.6;  // < 60s = ok
-      else reward = 0.3;                     // > 60s = slow start
-    }
-
-    // Bonus: more elements = more engagement
-    if ((metrics.totalElementsCreated ?? 0) > 5) reward = Math.min(1.0, reward + 0.1);
-
-    return { sessionId, reward, metrics };
+    return { sessionId, reward, metrics: finalMetrics };
   }
 }
