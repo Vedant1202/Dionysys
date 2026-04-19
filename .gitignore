@@ -39,6 +39,8 @@ walkthrough.md
 implementation_plan.md
 review.md
 
-# Web docs
-web-docs/
+# Web docs generated output
+web-docs/.docusaurus/
+web-docs/build/
+web-docs/node_modules/
 tasks/
