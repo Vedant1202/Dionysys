@@ -65,3 +65,19 @@ export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
     mainMenuItems: ['help', 'toggleTheme'],
   },
 };
+
+export function resolveVariantConfig(
+  variant: string,
+  uiState?: AdaptiveUIDefinition,
+): VariantUIConfig | undefined {
+  if (!uiState) {
+    return VARIANT_CONFIGS[variant as UiVariant];
+  }
+
+  return {
+    showWelcomeScreen: Boolean(uiState.showWelcomeScreen),
+    toolbar: uiState.toolbar ?? { mode: 'blocklist', tools: [] },
+    canvasActions: uiState.canvasActions ?? {},
+    mainMenuItems: uiState.mainMenuItems ?? uiState.mainMenu?.allowedItems ?? [],
+  };
+}

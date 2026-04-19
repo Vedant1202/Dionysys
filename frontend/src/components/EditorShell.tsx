@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
+import type { AdaptiveMode } from '@dionysys/core';
 import { useAdaptiveUI } from '@dionysys/react';
 import { DebugPanel } from './DebugPanel';
-import { eventCollector, MOCK_SESSION_ID } from '../core/eventCollector';
+import { eventCollector } from '../core/eventCollector';
+import { SESSION_ID } from '../core/session';
 import { DynamicToolbar } from './DynamicToolbar';
-import { VARIANT_CONFIGS } from '../config/variantConfig';
+import { resolveVariantConfig } from '../config/variantConfig';
 
-export function EditorShell() {
+interface EditorShellProps {
+  adaptiveMode: AdaptiveMode;
+  onAdaptiveModeChange: (mode: AdaptiveMode) => void;
+}
+
+export function EditorShell({ adaptiveMode, onAdaptiveModeChange }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const { currentVariant, incrementEventsSent } = useAdaptiveUI();
+  const { currentVariant, currentUIState, incrementEventsSent } = useAdaptiveUI();
 
-  const config = VARIANT_CONFIGS[currentVariant as keyof typeof VARIANT_CONFIGS];
+  const config = resolveVariantConfig(
+    currentVariant,
+    adaptiveMode === 'mcp' ? currentUIState : undefined,
+  );
 
   useEffect(() => {
     eventCollector.onFlush = incrementEventsSent;
@@ -24,7 +34,7 @@ export function EditorShell() {
     const handleBeforeUnload = () => {
       navigator.sendBeacon(
         'http://localhost:3001/api/reward/complete',
-        new Blob([JSON.stringify({ sessionId: MOCK_SESSION_ID })], { type: 'application/json' })
+        new Blob([JSON.stringify({ sessionId: SESSION_ID })], { type: 'application/json' })
       );
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -46,8 +56,26 @@ export function EditorShell() {
         <div className="flex-1">
           <a className="btn btn-ghost text-xl font-bold tracking-tight">Dionysys <span className="text-primary">Adaptive UI</span></a>
         </div>
+        <div className="flex-none">
+          <div className="join" aria-label="Adaptive mode">
+            <button
+              type="button"
+              className={`join-item btn btn-sm ${adaptiveMode === 'deterministic' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => onAdaptiveModeChange('deterministic')}
+            >
+              Deterministic
+            </button>
+            <button
+              type="button"
+              className={`join-item btn btn-sm ${adaptiveMode === 'mcp' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => onAdaptiveModeChange('mcp')}
+            >
+              MCP
+            </button>
+          </div>
+        </div>
         <div className="flex-none gap-2 px-4 italic text-sm opacity-60">
-           Session: {MOCK_SESSION_ID}
+           Session: {SESSION_ID}
         </div>
         <div className="flex-none">
           <div className="badge badge-outline badge-md mr-2 uppercase tracking-widest text-[10px] py-1">Experiment Active</div>
@@ -58,7 +86,7 @@ export function EditorShell() {
       </div>
 
       <div className="flex-grow relative border-t border-base-300">
-        <DynamicToolbar excalidrawAPI={excalidrawAPI} />
+        <DynamicToolbar excalidrawAPI={excalidrawAPI} config={config} />
         {config.toolbar?.mode === 'allowlist' && (
           <style>{`
             .excalidraw .App-toolbar { 

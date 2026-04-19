@@ -1,8 +1,7 @@
 import type { IEventPlugin, AppEvent } from './IEventPlugin';
 import { DrawingPlugin } from '../plugins/DrawingPlugin';
+import { SESSION_ID } from './session';
 
-// Hardcoded explicit session ID for POC purposes initially
-export const MOCK_SESSION_ID = 'sess_' + Math.random().toString(36).substr(2, 9);
 // Throttle limit
 const THROTTLE_MS = 2000;
 
@@ -50,7 +49,7 @@ class EventCollector {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sessionId: MOCK_SESSION_ID,
+          sessionId: SESSION_ID,
           events: itemsToSend
         }),
       });

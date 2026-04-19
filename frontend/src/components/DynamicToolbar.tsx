@@ -12,10 +12,11 @@ import {
   Diamond
 } from 'lucide-react';
 import { useAdaptiveUI } from '@dionysys/react';
-import { VARIANT_CONFIGS } from '../config/variantConfig';
+import { resolveVariantConfig, type VariantUIConfig } from '../config/variantConfig';
 
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
+  config?: VariantUIConfig;
 }
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -31,11 +32,14 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   eraser: <Eraser size={18} />
 };
 
-export function DynamicToolbar({ excalidrawAPI }: DynamicToolbarProps) {
-  const { currentVariant } = useAdaptiveUI();
+export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: DynamicToolbarProps) {
+  const { currentVariant, currentUIState, mode } = useAdaptiveUI();
   const [activeToolType, setActiveToolType] = useState<string>('selection');
 
-  const config = VARIANT_CONFIGS[currentVariant as keyof typeof VARIANT_CONFIGS];
+  const config = providedConfig ?? resolveVariantConfig(
+    currentVariant,
+    mode === 'mcp' ? currentUIState : undefined,
+  );
   if (!config || !config.toolbar) return null;
 
   // Only render custom toolbar if mode is allowlist

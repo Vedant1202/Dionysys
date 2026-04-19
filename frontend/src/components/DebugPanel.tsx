@@ -1,7 +1,16 @@
 import { useAdaptiveUI } from '@dionysys/react';
 
 export function DebugPanel() {
-  const { currentVariant, personaProbs, eventsSentCount, isPolicyLocked, _store } = useAdaptiveUI();
+  const {
+    mode,
+    currentVariant,
+    currentPersonality,
+    decisionConfidence,
+    personaProbs,
+    eventsSentCount,
+    isPolicyLocked,
+    _store,
+  } = useAdaptiveUI();
 
   const handleVariantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     _store.setState({ currentVariant: e.target.value });
@@ -13,7 +22,7 @@ export function DebugPanel() {
         <div className="card-body p-6">
           <div className="flex justify-between items-center mb-4 text-center">
             <h3 className="card-title text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/50 w-full justify-center">
-               🛠️ System Intelligence
+               System Intelligence
             </h3>
           </div>
 
@@ -32,6 +41,26 @@ export function DebugPanel() {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] uppercase tracking-widest">
+            <div className="rounded-lg bg-base-200/70 p-3">
+              <div className="font-bold opacity-50">Mode</div>
+              <div className="font-black text-primary">{mode}</div>
+            </div>
+            <div className="rounded-lg bg-base-200/70 p-3">
+              <div className="font-bold opacity-50">Confidence</div>
+              <div className="font-black text-primary">
+                {decisionConfidence === undefined ? '--' : `${Math.round(decisionConfidence * 100)}%`}
+              </div>
+            </div>
+          </div>
+
+          {currentPersonality && (
+            <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-3 text-[10px] uppercase tracking-widest">
+              <div className="font-bold opacity-50">MCP Personality</div>
+              <div className="font-black text-primary">{currentPersonality.replace('_', ' ')}</div>
+            </div>
+          )}
           
           {/* Variant Selector */}
           <div className="form-control mb-6">
