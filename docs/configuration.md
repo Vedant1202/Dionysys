@@ -61,3 +61,49 @@ const policyConfig: PolicyConfig = {
 
 const policy = new PolicyEngine(policyConfig);
 ```
+
+## MCP Mode Configuration
+
+MCP mode uses personality resources instead of hard-coded persona mappings. Each resource defines scoring rules and the UI actions the LLM is allowed to choose from.
+
+```typescript
+import type { PersonalityResource } from '@dionysys/core';
+
+export const resources: PersonalityResource[] = [
+  {
+    id: 'guided_novice',
+    name: 'Guided Novice',
+    description: 'A user who appears early in the workflow and benefits from fewer visible choices.',
+    scoring: {
+      baseWeight: 1,
+      signals: [
+        {
+          id: 'low_event_volume',
+          description: 'User has not generated many events yet.',
+          metric: 'totalEvents',
+          operator: '<',
+          value: 5,
+          weight: 3,
+        },
+      ],
+    },
+    actions: [
+      {
+        id: 'show_guided_toolbar',
+        description: 'Show a reduced toolbar and welcome guidance.',
+        isSafeFallback: true,
+        uiState: {
+          variant: 'guided_novice',
+          toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
+          mainMenu: { allowedItems: ['help'] },
+          showWelcomeScreen: true,
+        },
+      },
+    ],
+  },
+];
+```
+
+The backend summarizes raw interactions before LLM calls. The LLM connector receives resource metadata, `InteractionSummary`, `rawScores`, and normalized `personaScores`; it must return one exposed `{ personalityId, actionId, confidence }`.
+
+For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.
