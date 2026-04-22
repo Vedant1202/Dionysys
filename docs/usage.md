@@ -62,6 +62,9 @@ export function App() {
   return (
     <AdaptiveProvider
       mode="deterministic"
+      presentationMode="production"
+      decisionApplication="next-refresh"
+      sessionId="session_123"
       defaultVariant="neutral"
       pollingIntervalMs={3000}
       minEventsBeforeLock={5}
@@ -195,6 +198,9 @@ export function App() {
     <AdaptiveProvider
       key="mcp"
       mode="mcp"
+      presentationMode="production"
+      decisionApplication="next-refresh"
+      sessionId="session_123"
       defaultVariant="neutral"
       minEventsBeforeLock={5}
       resolveDecision={async () => {
@@ -246,16 +252,55 @@ State fields:
 | Field | Meaning |
 | --- | --- |
 | `mode` | Current adaptive mode: `deterministic` or `mcp`. |
+| `presentationMode` | `prototype` shows diagnostics and controls; `production` should hide experiment details. |
 | `currentVariant` | Active variant name. Deterministic mode gets this from policy; MCP mode gets it from the selected action UI state. |
 | `currentUIState` | MCP action UI state, or the optional default UI state. |
 | `currentPersonality` | Selected MCP personality id. |
 | `decisionConfidence` | LLM connector confidence from the latest MCP decision. |
 | `lastDecision` | Full `AdaptiveDecision`, including summary, raw scores, normalized scores, matched signals, and fallback status. |
+| `pendingDecision` | Decision resolved for next refresh without changing the active UI mid-session. |
+| `pendingPersonality` | Stored personality for the pending next-refresh decision. |
+| `hasPendingUIChange` | Whether the next refresh will apply a queued UI change. |
 | `personaProbs` | Live deterministic probabilities or MCP resource-driven persona scores. |
 | `eventsSentCount` | Count of events flushed by the application telemetry layer. |
 | `isPolicyLocked` | Whether the provider has locked the adaptive decision after the event threshold. |
 
 Call `incrementEventsSent(count)` after your telemetry layer successfully sends events. The provider uses this count to decide when to evaluate deterministic policy or resolve MCP mode.
+
+## Refresh-Safe Decisions
+
+Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount.
+
+With `sessionId`, the package uses localStorage by default:
+
+```tsx
+<AdaptiveProvider
+  mode="mcp"
+  presentationMode="production"
+  decisionApplication="next-refresh"
+  sessionId="session_123"
+  defaultVariant="neutral"
+  resolveDecision={resolveDecision}
+>
+  <Workspace />
+</AdaptiveProvider>
+```
+
+Apps can replace localStorage with server persistence:
+
+```tsx
+<AdaptiveProvider
+  decisionApplication="next-refresh"
+  loadPendingDecision={() => fetch('/api/pending-decision').then((res) => res.json())}
+  savePendingDecision={(decision) => fetch('/api/pending-decision', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(decision),
+  })}
+  clearPendingDecision={() => fetch('/api/pending-decision', { method: 'DELETE' })}
+  defaultVariant="neutral"
+/>
+```
 
 ## Runtime Admin Console
 

@@ -289,6 +289,7 @@ function OverviewPanel({ config, overview }: { config: AdminConsoleConfig; overv
   return (
     <div style={styles.panelGrid}>
       <MetricCard label="Default mode" value={config.mode.defaultMode} detail={`${config.mode.minEventsBeforeLock} events before decision`} />
+      <MetricCard label="Presentation" value={config.mode.presentationMode} detail={`${config.mode.decisionApplication} decisions`} />
       <MetricCard label="MCP resources" value={String(config.mcp.resources.length)} detail={`Confidence floor ${formatPercent(config.mcp.minConfidence)}`} />
       <MetricCard label="Connector" value={overview?.connector.type ?? 'unknown'} detail={overview?.connector.endpointConfigured ? 'External endpoint configured' : 'Mock connector'} />
       <MetricCard label="Session events" value={String(session?.eventCount ?? 0)} detail={session ? 'Live session summary loaded' : 'No session selected'} />
@@ -347,6 +348,26 @@ function ModesPanel({
             <option value="mcp">MCP</option>
           </select>
         </Field>
+        <Field label="Presentation mode">
+          <select
+            style={styles.input}
+            value={config.mode.presentationMode}
+            onChange={(event) => updateMode({ presentationMode: event.target.value as AdminModeConfig['presentationMode'] })}
+          >
+            <option value="prototype">Prototype: show diagnostics and controls</option>
+            <option value="production">Production: feedback only</option>
+          </select>
+        </Field>
+        <Field label="Decision application">
+          <select
+            style={styles.input}
+            value={config.mode.decisionApplication}
+            onChange={(event) => updateMode({ decisionApplication: event.target.value as AdminModeConfig['decisionApplication'] })}
+          >
+            <option value="next-refresh">Next refresh: store now, apply later</option>
+            <option value="immediate">Immediate: change active UI when resolved</option>
+          </select>
+        </Field>
         <Field label="Events before lock">
           <input
             style={styles.input}
@@ -395,6 +416,11 @@ function ModesPanel({
         <p style={styles.helpText}>
           Changes apply after Save. The frontend can remount the provider from this runtime config without mutating source files.
         </p>
+        {config.mode.presentationMode === 'production' && (
+          <p style={styles.noticeText}>
+            Production mode hides personality, scores, variants, debug details, and admin controls from front-facing users.
+          </p>
+        )}
       </SectionCard>
     </div>
   );
@@ -1197,6 +1223,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#596579',
     lineHeight: 1.5,
     margin: '0 0 12px',
+  },
+  noticeText: {
+    border: '1px solid #a7f3d0',
+    background: '#ecfdf5',
+    borderRadius: 6,
+    color: '#047857',
+    lineHeight: 1.5,
+    margin: '10px 0 0',
+    padding: 10,
+    fontWeight: 700,
   },
   rowActions: {
     display: 'flex',

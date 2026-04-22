@@ -1,6 +1,8 @@
 import type { AdaptiveUIDefinition } from '../schema/uiSchema.js';
 
 export type AdaptiveMode = 'deterministic' | 'mcp';
+export type AdaptivePresentationMode = 'prototype' | 'production';
+export type AdaptiveDecisionApplication = 'immediate' | 'next-refresh';
 
 export interface SummarizableInteractionEvent {
   eventType: string;
@@ -119,4 +121,19 @@ export interface AdaptiveDecision {
   matchedSignals: Record<string, string[]>;
   interactionSummary: InteractionSummary;
   isFallback: boolean;
+}
+
+export interface PendingAdaptiveDecision {
+  mode: AdaptiveMode;
+  variant: string;
+  personalityId?: string | undefined;
+  actionId?: string | undefined;
+  confidence?: number | undefined;
+  uiState?: AdaptiveUIDefinition | undefined;
+  personaScores?: Record<string, number> | undefined;
+  rawScores?: Record<string, number> | undefined;
+  matchedSignals?: Record<string, string[]> | undefined;
+  rationale?: string | undefined;
+  createdAt: string;
+  decision?: AdaptiveDecision | undefined;
 }

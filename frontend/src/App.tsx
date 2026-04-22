@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AdaptiveProvider, AdminConsole } from '@dionysys/react';
-import type { AdaptiveDecision, AdaptiveMode, AdminConsoleConfig } from '@dionysys/core';
+import type {
+  AdaptiveDecision,
+  AdaptiveDecisionApplication,
+  AdaptiveMode,
+  AdaptivePresentationMode,
+  AdminConsoleConfig,
+} from '@dionysys/core';
 import { EditorShell } from './components/EditorShell';
 import { SESSION_ID } from './core/session';
 import { VARIANT_CONFIGS } from './config/variantConfig';
@@ -11,6 +17,8 @@ const ADMIN_CONSOLE_VISIBLE = import.meta.env.DEV || import.meta.env.VITE_ADMIN_
 
 function App() {
   const [adaptiveMode, setAdaptiveMode] = useState<AdaptiveMode>('deterministic');
+  const [presentationMode, setPresentationMode] = useState<AdaptivePresentationMode>('prototype');
+  const [decisionApplication, setDecisionApplication] = useState<AdaptiveDecisionApplication>('next-refresh');
   const [providerVersion, setProviderVersion] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [providerSettings, setProviderSettings] = useState({
@@ -40,6 +48,8 @@ function App() {
 
   const applyAdminConfig = (config: AdminConsoleConfig) => {
     setAdaptiveMode(config.mode.defaultMode);
+    setPresentationMode(config.mode.presentationMode);
+    setDecisionApplication(config.mode.decisionApplication);
     setProviderSettings({
       minEventsBeforeLock: config.mode.minEventsBeforeLock,
       pollingIntervalMs: config.mode.pollingIntervalMs,
@@ -50,8 +60,11 @@ function App() {
   return (
     <div className="App" data-theme="winter">
       <AdaptiveProvider
-         key={`${adaptiveMode}-${providerVersion}`}
+         key={`${adaptiveMode}-${presentationMode}-${decisionApplication}-${providerVersion}`}
          mode={adaptiveMode}
+         presentationMode={presentationMode}
+         decisionApplication={decisionApplication}
+         sessionId={SESSION_ID}
          defaultVariant="neutral"
          defaultUIState={{ variant: 'neutral', ...VARIANT_CONFIGS.neutral }}
          minEventsBeforeLock={providerSettings.minEventsBeforeLock}
@@ -86,7 +99,8 @@ function App() {
         <EditorShell
           adaptiveMode={adaptiveMode}
           onAdaptiveModeChange={setAdaptiveMode}
-          onOpenAdmin={ADMIN_CONSOLE_VISIBLE ? () => setIsAdminOpen(true) : undefined}
+          apiBaseUrl={API_BASE_URL}
+          onOpenAdmin={ADMIN_CONSOLE_VISIBLE && presentationMode === 'prototype' ? () => setIsAdminOpen(true) : undefined}
         />
       </AdaptiveProvider>
 

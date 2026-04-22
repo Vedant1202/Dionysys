@@ -126,4 +126,20 @@ GET  /api/admin/overview
 
 `@dionysys/react` provides `<AdminConsole />` to edit that runtime config. Saves update in-memory backend state and affect subsequent deterministic/MCP decisions. They do not write to source files. Use the Export tab or `/api/admin/config/export` to capture a JSON snapshot.
 
+The mode config also controls presentation and application timing:
+
+```json
+{
+  "mode": {
+    "defaultMode": "mcp",
+    "presentationMode": "prototype",
+    "decisionApplication": "next-refresh",
+    "minEventsBeforeLock": 5,
+    "pollingIntervalMs": 3000
+  }
+}
+```
+
+Use `presentationMode: "production"` for front-facing users so personalities, scores, variants, and admin controls are hidden. Use `decisionApplication: "next-refresh"` to store the inferred personality/decision without changing the active workspace UI until refresh.
+
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.

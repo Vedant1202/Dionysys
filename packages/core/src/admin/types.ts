@@ -1,4 +1,12 @@
-import type { AdaptiveMode, InteractionSummary, PersonalityResource, PersonalityScoreResult, SanitizedInteractionEvent } from '../mcp/types.js';
+import type {
+  AdaptiveDecisionApplication,
+  AdaptiveMode,
+  AdaptivePresentationMode,
+  InteractionSummary,
+  PersonalityResource,
+  PersonalityScoreResult,
+  SanitizedInteractionEvent,
+} from '../mcp/types.js';
 
 export type AdminPayloadOperator = '==' | '!=' | 'contains' | 'in' | 'exists' | 'notExists';
 
@@ -46,6 +54,8 @@ export interface AdminDeterministicConfig {
 
 export interface AdminModeConfig {
   defaultMode: AdaptiveMode;
+  presentationMode: AdaptivePresentationMode;
+  decisionApplication: AdaptiveDecisionApplication;
   minEventsBeforeLock: number;
   pollingIntervalMs: number;
 }

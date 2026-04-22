@@ -4,6 +4,20 @@ The Dionysys admin console is a reusable package UI for inspecting and changing 
 
 The console does not write edits back into source files. It starts from file-seeded backend configuration, saves changes into the backend's in-memory runtime config, and lets you export the active configuration as JSON for future use.
 
+## Prototype vs Production
+
+The admin runtime config includes a presentation mode:
+
+- `prototype`: show the control room: admin controls, mode switch, debug panel, variants, personalities, scores, resources, and pending-decision notices.
+- `production`: hide experiment details from front-facing users and show only lightweight feedback controls.
+
+It also includes a decision application mode:
+
+- `immediate`: apply the selected variant or MCP UI state as soon as the decision resolves.
+- `next-refresh`: store the resolved personality/decision now, keep the active workspace stable, and apply the UI change on the next refresh/provider mount.
+
+The Excalidraw demo defaults to `prototype` plus `next-refresh`.
+
 ## Enable the Backend
 
 Admin routes are disabled unless the backend opt-in flag is set:
@@ -84,8 +98,9 @@ GET  /api/admin/overview?sessionId=session_123
 The Excalidraw demo mounts the console as an overlay. When the console saves or resets config, the demo:
 
 1. Reads `config.mode.defaultMode`.
-2. Updates `minEventsBeforeLock` and `pollingIntervalMs`.
-3. Remounts `AdaptiveProvider` so lock state and active decisions reset cleanly.
+2. Reads `config.mode.presentationMode` and `config.mode.decisionApplication`.
+3. Updates `minEventsBeforeLock` and `pollingIntervalMs`.
+4. Remounts `AdaptiveProvider` so lock state and active decisions reset cleanly.
 
 This means you can change the default mode from `deterministic` to `mcp`, tune thresholds, edit MCP resources, save, and immediately continue the demo with the active runtime configuration.
 

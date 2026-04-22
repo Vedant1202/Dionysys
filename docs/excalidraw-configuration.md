@@ -28,12 +28,16 @@ npm run dev --workspace=frontend
 The demo shows an Admin button in development. The console is seeded from the current files on backend startup, then lets you edit:
 
 - default mode, event threshold, and polling interval
+- prototype vs production presentation mode
+- immediate vs next-refresh decision application
 - deterministic personas, initial counts, event rules, heuristics, and epsilon
 - MCP resources, base weights, signal rules, actions, and UI states
 - MCP confidence floor and fallback variant
 - supported tools and menu items through the full JSON editor
 
 Saving changes affects runtime decisions only. It does not rewrite `variantConfig.ts` or `ExcalidrawMcpResources.ts`. Use Export to download a JSON snapshot when you want to preserve a tuning session.
+
+Production mode hides the top-bar mode switch, admin entry point, debug panel, active variant badge, personality labels, and persona scores. It shows only a front-facing feedback panel.
 
 ## Adaptive Modes in the Demo
 
@@ -43,6 +47,8 @@ The top bar switch in `EditorShell` selects the mode:
 - `MCP`: `AdaptiveProvider` posts to `/api/adaptive/decision` with `mode: 'mcp'`, then renders `lastDecision.uiState`.
 
 `App.tsx` remounts the provider when the mode or runtime admin config changes, so switching modes or saving admin config resets lock state, selected variant, and MCP decision fields.
+
+When `decisionApplication` is `next-refresh`, policy/MCP decisions are stored as pending decisions. The active Excalidraw toolbar, menu, and welcome UI remain unchanged for the current workspace session. On the next refresh/provider mount, the pending decision is applied before the user starts working again.
 
 ## Editing Deterministic Variants
 

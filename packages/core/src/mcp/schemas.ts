@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { AdaptiveUIDefinitionSchema } from '../schema/uiSchema.js';
 
 export const AdaptiveModeSchema = z.enum(['deterministic', 'mcp']);
+export const AdaptivePresentationModeSchema = z.enum(['prototype', 'production']);
+export const AdaptiveDecisionApplicationSchema = z.enum(['immediate', 'next-refresh']);
 
 export const SanitizedInteractionEventSchema = z.object({
   eventType: z.string().min(1),

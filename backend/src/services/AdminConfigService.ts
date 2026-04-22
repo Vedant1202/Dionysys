@@ -27,6 +27,8 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
   updatedAt: new Date(0).toISOString(),
   mode: {
     defaultMode: 'deterministic',
+    presentationMode: 'prototype',
+    decisionApplication: 'next-refresh',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   },

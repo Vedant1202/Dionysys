@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode } from '@dionysys/core';
-import { useAdaptiveUI } from '@dionysys/react';
+import { AdaptiveFeedback, type AdaptiveFeedbackSubmission, useAdaptiveUI } from '@dionysys/react';
 import { DebugPanel } from './DebugPanel';
 import { eventCollector } from '../core/eventCollector';
 import { SESSION_ID } from '../core/session';
@@ -12,12 +12,21 @@ import { resolveVariantConfig } from '../config/variantConfig';
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
   onAdaptiveModeChange: (mode: AdaptiveMode) => void;
+  apiBaseUrl: string;
   onOpenAdmin?: () => void;
 }
 
-export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }: EditorShellProps) {
+export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const { currentVariant, currentUIState, incrementEventsSent } = useAdaptiveUI();
+  const {
+    presentationMode,
+    currentVariant,
+    currentUIState,
+    hasPendingUIChange,
+    pendingPersonality,
+    incrementEventsSent,
+  } = useAdaptiveUI();
+  const isPrototype = presentationMode === 'prototype';
 
   const config = resolveVariantConfig(
     currentVariant,
@@ -34,13 +43,30 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }:
   useEffect(() => {
     const handleBeforeUnload = () => {
       navigator.sendBeacon(
-        'http://localhost:3001/api/reward/complete',
+        `${apiBaseUrl}/api/reward/complete`,
         new Blob([JSON.stringify({ sessionId: SESSION_ID })], { type: 'application/json' })
       );
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
+  }, [apiBaseUrl]);
+
+  const handleFeedback = async (feedback: AdaptiveFeedbackSubmission) => {
+    await fetch(`${apiBaseUrl}/api/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: SESSION_ID,
+        events: [
+          {
+            eventType: 'feedback_submitted',
+            timestamp: Date.now(),
+            payload: feedback,
+          },
+        ],
+      }),
+    });
+  };
 
   const getUIOptions = (): any => {
     if (!config || currentVariant === 'neutral') return undefined;
@@ -57,6 +83,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }:
         <div className="flex-1">
           <a className="btn btn-ghost text-xl font-bold tracking-tight">Dionysys <span className="text-primary">Adaptive UI</span></a>
         </div>
+        {isPrototype && (
         <div className="flex-none">
           <div className="join" aria-label="Adaptive mode">
             <button
@@ -75,6 +102,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }:
             </button>
           </div>
         </div>
+        )}
         {onOpenAdmin && (
           <div className="flex-none ml-2">
             <button
@@ -86,15 +114,26 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }:
             </button>
           </div>
         )}
+        {isPrototype && (
         <div className="flex-none gap-2 px-4 italic text-sm opacity-60">
            Session: {SESSION_ID}
         </div>
+        )}
+        {isPrototype && hasPendingUIChange && (
+          <div className="flex-none">
+            <div className="badge badge-warning badge-md uppercase tracking-widest text-[10px] py-1">
+              Pending refresh: {pendingPersonality?.replace('_', ' ') ?? 'decision ready'}
+            </div>
+          </div>
+        )}
+        {isPrototype && (
         <div className="flex-none">
           <div className="badge badge-outline badge-md mr-2 uppercase tracking-widest text-[10px] py-1">Experiment Active</div>
           <div className={`badge badge-primary badge-md uppercase tracking-widest text-[10px] py-1 font-bold`}>
             {currentVariant.replace('_', ' ')}
           </div>
         </div>
+        )}
       </div>
 
       <div className="flex-grow relative border-t border-base-300">
@@ -146,7 +185,13 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }:
           </MainMenu>
         </Excalidraw>
         
-        <DebugPanel />
+        {isPrototype ? (
+          <DebugPanel />
+        ) : (
+          <div className="absolute bottom-4 right-4 z-[1000]">
+            <AdaptiveFeedback onSubmit={handleFeedback} />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { AdaptiveModeSchema, PersonalityResourcesSchema } from '../mcp/schemas.js';
+import {
+  AdaptiveDecisionApplicationSchema,
+  AdaptiveModeSchema,
+  AdaptivePresentationModeSchema,
+  PersonalityResourcesSchema,
+} from '../mcp/schemas.js';
 
 export const AdminPayloadConditionSchema = z.object({
   field: z.string().min(1),
@@ -47,6 +52,8 @@ export const AdminDeterministicConfigSchema = z.object({
 
 export const AdminModeConfigSchema = z.object({
   defaultMode: AdaptiveModeSchema,
+  presentationMode: AdaptivePresentationModeSchema,
+  decisionApplication: AdaptiveDecisionApplicationSchema,
   minEventsBeforeLock: z.number().int().positive(),
   pollingIntervalMs: z.number().int().positive(),
 });

@@ -48,6 +48,8 @@ describe('AdminConfigService', () => {
 
     const reset = resetAdminConfig();
     expect(reset.mode.defaultMode).toBe('deterministic');
+    expect(reset.mode.presentationMode).toBe('prototype');
+    expect(reset.mode.decisionApplication).toBe('next-refresh');
     expect(reset.mode.minEventsBeforeLock).toBe(5);
   });
 

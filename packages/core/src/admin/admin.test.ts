@@ -9,6 +9,8 @@ const config: AdminConsoleConfig = {
   updatedAt: '2026-04-19T00:00:00.000Z',
   mode: {
     defaultMode: 'deterministic',
+    presentationMode: 'prototype',
+    decisionApplication: 'next-refresh',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   },
@@ -89,6 +91,8 @@ describe('AdminConsoleConfigSchema', () => {
     const parsed = AdminConsoleConfigSchema.parse(config);
 
     expect(parsed.mode.defaultMode).toBe('deterministic');
+    expect(parsed.mode.presentationMode).toBe('prototype');
+    expect(parsed.mode.decisionApplication).toBe('next-refresh');
     expect(parsed.deterministic.eventRules[0]?.id).toBe('drawn_shape_weight');
     expect(parsed.mcp.resources[0]?.actions[0]?.uiState.variant).toBe('neutral');
   });
