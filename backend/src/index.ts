@@ -8,6 +8,7 @@ import { inferenceRouter } from './routes/inference.js';
 import { policyRouter } from './routes/policy.js';
 import { rewardRouter } from './routes/reward.js';
 import { adaptiveRouter } from './routes/adaptive.js';
+import { adminRouter } from './routes/admin.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/inference', inferenceRouter);
 app.use('/api/policy', policyRouter);
 app.use('/api/reward', rewardRouter);
 app.use('/api/adaptive', adaptiveRouter);
+app.use('/api/admin', adminRouter);
 
 async function startServer() {
   try {

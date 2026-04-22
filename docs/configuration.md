@@ -106,4 +106,24 @@ export const resources: PersonalityResource[] = [
 
 The backend summarizes raw interactions before LLM calls. The LLM connector receives resource metadata, `InteractionSummary`, `rawScores`, and normalized `personaScores`; it must return one exposed `{ personalityId, actionId, confidence }`.
 
+## Runtime Admin Configuration
+
+For local tuning and demos, enable the admin console instead of editing files for every iteration:
+
+```bash
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
+```
+
+The backend seeds runtime configuration from the existing deterministic and MCP files, then exposes:
+
+```http
+GET  /api/admin/config
+PUT  /api/admin/config
+POST /api/admin/config/reset
+GET  /api/admin/config/export
+GET  /api/admin/overview
+```
+
+`@dionysys/react` provides `<AdminConsole />` to edit that runtime config. Saves update in-memory backend state and affect subsequent deterministic/MCP decisions. They do not write to source files. Use the Export tab or `/api/admin/config/export` to capture a JSON snapshot.
+
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.

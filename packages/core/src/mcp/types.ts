@@ -4,16 +4,16 @@ export type AdaptiveMode = 'deterministic' | 'mcp';
 
 export interface SummarizableInteractionEvent {
   eventType: string;
-  payload?: unknown;
-  timestamp?: number | Date | string;
-  sessionId?: string;
+  payload?: unknown | undefined;
+  timestamp?: number | Date | string | undefined;
+  sessionId?: string | undefined;
   [key: string]: unknown;
 }
 
 export interface SanitizedInteractionEvent {
   eventType: string;
-  timestamp?: number;
-  payload?: Record<string, string | number | boolean | null>;
+  timestamp?: number | undefined;
+  payload?: Record<string, string | number | boolean | null> | undefined;
 }
 
 export interface InteractionSummary {
@@ -22,8 +22,8 @@ export interface InteractionSummary {
   elementCountsByType: Record<string, number>;
   toolDiversity: number;
   textToShapeRatio: number;
-  timeToFirstEventMs?: number;
-  timeSinceLastEventMs?: number;
+  timeToFirstEventMs?: number | undefined;
+  timeSinceLastEventMs?: number | undefined;
   recentEventTypes: string[];
   recentEvents: SanitizedInteractionEvent[];
   derivedSignals: string[];
@@ -57,12 +57,12 @@ export interface PersonalitySignalRule {
   operator: PersonalitySignalOperator;
   value: number | string;
   weight: number;
-  eventType?: string;
-  elementType?: string;
+  eventType?: string | undefined;
+  elementType?: string | undefined;
 }
 
 export interface PersonalityScoringConfig {
-  baseWeight?: number;
+  baseWeight?: number | undefined;
   signals: PersonalitySignalRule[];
 }
 
@@ -70,14 +70,14 @@ export interface PersonalityAction {
   id: string;
   description: string;
   uiState: AdaptiveUIDefinition;
-  isSafeFallback?: boolean;
+  isSafeFallback?: boolean | undefined;
 }
 
 export interface PersonalityResource {
   id: string;
   name: string;
   description: string;
-  decisionHints?: string[];
+  decisionHints?: string[] | undefined;
   scoring: PersonalityScoringConfig;
   actions: PersonalityAction[];
 }
@@ -99,7 +99,7 @@ export interface LLMDecisionResult {
   personalityId: string;
   actionId: string;
   confidence: number;
-  rationale?: string;
+  rationale?: string | undefined;
 }
 
 export interface LLMDecisionConnector {
@@ -113,7 +113,7 @@ export interface AdaptiveDecision {
   actionId: string;
   confidence: number;
   uiState: AdaptiveUIDefinition;
-  rationale?: string;
+  rationale?: string | undefined;
   personaScores: Record<string, number>;
   rawScores: Record<string, number>;
   matchedSignals: Record<string, string[]>;

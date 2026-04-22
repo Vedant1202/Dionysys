@@ -12,6 +12,7 @@ Dionysys is a modular adaptive UI experimentation framework. It supports determi
 
 - [Package Usage](./usage.md): integrate `@dionysys/core` and `@dionysys/react` in an application.
 - [Configuration](./configuration.md): configure inference, policy, and MCP resources.
+- [Admin Console](./admin-console.md): inspect and edit runtime adaptive configuration from a reusable package UI.
 - [Excalidraw Configuration](./excalidraw-configuration.md): edit the current demo variants, MCP resources, toolbar tools, and connector settings.
 - [Architecture](./architecture.md): understand the monorepo packages, backend, frontend demo, and data flow.
 - [MCP Mode Spec](./specs/mcp-mode.md): read the detailed MCP-driven adaptive UI mode design.

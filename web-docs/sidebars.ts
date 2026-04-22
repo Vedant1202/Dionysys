@@ -5,12 +5,13 @@ const sidebars: SidebarsConfig = {
     'index',
     'usage',
     'configuration',
+    'admin-console',
     'excalidraw-configuration',
     'architecture',
     {
       type: 'category',
       label: 'Specs',
-      items: ['specs/mcp-mode'],
+      items: ['specs/mcp-mode', 'specs/admin-console'],
     },
   ],
 };

@@ -6,10 +6,13 @@ import {
   type SummarizableInteractionEvent,
 } from '@dionysys/core';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
-import { InferenceService } from './InferenceService.js';
-import { PolicyService } from './PolicyService.js';
-import { EXCALIDRAW_PERSONALITY_RESOURCES } from './ExcalidrawMcpResources.js';
 import { createLLMDecisionConnectorFromEnv } from './LLMConnectorService.js';
+import {
+  getActiveMcpResources,
+  getActiveMcpResolverSettings,
+  inferPersonaWithActiveConfig,
+  selectVariantWithActiveConfig,
+} from './AdminConfigService.js';
 
 export interface DeterministicAdaptiveDecision {
   mode: 'deterministic';
@@ -27,8 +30,8 @@ export async function resolveAdaptiveDecisionForEvents(
   connector: LLMDecisionConnector = createLLMDecisionConnectorFromEnv(),
 ): Promise<AdaptiveDecisionResult> {
   if (mode === 'deterministic') {
-    const personaScores = InferenceService.inferPersona(events);
-    const { chosenVariant, propensity } = PolicyService.selectVariant(personaScores, 0.2);
+    const personaScores = inferPersonaWithActiveConfig(events);
+    const { chosenVariant, propensity } = selectVariantWithActiveConfig(personaScores);
 
     return {
       mode,
@@ -39,11 +42,12 @@ export async function resolveAdaptiveDecisionForEvents(
     };
   }
 
+  const mcpSettings = getActiveMcpResolverSettings();
   const resolver = new McpModeResolver({
-    resources: EXCALIDRAW_PERSONALITY_RESOURCES,
+    resources: getActiveMcpResources(),
     llmConnector: connector,
-    fallbackVariant: 'neutral',
-    minConfidence: 0.5,
+    fallbackVariant: mcpSettings.fallbackVariant,
+    minConfidence: mcpSettings.minConfidence,
   });
 
   const sessionStartMs = events[0]?.timestamp.getTime();

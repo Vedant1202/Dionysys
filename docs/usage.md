@@ -5,7 +5,7 @@ This guide shows how to use the Dionysys packages outside the Excalidraw demo. U
 ## What the Packages Provide
 
 - `@dionysys/core`: inference, policy selection, rewards, MCP-style personality resources, interaction summarization, persona scoring, and MCP decision resolution.
-- `@dionysys/react`: `<AdaptiveProvider />` and `useAdaptiveUI()` for storing the active variant, live persona probabilities, policy lock state, and MCP decisions.
+- `@dionysys/react`: `<AdaptiveProvider />`, `useAdaptiveUI()`, and `<AdminConsole />` for storing adaptive state and optionally editing runtime experiment configuration from a package-owned UI.
 
 The package supports two modes:
 
@@ -256,6 +256,29 @@ State fields:
 | `isPolicyLocked` | Whether the provider has locked the adaptive decision after the event threshold. |
 
 Call `incrementEventsSent(count)` after your telemetry layer successfully sends events. The provider uses this count to decide when to evaluate deterministic policy or resolve MCP mode.
+
+## Runtime Admin Console
+
+Use `AdminConsole` when you want an in-app information and control center for modes, personality resources, scoring calculations, session summaries, MCP APIs, and exportable configuration.
+
+```tsx
+import { AdminConsole } from '@dionysys/react';
+
+export function AdminOverlay({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
+  return (
+    <AdminConsole
+      apiBaseUrl="http://localhost:3001"
+      sessionId={sessionId}
+      onClose={onClose}
+      onConfigSaved={(config) => {
+        console.log('Runtime mode changed to', config.mode.defaultMode);
+      }}
+    />
+  );
+}
+```
+
+The console expects the backend admin API to be enabled with `ADMIN_CONSOLE_ENABLED=true`. It edits in-memory runtime config only; source files are not rewritten. Use the Export tab to download the active config JSON for future use.
 
 ## Event Summaries and Scoring
 

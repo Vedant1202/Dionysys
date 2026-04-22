@@ -2,12 +2,12 @@ import { Router, type Request, type Response } from 'express';
 import type { AdaptiveMode } from '@dionysys/core';
 import { dbAdapter } from '../db.js';
 import { resolveAdaptiveDecisionForEvents } from '../services/AdaptiveDecisionService.js';
-import { EXCALIDRAW_PERSONALITY_RESOURCES } from '../services/ExcalidrawMcpResources.js';
+import { getActiveMcpResources } from '../services/AdminConfigService.js';
 
 export const adaptiveRouter = Router();
 
 adaptiveRouter.get('/resources', (_req: Request, res: Response): void => {
-  res.json({ success: true, resources: EXCALIDRAW_PERSONALITY_RESOURCES });
+  res.json({ success: true, resources: getActiveMcpResources() });
 });
 
 adaptiveRouter.post('/decision', async (req: Request, res: Response): Promise<void> => {

@@ -12,9 +12,10 @@ import { resolveVariantConfig } from '../config/variantConfig';
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
   onAdaptiveModeChange: (mode: AdaptiveMode) => void;
+  onOpenAdmin?: () => void;
 }
 
-export function EditorShell({ adaptiveMode, onAdaptiveModeChange }: EditorShellProps) {
+export function EditorShell({ adaptiveMode, onAdaptiveModeChange, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const { currentVariant, currentUIState, incrementEventsSent } = useAdaptiveUI();
 
@@ -74,6 +75,17 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange }: EditorShellP
             </button>
           </div>
         </div>
+        {onOpenAdmin && (
+          <div className="flex-none ml-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={onOpenAdmin}
+            >
+              Admin
+            </button>
+          </div>
+        )}
         <div className="flex-none gap-2 px-4 italic text-sm opacity-60">
            Session: {SESSION_ID}
         </div>

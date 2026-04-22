@@ -12,8 +12,28 @@ This guide explains how to change the current Excalidraw adaptive UI implementat
 | Applying the selected UI state to Excalidraw | `frontend/src/components/EditorShell.tsx` |
 | Custom allowlisted toolbar rendering | `frontend/src/components/DynamicToolbar.tsx` |
 | Debug readout for mode, scores, confidence, and lock state | `frontend/src/components/DebugPanel.tsx` |
+| Runtime admin console overlay | `frontend/src/App.tsx` and `@dionysys/react` `AdminConsole` |
 | Shared session id for telemetry and decisions | `frontend/src/core/session.ts` |
 | Telemetry collection and flushing | `frontend/src/core/eventCollector.ts` |
+
+## Runtime Editing with the Admin Console
+
+For fast experimentation, enable the admin console and edit runtime configuration from the browser:
+
+```bash
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
+npm run dev --workspace=frontend
+```
+
+The demo shows an Admin button in development. The console is seeded from the current files on backend startup, then lets you edit:
+
+- default mode, event threshold, and polling interval
+- deterministic personas, initial counts, event rules, heuristics, and epsilon
+- MCP resources, base weights, signal rules, actions, and UI states
+- MCP confidence floor and fallback variant
+- supported tools and menu items through the full JSON editor
+
+Saving changes affects runtime decisions only. It does not rewrite `variantConfig.ts` or `ExcalidrawMcpResources.ts`. Use Export to download a JSON snapshot when you want to preserve a tuning session.
 
 ## Adaptive Modes in the Demo
 
@@ -22,7 +42,7 @@ The top bar switch in `EditorShell` selects the mode:
 - `Deterministic`: `AdaptiveProvider` polls `/api/inference/:sessionId`, then posts to `/api/adaptive/decision` with `mode: 'deterministic'`.
 - `MCP`: `AdaptiveProvider` posts to `/api/adaptive/decision` with `mode: 'mcp'`, then renders `lastDecision.uiState`.
 
-`App.tsx` remounts the provider with `key={adaptiveMode}` so switching modes resets lock state, selected variant, and MCP decision fields.
+`App.tsx` remounts the provider when the mode or runtime admin config changes, so switching modes or saving admin config resets lock state, selected variant, and MCP decision fields.
 
 ## Editing Deterministic Variants
 
