@@ -18,7 +18,7 @@ It also includes a decision application mode:
 
 The Excalidraw demo defaults to `prototype` plus `next-refresh`.
 
-## Enable the Backend
+## Enable / Disable
 
 Admin routes are disabled unless the backend opt-in flag is set:
 
@@ -26,7 +26,19 @@ Admin routes are disabled unless the backend opt-in flag is set:
 ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
 ```
 
-The demo shows the admin entry point in development or when the frontend flag is enabled:
+To disable the backend admin API, omit `ADMIN_CONSOLE_ENABLED` or set it to anything other than `true`.
+
+The admin API routes live under `/api/admin`:
+
+```http
+GET  /api/admin/config
+PUT  /api/admin/config
+POST /api/admin/config/reset
+GET  /api/admin/config/export
+GET  /api/admin/overview?sessionId=session_123
+```
+
+The Excalidraw demo renders the admin console as an in-app overlay, not as a standalone browser route. The demo shows the Admin button in development or when the frontend flag is enabled:
 
 ```bash
 VITE_ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=frontend
@@ -70,7 +82,7 @@ The console has focused tabs for the main adaptive surfaces:
 | Tab | What it shows or edits |
 | --- | --- |
 | Overview | Current default mode, connector status, session event count, top deterministic and MCP persona scores, resources, supported tools, and fallback variant. |
-| Modes | Default mode, provider event threshold, polling interval, MCP minimum confidence, and fallback variant. |
+| Modes | Default adaptive mode, `presentationMode`, `decisionApplication`, provider event threshold, polling interval, MCP minimum confidence, and fallback variant. |
 | Personalities | MCP personality resource names, ids, descriptions, decision hints, base weights, scoring signals, actions, and UI states. |
 | Calculations | Deterministic personas, initial counts, policy epsilon, event weight rules, and heuristic rules. |
 | Data | Summarized interaction data, derived counts, timing metrics, and sanitized recent events for the selected session. |
@@ -79,15 +91,7 @@ The console has focused tabs for the main adaptive surfaces:
 
 ## Runtime Config API
 
-When enabled, the backend exposes:
-
-```http
-GET  /api/admin/config
-PUT  /api/admin/config
-POST /api/admin/config/reset
-GET  /api/admin/config/export
-GET  /api/admin/overview?sessionId=session_123
-```
+When enabled, the backend exposes the same `/api/admin` routes listed above.
 
 `PUT /api/admin/config` validates the full admin config payload before updating runtime state. Invalid config returns `400` with schema issues.
 
@@ -115,6 +119,8 @@ Use Export to download:
     "version": 1,
     "mode": {
       "defaultMode": "mcp",
+      "presentationMode": "prototype",
+      "decisionApplication": "next-refresh",
       "minEventsBeforeLock": 5,
       "pollingIntervalMs": 3000
     }

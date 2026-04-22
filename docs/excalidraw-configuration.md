@@ -39,6 +39,25 @@ Saving changes affects runtime decisions only. It does not rewrite `variantConfi
 
 Production mode hides the top-bar mode switch, admin entry point, debug panel, active variant badge, personality labels, and persona scores. It shows only a front-facing feedback panel.
 
+## Prototype Experience
+
+Prototype mode is the demo's configuration and debugging view. It shows:
+
+- deterministic/MCP mode switch
+- Admin button for the runtime console overlay
+- session id
+- active variant badge
+- debug panel with events, policy status, scores, confidence, and MCP personality
+- pending refresh badge when a decision has been stored for the next load
+
+Use prototype mode when tuning scoring rules, comparing deterministic and MCP decisions, validating personality resources, or checking whether the next-refresh behavior is storing the expected decision.
+
+## Production Experience
+
+Production mode is the front-facing user view. It hides the mode switch, Admin button, session id, variant badge, debug panel, personality labels, and persona probability charts. Users should not see which personality or variant they are in.
+
+Instead, production mode renders a lightweight feedback panel through `AdaptiveFeedback`. The demo records feedback as a `feedback_submitted` event so it can be analyzed with the rest of the session telemetry.
+
 ## Adaptive Modes in the Demo
 
 The top bar switch in `EditorShell` selects the mode:
@@ -48,7 +67,7 @@ The top bar switch in `EditorShell` selects the mode:
 
 `App.tsx` remounts the provider when the mode or runtime admin config changes, so switching modes or saving admin config resets lock state, selected variant, and MCP decision fields.
 
-When `decisionApplication` is `next-refresh`, policy/MCP decisions are stored as pending decisions. The active Excalidraw toolbar, menu, and welcome UI remain unchanged for the current workspace session. On the next refresh/provider mount, the pending decision is applied before the user starts working again.
+When `decisionApplication` is `next-refresh`, policy/MCP decisions are stored as pending decisions. The active Excalidraw toolbar, menu, and welcome UI remain unchanged for the current workspace session. On the next browser refresh or provider mount, the pending decision is applied before the user starts working again.
 
 ## Editing Deterministic Variants
 

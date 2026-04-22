@@ -5,12 +5,17 @@ This guide shows how to use the Dionysys packages outside the Excalidraw demo. U
 ## What the Packages Provide
 
 - `@dionysys/core`: inference, policy selection, rewards, MCP-style personality resources, interaction summarization, persona scoring, and MCP decision resolution.
-- `@dionysys/react`: `<AdaptiveProvider />`, `useAdaptiveUI()`, and `<AdminConsole />` for storing adaptive state and optionally editing runtime experiment configuration from a package-owned UI.
+- `@dionysys/react`: `<AdaptiveProvider />`, `useAdaptiveUI()`, `<AdaptiveFeedback />`, and `<AdminConsole />` for storing adaptive state, collecting front-facing feedback, and optionally editing runtime experiment configuration from a package-owned UI.
 
 The package supports two modes:
 
 - `deterministic`: events are scored by `InferenceEngine`, then `PolicyEngine` selects a variant.
 - `mcp`: validated personality resources define scoring rules and UI actions; the resolver summarizes events, computes persona scores, calls a configurable LLM connector, and returns an action-backed UI state.
+
+The React package also supports two presentation modes:
+
+- `prototype`: show diagnostics, scores, personalities, variants, pending decisions, and admin controls while testing configurations.
+- `production`: hide experiment details from front-facing users and expose only the experience plus feedback controls.
 
 ## Install or Link
 
@@ -228,11 +233,15 @@ import { useAdaptiveUI } from '@dionysys/react';
 export function AdaptiveCanvas() {
   const {
     mode,
+    presentationMode,
     currentVariant,
     currentUIState,
     currentPersonality,
     decisionConfidence,
     lastDecision,
+    pendingDecision,
+    pendingPersonality,
+    hasPendingUIChange,
     personaProbs,
     eventsSentCount,
     isPolicyLocked,
@@ -246,6 +255,8 @@ export function AdaptiveCanvas() {
   return <Toolbar config={toolbar} />;
 }
 ```
+
+Use `presentationMode` to decide what the user should see. In production, avoid rendering persona names, variant names, probability charts, debug panels, and admin entry points.
 
 State fields:
 
@@ -267,11 +278,44 @@ State fields:
 
 Call `incrementEventsSent(count)` after your telemetry layer successfully sends events. The provider uses this count to decide when to evaluate deterministic policy or resolve MCP mode.
 
+## Presentation Modes
+
+Presentation mode is separate from adaptive mode. `mode="deterministic"` or `mode="mcp"` controls how decisions are made; `presentationMode="prototype"` or `"production"` controls what the user sees.
+
+Prototype mode is meant for builders and testers. It can show the admin console, active variant, inferred personality, persona probabilities, confidence, pending refresh status, and raw configuration context.
+
+Production mode is meant for front-facing users. It should hide personality, variant, score, debug, and admin information. Pair it with `AdaptiveFeedback` so users can react to the experience without seeing the experiment internals:
+
+```tsx
+import { AdaptiveFeedback } from '@dionysys/react';
+
+export function FeedbackSlot() {
+  return (
+    <AdaptiveFeedback
+      onSubmit={async (feedback) => {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'session_123',
+            events: [{
+              eventType: 'feedback_submitted',
+              timestamp: Date.now(),
+              payload: feedback,
+            }],
+          }),
+        });
+      }}
+    />
+  );
+}
+```
+
 ## Refresh-Safe Decisions
 
-Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount.
+Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount or browser refresh.
 
-With `sessionId`, the package uses localStorage by default:
+With `sessionId`, the package uses localStorage by default. This is the demo-friendly path and requires no extra persistence API:
 
 ```tsx
 <AdaptiveProvider
@@ -286,7 +330,7 @@ With `sessionId`, the package uses localStorage by default:
 </AdaptiveProvider>
 ```
 
-Apps can replace localStorage with server persistence:
+Apps can replace localStorage with server persistence by providing all three hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
 
 ```tsx
 <AdaptiveProvider

@@ -142,4 +142,6 @@ The mode config also controls presentation and application timing:
 
 Use `presentationMode: "production"` for front-facing users so personalities, scores, variants, and admin controls are hidden. Use `decisionApplication: "next-refresh"` to store the inferred personality/decision without changing the active workspace UI until refresh.
 
+The file-seeded Excalidraw demo default is `presentationMode: "prototype"` plus `decisionApplication: "next-refresh"` so builders can see diagnostics while the active canvas UI still stays stable until refresh. `decisionApplication: "immediate"` remains useful for tests, demos, and backward-compatible integrations where mid-session UI changes are acceptable; prefer `next-refresh` for real active workspaces.
+
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.
