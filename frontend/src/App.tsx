@@ -15,12 +15,17 @@ import './App.css';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001';
 const ADMIN_CONSOLE_VISIBLE = import.meta.env.DEV || import.meta.env.VITE_ADMIN_CONSOLE_ENABLED === 'true';
 
+type ApplyAdminConfigOptions = {
+  remountProvider?: boolean;
+};
+
 function App() {
   const [adaptiveMode, setAdaptiveMode] = useState<AdaptiveMode>('deterministic');
   const [presentationMode, setPresentationMode] = useState<AdaptivePresentationMode>('prototype');
   const [decisionApplication, setDecisionApplication] = useState<AdaptiveDecisionApplication>('next-refresh');
   const [providerVersion, setProviderVersion] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isConfigBootstrapped, setIsConfigBootstrapped] = useState(!ADMIN_CONSOLE_VISIBLE);
   const [providerSettings, setProviderSettings] = useState({
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
@@ -35,10 +40,13 @@ function App() {
       .then((response) => response.ok ? response.json() : undefined)
       .then((payload: { config?: AdminConsoleConfig } | undefined) => {
         if (!isMounted || !payload?.config) return;
-        applyAdminConfig(payload.config);
+        applyAdminConfig(payload.config, { remountProvider: false });
       })
       .catch(() => {
         // The admin backend is intentionally env-gated. The console itself will show the detailed state when opened.
+      })
+      .finally(() => {
+        if (isMounted) setIsConfigBootstrapped(true);
       });
 
     return () => {
@@ -46,7 +54,9 @@ function App() {
     };
   }, []);
 
-  const applyAdminConfig = (config: AdminConsoleConfig) => {
+  const applyAdminConfig = (config: AdminConsoleConfig, options: ApplyAdminConfigOptions = {}) => {
+    const { remountProvider = true } = options;
+
     setAdaptiveMode(config.mode.defaultMode);
     setPresentationMode(config.mode.presentationMode);
     setDecisionApplication(config.mode.decisionApplication);
@@ -54,8 +64,21 @@ function App() {
       minEventsBeforeLock: config.mode.minEventsBeforeLock,
       pollingIntervalMs: config.mode.pollingIntervalMs,
     });
-    setProviderVersion((version) => version + 1);
+
+    if (remountProvider) {
+      setProviderVersion((version) => version + 1);
+    }
   };
+
+  if (!isConfigBootstrapped) {
+    return (
+      <div className="App" data-theme="winter">
+        <div className="adaptive-bootstrap" role="status">
+          Loading adaptive configuration...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="App" data-theme="winter">
