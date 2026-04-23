@@ -82,3 +82,18 @@ export function resolveVariantConfig(
     mainMenuItems: uiState.mainMenuItems ?? uiState.mainMenu?.allowedItems ?? [],
   };
 }
+
+export function buildAdaptiveUIDefinitionFromVariant(variant: UiVariant): AdaptiveUIDefinition {
+  const config = VARIANT_CONFIGS[variant];
+
+  return {
+    variant,
+    showWelcomeScreen: config.showWelcomeScreen,
+    toolbar: config.toolbar,
+    canvasActions: config.canvasActions,
+    mainMenuItems: config.mainMenuItems,
+    mainMenu: {
+      allowedItems: config.mainMenuItems,
+    },
+  };
+}

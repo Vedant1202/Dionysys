@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Maximize2, Minimize2, Move } from 'lucide-react';
 import { useAdaptiveUI } from '@dionysys/react';
+import { buildAdaptiveUIDefinitionFromVariant, type UiVariant } from '../config/variantConfig';
 
 type PanelPosition = {
   x: number;
@@ -95,7 +96,13 @@ export function DebugPanel() {
   }, []);
 
   const handleVariantChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    _store.setState({ currentVariant: e.target.value });
+    const nextVariant = e.target.value as UiVariant;
+
+    _store.setState({
+      currentVariant: nextVariant,
+      currentUIState: buildAdaptiveUIDefinitionFromVariant(nextVariant),
+      currentPersonality: mode === 'mcp' ? nextVariant : currentPersonality,
+    });
   };
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
