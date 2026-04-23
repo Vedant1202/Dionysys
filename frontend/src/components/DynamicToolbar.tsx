@@ -9,10 +9,11 @@ import {
   Pencil,
   Image as ImageIcon,
   Eraser,
-  Diamond
+  Diamond,
+  MoreHorizontal
 } from 'lucide-react';
 import { useAdaptiveUI } from '@dionysys/react';
-import { resolveVariantConfig, type VariantUIConfig } from '../config/variantConfig';
+import { DEFAULT_EXCALIDRAW_TOOLS, resolveVariantConfig, type VariantUIConfig } from '../config/variantConfig';
 
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
@@ -32,6 +33,34 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   eraser: <Eraser size={18} />
 };
 
+interface ToolButtonProps {
+  tool: string;
+  isActive: boolean;
+  onClick: (tool: string) => void;
+  isOverflow?: boolean;
+}
+
+function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonProps) {
+  const icon = TOOL_ICONS[tool];
+  if (!icon) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(tool)}
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-all duration-200 ${
+        isActive
+          ? 'bg-primary text-primary-content shadow-sm scale-105'
+          : `${isOverflow ? 'text-base-content/55' : 'text-base-content/70'} hover:bg-base-200 hover:text-base-content hover:scale-105`
+      }`}
+      title={`Select ${tool}`}
+      aria-label={`Select ${tool}`}
+    >
+      {icon}
+    </button>
+  );
+}
+
 export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: DynamicToolbarProps) {
   const { currentVariant, currentUIState, mode } = useAdaptiveUI();
   const [activeToolType, setActiveToolType] = useState<string>('selection');
@@ -47,6 +76,8 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
 
   const allowedTools = config.toolbar.tools || [];
   if (allowedTools.length === 0) return null;
+  const primaryToolSet = new Set(allowedTools);
+  const overflowTools = DEFAULT_EXCALIDRAW_TOOLS.filter((tool) => !primaryToolSet.has(tool));
 
   const handleToolClick = (toolType: string) => {
     setActiveToolType(toolType);
@@ -60,27 +91,39 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
   };
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] bg-base-100/90 backdrop-blur-md shadow-xl border border-base-300 rounded-xl p-1.5 flex items-center gap-1 transition-all duration-300">
-      {allowedTools.map((tool: string) => {
-        if (!TOOL_ICONS[tool]) return null;
-        
-        const isActive = activeToolType === tool;
-        
-        return (
-          <button
+    <div className="group absolute top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-xl border border-base-300 bg-base-100/90 p-1.5 shadow-xl backdrop-blur-md transition-all duration-300">
+      <div className="flex items-center gap-1">
+        {allowedTools.map((tool: string) => (
+          <ToolButton
             key={tool}
-            onClick={() => handleToolClick(tool)}
-            className={`p-3 rounded-lg transition-all duration-200 ${
-              isActive 
-                ? 'bg-primary text-primary-content shadow-sm scale-110' 
-                : 'text-base-content/70 hover:bg-base-200 hover:text-base-content hover:scale-105'
-            }`}
-            title={`Select ${tool}`}
-          >
-            {TOOL_ICONS[tool]}
-          </button>
-        );
-      })}
+            tool={tool}
+            isActive={activeToolType === tool}
+            onClick={handleToolClick}
+          />
+        ))}
+      </div>
+
+      {overflowTools.length > 0 && (
+        <>
+          <div className="mx-1 h-8 w-px shrink-0 bg-base-content/10" aria-hidden="true" />
+          <div className="flex items-center overflow-hidden">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-dashed border-base-content/20 text-base-content/50 transition-opacity duration-200 group-hover:opacity-0 group-hover:w-0 group-hover:border-0" title="More default tools" aria-label="More default tools">
+              <MoreHorizontal size={18} />
+            </div>
+            <div className="flex max-w-0 items-center gap-1 overflow-hidden opacity-0 transition-all duration-300 group-hover:max-w-[36rem] group-hover:opacity-100">
+              {overflowTools.map((tool) => (
+                <ToolButton
+                  key={tool}
+                  tool={tool}
+                  isActive={activeToolType === tool}
+                  onClick={handleToolClick}
+                  isOverflow
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

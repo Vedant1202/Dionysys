@@ -32,6 +32,8 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     currentVariant,
     adaptiveMode === 'mcp' ? currentUIState : undefined,
   );
+  const keepsNativeToolbar = currentVariant === 'neutral' || currentVariant === 'power_user';
+  const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
     eventCollector.onFlush = incrementEventsSent;
@@ -137,8 +139,10 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
       </div>
 
       <div className="flex-grow relative border-t border-base-300">
-        <DynamicToolbar excalidrawAPI={excalidrawAPI} config={config} />
-        {config.toolbar?.mode === 'allowlist' && (
+        {usesPrioritizedToolbar && (
+          <DynamicToolbar excalidrawAPI={excalidrawAPI} config={config} />
+        )}
+        {usesPrioritizedToolbar && (
           <style>{`
             .excalidraw .App-toolbar { 
               opacity: 0 !important; 

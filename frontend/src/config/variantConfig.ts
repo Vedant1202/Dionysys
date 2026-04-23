@@ -14,6 +14,7 @@ export interface VariantUIConfig extends Omit<AdaptiveUIDefinition, 'variant' | 
 
 const DRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'eraser'];
 const TEXT_TOOLS = ['selection', 'text', 'eraser'];
+export const DEFAULT_EXCALIDRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text', 'image', 'eraser'];
 
 export const VARIANT_CONFIGS: Record<UiVariant, VariantUIConfig> = {
   neutral: {
