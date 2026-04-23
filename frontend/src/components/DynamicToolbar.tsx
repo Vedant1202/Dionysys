@@ -61,6 +61,21 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
   );
 }
 
+function splitOverflowTools(overflowTools: string[]): { leftOverflow: string[]; rightOverflow: string[] } {
+  return overflowTools.reduce<{ leftOverflow: string[]; rightOverflow: string[] }>(
+    (groups, tool, index) => {
+      if (index % 2 === 0) {
+        groups.leftOverflow.push(tool);
+      } else {
+        groups.rightOverflow.push(tool);
+      }
+
+      return groups;
+    },
+    { leftOverflow: [], rightOverflow: [] },
+  );
+}
+
 export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: DynamicToolbarProps) {
   const { currentVariant, currentUIState, mode } = useAdaptiveUI();
   const [activeToolType, setActiveToolType] = useState<string>('selection');
@@ -78,6 +93,7 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
   if (allowedTools.length === 0) return null;
   const primaryToolSet = new Set(allowedTools);
   const overflowTools = DEFAULT_EXCALIDRAW_TOOLS.filter((tool) => !primaryToolSet.has(tool));
+  const { leftOverflow, rightOverflow } = splitOverflowTools(overflowTools);
 
   const handleToolClick = (toolType: string) => {
     setActiveToolType(toolType);
@@ -91,27 +107,45 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
   };
 
   return (
-    <div className="group absolute top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-xl border border-base-300 bg-base-100/90 p-1.5 shadow-xl backdrop-blur-md transition-all duration-300">
-      <div className="flex items-center gap-1">
-        {allowedTools.map((tool: string) => (
-          <ToolButton
-            key={tool}
-            tool={tool}
-            isActive={activeToolType === tool}
-            onClick={handleToolClick}
-          />
-        ))}
-      </div>
-
-      {overflowTools.length > 0 && (
-        <>
-          <div className="mx-1 h-8 w-px shrink-0 bg-base-content/10" aria-hidden="true" />
-          <div className="flex items-center overflow-hidden">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-dashed border-base-content/20 text-base-content/50 transition-opacity duration-200 group-hover:opacity-0 group-hover:w-0 group-hover:border-0" title="More default tools" aria-label="More default tools">
-              <MoreHorizontal size={18} />
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100]">
+      <div className="group relative flex items-center justify-center">
+        {leftOverflow.length > 0 && (
+          <div className="absolute top-0 right-full mr-2 flex items-center">
+            <div className="pointer-events-none flex items-center gap-1 rounded-xl border border-base-300 bg-base-100/90 p-1.5 opacity-0 shadow-xl backdrop-blur-md translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100">
+              {[...leftOverflow].reverse().map((tool) => (
+                <ToolButton
+                  key={tool}
+                  tool={tool}
+                  isActive={activeToolType === tool}
+                  onClick={handleToolClick}
+                  isOverflow
+                />
+              ))}
             </div>
-            <div className="flex max-w-0 items-center gap-1 overflow-hidden opacity-0 transition-all duration-300 group-hover:max-w-[36rem] group-hover:opacity-100">
-              {overflowTools.map((tool) => (
+            <div className="grid h-11 w-8 shrink-0 place-items-center rounded-lg border border-dashed border-base-content/20 bg-base-100/70 text-base-content/50 transition-all duration-200 group-hover:scale-95 group-hover:opacity-0 group-focus-within:scale-95 group-focus-within:opacity-0" title="More default tools on the left" aria-hidden="true">
+              <MoreHorizontal size={16} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1 rounded-xl border border-base-300 bg-base-100/90 p-1.5 shadow-xl backdrop-blur-md transition-all duration-300">
+          {allowedTools.map((tool: string) => (
+            <ToolButton
+              key={tool}
+              tool={tool}
+              isActive={activeToolType === tool}
+              onClick={handleToolClick}
+            />
+          ))}
+        </div>
+
+        {rightOverflow.length > 0 && (
+          <div className="absolute top-0 left-full ml-2 flex items-center">
+            <div className="grid h-11 w-8 shrink-0 place-items-center rounded-lg border border-dashed border-base-content/20 bg-base-100/70 text-base-content/50 transition-all duration-200 group-hover:scale-95 group-hover:opacity-0 group-focus-within:scale-95 group-focus-within:opacity-0" title="More default tools on the right" aria-hidden="true">
+              <MoreHorizontal size={16} />
+            </div>
+            <div className="pointer-events-none flex items-center gap-1 rounded-xl border border-base-300 bg-base-100/90 p-1.5 opacity-0 shadow-xl backdrop-blur-md -translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100">
+              {rightOverflow.map((tool) => (
                 <ToolButton
                   key={tool}
                   tool={tool}
@@ -122,8 +156,8 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
               ))}
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }

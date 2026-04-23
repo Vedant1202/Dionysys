@@ -10,7 +10,7 @@ Users in prototype mode should be able to:
 - Drag the diagnostics window to another screen location.
 - Keep the diagnostics window mostly transparent until hovered.
 - Switch personas/layouts without losing access to the rest of the toolbar controls.
-- See non-selected toolbar controls in a collapsed form that expands on hover to the right.
+- See non-selected toolbar controls in collapsed trays that expand on hover from both the left and right without moving the visible persona controls.
 
 Success means prototype mode stays inspectable for configuration/debugging, while persona-specific layouts demonstrate prioritization without making hidden controls feel broken or inaccessible.
 
@@ -111,7 +111,8 @@ Conventions:
   - Diagnostics panel can be dragged, remains within the viewport, and restores its position after refresh.
   - Diagnostics panel opacity is low by default and about 75% on hover.
   - Persona toolbar shows prioritized controls first.
-  - Non-prioritized default Excalidraw tools remain collapsed and expand to the right on hover.
+  - Non-prioritized default Excalidraw tools remain collapsed and expand outward from both sides on hover.
+  - The visible persona controls stay in the same screen position before and after hover.
   - Switching between `guided_novice`, `draw_first`, `text_first`, `power_user`, and `neutral` never removes access to controls.
   - Neutral and power-user layouts keep the native Excalidraw toolbar.
   - Production mode still hides diagnostics/personality details.
@@ -141,7 +142,8 @@ Conventions:
 - The diagnostics panel can be moved by dragging its header.
 - The diagnostics panel renders nearly transparent by default and transitions to approximately 75% opacity on hover.
 - Persona-specific toolbar controls remain emphasized.
-- Controls outside the active persona's primary set are collapsed, still visible as a compact affordance, and expand to the right on hover.
+- Controls outside the active persona's primary set are collapsed, still visible as compact left/right affordances, and expand outward on hover.
+- Hover expansion does not move the visible persona controls.
 - Collapsed overflow controls are based on the neutral default Excalidraw tool set.
 - Neutral and power-user layouts keep the native Excalidraw toolbar.
 - Switching personas/layouts does not remove access to other drawing controls.
@@ -166,7 +168,7 @@ Conventions:
 2. Update `DynamicToolbar` to preserve access to default tools:
    - Treat neutral's default tools as the overflow source.
    - For allowlist personas, render primary persona tools first.
-   - Render all non-primary default tools in a collapsed rail that expands to the right on hover.
+   - Render non-primary default tools in left/right overflow trays that expand outward on hover without moving the primary rail.
    - Keep click behavior through `excalidrawAPI.updateScene`.
 
 3. Update `EditorShell` toolbar hiding rules:
@@ -186,7 +188,7 @@ Conventions:
   - Files: `frontend/src/components/DebugPanel.tsx`
 
 - [x] Task: Add collapsed overflow controls to `DynamicToolbar`.
-  - Acceptance: Allowlist personas show primary tools and a collapsed overflow rail containing non-primary neutral/default tools; hovering the toolbar expands overflow controls to the right.
+  - Acceptance: Allowlist personas show primary tools and collapsed left/right overflow trays containing non-primary neutral/default tools; hovering the toolbar expands overflow controls outward while keeping the visible primary controls fixed in place.
   - Verify: Manual demo check for `guided_novice`, `draw_first`, and `text_first`.
   - Files: `frontend/src/components/DynamicToolbar.tsx`, `frontend/src/config/variantConfig.ts`
 
