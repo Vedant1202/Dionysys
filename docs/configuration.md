@@ -2,6 +2,16 @@
 
 The true power of the modular framework is that you do not need to rewrite A/B testing backend code. You inject your logic structures immediately into the engines.
 
+## Configuration Boundaries
+
+The refactored packages intentionally separate where different kinds of configuration live:
+
+- `@dionysys/core`: deterministic inference config, policy config, reward formulas, MCP personality resources, interaction summaries, admin/runtime config contracts, and UI schemas.
+- `@dionysys/react`: provider wiring, pending-decision persistence hooks, runtime presentation/application settings, and reusable UI like the admin console and feedback panel.
+- App or demo code: concrete UI rendering details, telemetry transport, session ids, toolbar/menu render mappings, and any app-specific filtering or adapters.
+
+That split is useful when deciding where to add new behavior. If it changes scoring, schemas, decisions, or validated contracts, it likely belongs in `@dionysys/core`. If it changes React orchestration or package-owned UI, it likely belongs in `@dionysys/react`. If it is specific to Excalidraw or one product surface, keep it in the app.
+
 ## InferenceEngine Configuration
 The `InferenceEngine` relies on a declarative configuration to score behaviors.
 
@@ -105,6 +115,16 @@ export const resources: PersonalityResource[] = [
 ```
 
 The backend summarizes raw interactions before LLM calls. The LLM connector receives resource metadata, `InteractionSummary`, `rawScores`, and normalized `personaScores`; it must return one exposed `{ personalityId, actionId, confidence }`.
+
+## Adaptive UI Schema
+
+`AdaptiveUIDefinition` is now a formal package contract rather than an informal extension bag. In addition to `variant`, `toolbar`, and `mainMenu`, the schema explicitly supports:
+
+- `showWelcomeScreen`
+- `canvasActions`
+- `mainMenuItems`
+
+Apps may still extend the shape for local UI needs, but those fields are now part of the documented baseline and can be used directly by deterministic configs, MCP action payloads, and runtime admin editing.
 
 ## Runtime Admin Configuration
 

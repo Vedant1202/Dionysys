@@ -52,6 +52,8 @@ Prototype mode is the demo's configuration and debugging view. It shows:
 
 Use prototype mode when tuning scoring rules, comparing deterministic and MCP decisions, validating personality resources, or checking whether the next-refresh behavior is storing the expected decision.
 
+The current prototype debug controls should use `useAdaptiveUI().setManualOverride(...)` for manual layout switches. The old raw-store approach is kept only as package compatibility debt and should not be copied into new demo code.
+
 ## Production Experience
 
 Production mode is the front-facing user view. It hides the mode switch, Admin button, session id, variant badge, debug panel, personality labels, and persona probability charts. Users should not see which personality or variant they are in.
@@ -102,6 +104,8 @@ Supported fields:
 Current toolbar icon ids are `selection`, `rectangle`, `ellipse`, `diamond`, `arrow`, `line`, `freedraw`, `text`, `image`, and `eraser`. If you add a new tool id, add an icon and click handling support in `DynamicToolbar.tsx`.
 
 Current main menu item ids are `saveAsImage`, `export`, `clearCanvas`, `help`, and `toggleTheme`. If you add a new menu item, add its render mapping in `EditorShell.tsx`.
+
+MCP action payloads can still carry arbitrary string menu ids through `mainMenu` or `mainMenuItems`, but the Excalidraw demo intentionally filters them down to this supported set before rendering. If a new id should render in the demo, update both the filter in `variantConfig.ts` and the corresponding `MainMenu` render mapping in `EditorShell.tsx`.
 
 ## Editing MCP Personality Resources
 
@@ -245,5 +249,6 @@ Then open the frontend, switch between `Deterministic` and `MCP`, draw shapes or
 - If MCP mode always returns `neutral`, confirm the frontend and backend are using the same `SESSION_ID`.
 - If a custom toolbar does not show, confirm `toolbar.mode` is `allowlist` and every tool id exists in `DynamicToolbar.tsx`.
 - If a menu item does not show, confirm it is included in `mainMenuItems` and rendered in `EditorShell.tsx`.
+- If a manual layout preview needs to change the demo state, use `setManualOverride(...)` rather than `_store.setState(...)`.
 - If a connector decision is ignored, check that `personalityId`, `actionId`, and `confidence` are valid and meet the resolver's `minConfidence`.
 - If deterministic mode changes but MCP mode does not, update both `VARIANT_CONFIGS` and `EXCALIDRAW_PERSONALITY_RESOURCES`.

@@ -75,6 +75,15 @@ Props:
 | `onConfigSaved` | `(config) => void` | Called after save or reset so an app can remount providers from the new runtime config. |
 | `onClose` | `() => void` | Optional close handler for modal or drawer integrations. |
 
+Behind that single export, the package now keeps the admin console split into:
+
+- a root shell component
+- a state/orchestration hook for load/save/reset/export behavior
+- focused section modules for overview, modes, personalities, calculations, data, APIs, and export
+- shared primitives and styles
+
+That split is internal to the package. Consumers still mount the same `<AdminConsole />` component from `@dionysys/react`.
+
 ## What You Can Control
 
 The console has focused tabs for the main adaptive surfaces:
@@ -129,6 +138,8 @@ Use Export to download:
 ```
 
 The export is for future use outside the current runtime session. It does not overwrite `frontend/src/config/variantConfig.ts` or `backend/src/services/ExcalidrawMcpResources.ts`.
+
+The same rule applies to every control in the console: it edits validated runtime state only. The browser does not rewrite tracked markdown, TypeScript, or config files in the repository.
 
 ## Safety Model
 

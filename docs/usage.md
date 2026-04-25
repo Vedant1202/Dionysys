@@ -17,6 +17,25 @@ The React package also supports two presentation modes:
 - `prototype`: show diagnostics, scores, personalities, variants, pending decisions, and admin controls while testing configurations.
 - `production`: hide experiment details from front-facing users and expose only the experience plus feedback controls.
 
+## Package Structure
+
+The package docs now follow the refactored source layout:
+
+- `@dionysys/core`
+  - `schema/`: validated UI and config contracts
+  - `inference/`: deterministic persona inference types and engine
+  - `policy/`: contextual bandit policy selection
+  - `reward/`: baseline metrics and reward calculation
+  - `mcp/`: interaction summarization, personality scoring, schemas, and MCP resolution
+  - `admin/`: runtime admin config contracts
+- `@dionysys/react`
+  - `adaptive-provider/`: provider, store, pending-decision persistence, and provider-facing types
+  - `admin-console/`: runtime control-center shell, state hook, sections, primitives, and styles
+  - `feedback/`: front-facing feedback component
+  - `hooks/`: `useAdaptiveUI()` and other React-facing accessors
+
+Top-level package exports remain stable, so consumers should still import from `@dionysys/core` and `@dionysys/react` rather than from internal folders.
+
 ## Install or Link
 
 Inside this monorepo, the packages are npm workspaces:
@@ -246,6 +265,7 @@ export function AdaptiveCanvas() {
     eventsSentCount,
     isPolicyLocked,
     incrementEventsSent,
+    setManualOverride,
   } = useAdaptiveUI();
 
   const toolbar = mode === 'mcp'
@@ -275,8 +295,46 @@ State fields:
 | `personaProbs` | Live deterministic probabilities or MCP resource-driven persona scores. |
 | `eventsSentCount` | Count of events flushed by the application telemetry layer. |
 | `isPolicyLocked` | Whether the provider has locked the adaptive decision after the event threshold. |
+| `setManualOverride` | Preferred manual/debug override for changing the visible variant or UI state without mutating the raw store. |
 
 Call `incrementEventsSent(count)` after your telemetry layer successfully sends events. The provider uses this count to decide when to evaluate deterministic policy or resolve MCP mode.
+
+`useAdaptiveUI()._store` still exists as a compatibility shim for older integrations, but it is deprecated. Prefer the explicit hook fields plus `setManualOverride(...)` instead of calling `_store.setState(...)` from app code.
+
+## Manual Overrides
+
+Use `setManualOverride(...)` for debug tooling, prototyping controls, or custom “preview another layout” affordances:
+
+```tsx
+import { useAdaptiveUI } from '@dionysys/react';
+
+export function LayoutSwitcher() {
+  const { setManualOverride } = useAdaptiveUI();
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setManualOverride({
+          variant: 'guided_novice',
+          personalityId: 'guided_novice',
+          uiState: {
+            variant: 'guided_novice',
+            showWelcomeScreen: true,
+            toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
+            mainMenuItems: ['help'],
+            mainMenu: { allowedItems: ['help'] },
+          },
+        })
+      }
+    >
+      Preview Guided Layout
+    </button>
+  );
+}
+```
+
+This is the supported override boundary for React consumers. It keeps the provider/store split internal while still giving apps a clean way to drive manual previews.
 
 ## Presentation Modes
 
@@ -368,6 +426,8 @@ export function AdminOverlay({ sessionId, onClose }: { sessionId: string; onClos
 ```
 
 The console expects the backend admin API to be enabled with `ADMIN_CONSOLE_ENABLED=true`. It edits in-memory runtime config only; source files are not rewritten. Use the Export tab to download the active config JSON for future use.
+
+Internally, the package console is now split into a shell component, a state/orchestration hook, section modules, and shared primitives. Consumers still use the same `AdminConsole` export from the package root.
 
 ## Event Summaries and Scoring
 

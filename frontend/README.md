@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Frontend Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This workspace contains the Excalidraw-based Dionysys demo. It is the reference app for validating deterministic mode, MCP mode, prototype vs production presentation, next-refresh decision application, the dynamic toolbar, and the runtime admin console overlay.
 
-Currently, two official plugins are available:
+## What lives here
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Excalidraw rendering and adaptive shell components
+- demo-specific UI config adapters for variants, menu items, and toolbar tools
+- shared session id and telemetry/event collection
+- prototype debug controls and production feedback surface
 
-## React Compiler
+The frontend consumes `@dionysys/react` as a library. It should not be treated as the package API surface; it is the example application that proves those package APIs are usable.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the ESLint configuration
+From the repository root:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev --workspace=backend
+npm run dev --workspace=frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+For production-style build verification:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build --workspace=frontend
 ```
+
+## Modes and visibility
+
+- `deterministic`: frontend polls inference and requests policy decisions
+- `mcp`: frontend requests MCP-backed adaptive decisions and renders the selected UI state
+- `prototype`: shows debug panel, mode switch, variant information, and admin entry points
+- `production`: hides experiment details and shows only front-facing feedback controls
+
+The demo defaults are controlled by the backend runtime config plus the frontend admin-visibility gate.
+
+## Admin console visibility
+
+The admin overlay is available in development, or when the frontend flag is set:
+
+```bash
+VITE_ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=frontend
+```
+
+The backend admin API must also be enabled:
+
+```bash
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
+```
+
+## More docs
+
+- [Package usage](../docs/usage.md)
+- [Configuration](../docs/configuration.md)
+- [Admin console](../docs/admin-console.md)
+- [Excalidraw configuration](../docs/excalidraw-configuration.md)

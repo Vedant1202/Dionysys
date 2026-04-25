@@ -1,72 +1,58 @@
-# 🌌 Dionysys
+# Dionysys
 
-**Autonomous Adaptive UI & Contextual Bandits Framework**
+Adaptive UI experimentation for deterministic and MCP-driven modes.
 
-Dionysys is a high-performance, modular monorepo framework designed to build user interfaces that adapt in real-time based on user behavior. It leverages an Epsilon-Greedy bandit policy and an extensible inference engine to serve the most effective UI variants for specific user personas.
+Dionysys is a monorepo that combines:
 
----
+- `@dionysys/core`: framework-neutral inference, policy, reward, schema, MCP, and admin/runtime contracts
+- `@dionysys/react`: React provider, hooks, feedback UI, and runtime admin console
+- `backend`: Express services for telemetry, deterministic decisions, MCP decisions, and admin APIs
+- `frontend`: Excalidraw demo used to validate adaptive behavior
+- `web-docs`: Docusaurus shell that renders the canonical root `docs/` content
 
-## 🚀 Quick Start
+## Quick start
 
-### Prerequisites
-- Node.js (v18+)
-- npm (v7+ for workspaces)
-
-### Installation
 ```bash
-# Clone the repository
-git clone https://github.com/vedant1202/Dionysys.git
-cd Dionysys
-
-# Install all dependencies
 npm install
-
-# Build everything
 npm run build
 ```
 
-### Running Locally
+Run the docs and demo from the repository root:
+
 ```bash
-# Launch documentation (localhost:3000)
 npm run docs
-
-# Start backend services
 npm run dev --workspace=backend
-
-# Start frontend development
 npm run dev --workspace=frontend
 ```
 
----
+Enable the runtime admin console API when needed:
 
-## 🛠 Project Structure
+```bash
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
+```
 
-This project is managed as an **npm monorepo**:
+## Core concepts
 
-- **`packages/core`**: The heart of the system. Framework-agnostic TypeScript engines for Inference, Policy selection, and Reward calculation.
-- **`packages/react`**: React bindings, providing `<AdaptiveProvider />` and `useAdaptiveUI()` using `zustand` for high-performance reactivity.
-- **`backend`**: An Express-based API acting as the policy actuator and data sink for telemetry.
-- **`frontend`**: A reference implementation using Excalidraw, showcasing real-time toolbar adaptation.
-- **`web-docs`**: Docusaurus-powered documentation hub.
+- `deterministic` mode: `InferenceEngine` scores personas and `PolicyEngine` picks a variant
+- `mcp` mode: validated personality resources define scoring rules and action-backed UI states, and an LLM connector chooses from those exposed actions
+- `prototype` presentation: show scores, personalities, pending decisions, and admin/debug controls
+- `production` presentation: hide experiment internals and expose only the experience plus feedback
+- `next-refresh` decision application: store a resolved decision now and apply the UI change on the next provider mount or page refresh
 
----
+## Docs
 
-## ✨ Features
+Start with the root markdown docs:
 
-- **Extensible Inference**: Define custom heuristics to map user events to persona scores.
-- **Contextual Bandits**: Integrated Epsilon-Greedy policy for automated A/B testing and variation selection.
-- **Generic Rewards**: Configurable reward metrics (e.g., speed-to-action, depth-of-engagement).
-- **React Ready**: Seamlessly inject adaptive state into any React tree.
-- **Full Observability**: Comprehensive telemetry collection out-of-the-box.
+- [Usage](./docs/usage.md)
+- [Configuration](./docs/configuration.md)
+- [Admin Console](./docs/admin-console.md)
+- [Excalidraw Configuration](./docs/excalidraw-configuration.md)
+- [Architecture](./docs/architecture.md)
 
----
+Or launch the web docs locally with `npm run docs`.
 
-## 📖 Documentation
+## Package notes
 
-For detailed architecture diagrams, configuration schemas, and usage guides, please visit **[Web Documentation Hub @ http://localhost:3000](http://localhost:3000)** (run `npm run docs` to launch on local machine).
-
----
-
-## 🛡 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- `@dionysys/react` still preserves top-level exports while its implementation is split into feature folders.
+- `useAdaptiveUI()._store` still exists for compatibility, but new integrations should prefer explicit hook fields plus `setManualOverride(...)`.
+- `@dionysys/core` uses `unknown` at event payload boundaries so apps can narrow payloads intentionally.

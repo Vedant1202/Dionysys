@@ -8,6 +8,8 @@ slug: /
 
 Dionysys is a modular adaptive UI experimentation framework. It supports deterministic persona inference and policy selection, plus MCP-driven mode where validated personality resources define scoring rules and UI actions.
 
+The root `docs/` directory is the canonical source for the web docs, and the package READMEs are kept aligned with it so contributors get the same story in the repo and in the rendered site.
+
 ## Start Here
 
 - [Package Usage](./usage.md): integrate `@dionysys/core` and `@dionysys/react` in an application.
