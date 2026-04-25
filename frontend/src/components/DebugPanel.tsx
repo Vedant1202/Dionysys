@@ -76,7 +76,7 @@ export function DebugPanel() {
     personaProbs,
     eventsSentCount,
     isPolicyLocked,
-    _store,
+    setManualOverride,
   } = useAdaptiveUI();
 
   useEffect(() => {
@@ -98,10 +98,10 @@ export function DebugPanel() {
   const handleVariantChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const nextVariant = e.target.value as UiVariant;
 
-    _store.setState({
-      currentVariant: nextVariant,
-      currentUIState: buildAdaptiveUIDefinitionFromVariant(nextVariant),
-      currentPersonality: mode === 'mcp' ? nextVariant : currentPersonality,
+    setManualOverride({
+      variant: nextVariant,
+      uiState: buildAdaptiveUIDefinitionFromVariant(nextVariant),
+      personalityId: mode === 'mcp' ? nextVariant : currentPersonality,
     });
   };
 

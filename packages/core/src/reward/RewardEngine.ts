@@ -1,22 +1,6 @@
-export interface BaseEvent {
-  eventType: string;
-  timestamp: number;
-  payload?: any;
-}
+import type { BaseEvent, BaselineMetrics, RewardConfig } from './types.js';
 
-export interface BaselineMetrics {
-  sessionDurationMs: number;
-  totalEvents: number;
-  timeToFirstEvent?: number;
-  eventCountsByType: Record<string, number>;
-}
-
-export interface RewardConfig<TEvent extends BaseEvent = BaseEvent> {
-  /**
-   * The formula calculates a normalized score (0 to 1) indicating success/reward.
-   */
-  rewardFormula: (baseline: BaselineMetrics, events: TEvent[], sessionStartMs: number) => number;
-}
+export type { BaseEvent, BaselineMetrics, RewardConfig } from './types.js';
 
 export class RewardEngine<TEvent extends BaseEvent = BaseEvent> {
   private config: RewardConfig<TEvent>;

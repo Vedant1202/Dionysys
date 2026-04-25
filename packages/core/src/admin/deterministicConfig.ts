@@ -1,4 +1,4 @@
-import { InferenceEngine, type EventWeightResolver, type GenericEvent } from '../inference/InferenceEngine.js';
+import { InferenceEngine, type EventWeightResolver, type GenericEvent } from '../inference/index.js';
 import { PolicyEngine } from '../policy/PolicyEngine.js';
 import type {
   AdminConsoleConfig,

@@ -1,31 +1,6 @@
-export interface GenericEvent {
-  eventType: string;
-  payload?: any;
-  timestamp?: number;
-  sessionId?: string;
-  [key: string]: any;
-}
+import type { GenericEvent, InferenceConfig } from './types.js';
 
-export type EventWeightResolver = 
-  | Record<string, number> 
-  | ((payload: any) => Record<string, number>);
-
-export interface InferenceConfig {
-  /** The list of discrete personas you want to classify */
-  personas: string[];
-  /** The prior distribution or initial heuristic weights for the personas */
-  initialCounts: Record<string, number>;
-  /** 
-   * A map defining how an event type impacts persona probabilities. 
-   * Maps 'eventName' -> { 'persona_a': +score } OR a function processing the payload.
-   */
-  eventWeights: Record<string, EventWeightResolver>;
-  /**
-   * Optional heuristic functions that run on the whole event stream 
-   * before the eventWeights are applied.
-   */
-  heuristics?: Array<(events: GenericEvent[]) => Record<string, number>>;
-}
+export type { EventWeightResolver, GenericEvent, InferenceConfig } from './types.js';
 
 export class InferenceEngine {
   private config: InferenceConfig;

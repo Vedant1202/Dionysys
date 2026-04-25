@@ -1,7 +1,15 @@
 export type UiVariant = 'neutral' | 'draw_first' | 'text_first' | 'guided_novice' | 'power_user';
 import { type AdaptiveUIDefinition } from '@dionysys/core';
 
-export interface VariantUIConfig extends Omit<AdaptiveUIDefinition, 'variant' | 'mainMenu'> {
+type CanvasActionName = 'saveAsImage' | 'export' | 'clearCanvas' | 'help' | 'toggleTheme';
+const SUPPORTED_MENU_ITEMS: CanvasActionName[] = ['saveAsImage', 'export', 'clearCanvas', 'help', 'toggleTheme'];
+
+function isCanvasActionName(value: string): value is CanvasActionName {
+  return SUPPORTED_MENU_ITEMS.includes(value as CanvasActionName);
+}
+
+export interface VariantUIConfig {
+  toolbar?: AdaptiveUIDefinition['toolbar'];
   showWelcomeScreen: boolean;
   canvasActions: {
     saveAsImage?: boolean;
@@ -9,7 +17,7 @@ export interface VariantUIConfig extends Omit<AdaptiveUIDefinition, 'variant' | 
     clearCanvas?: boolean;
     toggleTheme?: boolean;
   };
-  mainMenuItems: ('saveAsImage' | 'export' | 'clearCanvas' | 'help' | 'toggleTheme')[];
+  mainMenuItems: CanvasActionName[];
 }
 
 const DRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'eraser'];
@@ -79,7 +87,7 @@ export function resolveVariantConfig(
     showWelcomeScreen: Boolean(uiState.showWelcomeScreen),
     toolbar: uiState.toolbar ?? { mode: 'blocklist', tools: [] },
     canvasActions: uiState.canvasActions ?? {},
-    mainMenuItems: uiState.mainMenuItems ?? uiState.mainMenu?.allowedItems ?? [],
+    mainMenuItems: (uiState.mainMenuItems ?? uiState.mainMenu?.allowedItems ?? []).filter(isCanvasActionName),
   };
 }
 

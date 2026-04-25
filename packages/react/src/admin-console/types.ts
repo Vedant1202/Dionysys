@@ -1,0 +1,48 @@
+import type {
+  AdminConsoleConfig,
+  AdminConsoleOverview,
+  PersonalityResource,
+} from '@dionysys/core';
+
+export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'data' | 'apis' | 'export';
+
+export interface AdminConsoleProps {
+  apiBaseUrl?: string;
+  sessionId?: string;
+  onClose?: () => void;
+  onConfigSaved?: (config: AdminConsoleConfig) => void;
+}
+
+export interface AdminConfigResponse {
+  success: boolean;
+  config: AdminConsoleConfig;
+}
+
+export interface AdminOverviewResponse {
+  success: boolean;
+  overview: AdminConsoleOverview;
+}
+
+export type AdminConfigUpdater = (updater: (current: AdminConsoleConfig) => AdminConsoleConfig) => void;
+
+export interface AdminConsoleState {
+  activeTab: AdminConsoleTab;
+  setActiveTab: (tab: AdminConsoleTab) => void;
+  config?: AdminConsoleConfig | undefined;
+  overview?: AdminConsoleOverview | undefined;
+  selectedResource?: PersonalityResource | undefined;
+  selectedResourceIndex: number;
+  setSelectedResourceIndex: (index: number) => void;
+  isLoading: boolean;
+  isSaving: boolean;
+  notice?: string | undefined;
+  error?: string | undefined;
+  jsonDraft: string;
+  setJsonDraft: (draft: string) => void;
+  loadAdminState: () => Promise<void>;
+  updateConfig: AdminConfigUpdater;
+  saveConfig: () => Promise<void>;
+  resetConfig: () => Promise<void>;
+  exportConfig: () => void;
+  applyJsonDraft: () => void;
+}
