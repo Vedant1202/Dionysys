@@ -42,6 +42,7 @@ export interface AdaptiveUIState {
   lockPolicy: (variant: string) => void;
   applyDecision: (decision: AdaptiveDecision) => void;
   queuePendingDecision: (decision: PendingAdaptiveDecision) => void;
+  clearPendingDecision: () => void;
   applyPendingDecisionNow: (decision: PendingAdaptiveDecision) => void;
   setManualOverride: (selection: ManualAdaptiveSelection) => void;
 }

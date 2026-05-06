@@ -37,7 +37,13 @@ export function createAdaptiveUIStore({
     isPolicyLocked: false,
     setPersonaProbs: (probs) => set({ personaProbs: probs }),
     incrementEventsSent: (count = 1) => set((state) => ({ eventsSentCount: state.eventsSentCount + count })),
-    lockPolicy: (variant) => set({ isPolicyLocked: true, currentVariant: variant }),
+    lockPolicy: (variant) => set({
+      isPolicyLocked: true,
+      currentVariant: variant,
+      pendingDecision: undefined,
+      pendingPersonality: undefined,
+      hasPendingUIChange: false,
+    }),
     applyDecision: (decision) => set({
       isPolicyLocked: true,
       currentVariant: decision.variant,
@@ -45,6 +51,9 @@ export function createAdaptiveUIStore({
       currentPersonality: decision.personalityId,
       decisionConfidence: decision.confidence,
       lastDecision: decision,
+      pendingDecision: undefined,
+      pendingPersonality: undefined,
+      hasPendingUIChange: false,
       personaProbs: decision.personaScores,
     }),
     queuePendingDecision: (decision) => set((state) => ({
@@ -52,11 +61,15 @@ export function createAdaptiveUIStore({
       pendingDecision: decision,
       pendingPersonality: decision.personalityId,
       hasPendingUIChange: true,
-      currentPersonality: decision.personalityId,
       decisionConfidence: decision.confidence,
       lastDecision: decision.decision,
       personaProbs: decision.personaScores ?? state.personaProbs,
     })),
+    clearPendingDecision: () => set({
+      pendingDecision: undefined,
+      pendingPersonality: undefined,
+      hasPendingUIChange: false,
+    }),
     applyPendingDecisionNow: (decision) => set((state) => ({
       currentVariant: decision.variant,
       currentUIState: getPendingUIState(decision),
@@ -67,7 +80,7 @@ export function createAdaptiveUIStore({
       pendingPersonality: undefined,
       hasPendingUIChange: false,
       personaProbs: decision.personaScores ?? state.personaProbs,
-      isPolicyLocked: false,
+      isPolicyLocked: true,
     })),
     setManualOverride: (selection: ManualAdaptiveSelection) => set((state) => ({
       currentVariant: selection.variant,

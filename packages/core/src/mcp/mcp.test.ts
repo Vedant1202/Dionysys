@@ -225,5 +225,20 @@ describe('McpModeResolver', () => {
     expect(decision.variant).toBe('guided_novice');
     expect(decision.actionId).toBe('show_guided_toolbar');
     expect(decision.isFallback).toBe(true);
+    expect(decision.confidence).toBe(0.9);
+  });
+
+  it('uses the top persona score as fallback confidence when the connector fails', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => {
+        throw new Error('connector unavailable');
+      },
+    };
+
+    const decision = await new McpModeResolver({ resources, llmConnector: connector }).resolve({ events });
+
+    expect(decision.isFallback).toBe(true);
+    expect(decision.variant).toBe('guided_novice');
+    expect(decision.confidence).toBeCloseTo(6 / 11, 5);
   });
 });

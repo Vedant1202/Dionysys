@@ -51,6 +51,7 @@ describe('AdminConfigService', () => {
     expect(reset.mode.presentationMode).toBe('prototype');
     expect(reset.mode.decisionApplication).toBe('next-refresh');
     expect(reset.mode.minEventsBeforeLock).toBe(5);
+    expect(reset.mcp.minConfidence).toBe(0.3);
   });
 
   it('builds a summarized admin overview without exposing raw text payloads', () => {

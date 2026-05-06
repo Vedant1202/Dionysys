@@ -73,4 +73,17 @@ describe('resolveAdaptiveDecisionForEvents', () => {
     expect(decision.isFallback).toBe(true);
     expect(decision.uiState.variant).toBe(decision.variant);
   });
+
+  it('accepts the default mock MCP decision with a non-zero confidence', async () => {
+    const decision = await resolveAdaptiveDecisionForEvents('mcp', [
+      makeEvent('text_added', { type: 'text', textValue: 'session note' }, 1_000),
+    ]);
+
+    if (decision.mode !== 'mcp') {
+      throw new Error('Expected MCP decision');
+    }
+
+    expect(decision.isFallback).toBe(false);
+    expect(decision.confidence).toBeGreaterThan(0.3);
+  });
 });

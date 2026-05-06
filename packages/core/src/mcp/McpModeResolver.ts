@@ -66,6 +66,22 @@ export class McpModeResolver {
           isFallback: false,
         };
       }
+
+      const fallback = this.findFallbackAction(scoreResult.personaScores);
+      return {
+        mode: 'mcp',
+        variant: fallback.action.uiState.variant,
+        personalityId: fallback.resource.id,
+        actionId: fallback.action.id,
+        confidence: llmDecision.confidence,
+        uiState: fallback.action.uiState,
+        rationale: 'Applied the safe fallback action for the current session.',
+        personaScores: scoreResult.personaScores,
+        rawScores: scoreResult.rawScores,
+        matchedSignals: scoreResult.matchedSignals,
+        interactionSummary,
+        isFallback: true,
+      };
     } catch {
       // Invalid model output falls through to a deterministic safe fallback.
     }
@@ -77,7 +93,7 @@ export class McpModeResolver {
       variant: fallback.action.uiState.variant,
       personalityId: fallback.resource.id,
       actionId: fallback.action.id,
-      confidence: 0,
+      confidence: scoreResult.personaScores[fallback.resource.id] ?? 0,
       uiState: fallback.action.uiState,
       rationale: 'Fell back to the highest-scored safe action.',
       personaScores: scoreResult.personaScores,

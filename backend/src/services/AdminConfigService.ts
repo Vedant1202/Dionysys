@@ -75,7 +75,7 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
   },
   mcp: {
     resources: EXCALIDRAW_PERSONALITY_RESOURCES,
-    minConfidence: 0.5,
+    minConfidence: 0.3,
     fallbackVariant: 'neutral',
   },
   ui: {

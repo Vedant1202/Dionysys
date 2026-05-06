@@ -73,6 +73,7 @@ export function DebugPanel() {
     currentVariant,
     currentPersonality,
     decisionConfidence,
+    lastDecision,
     personaProbs,
     eventsSentCount,
     isPolicyLocked,
@@ -182,13 +183,13 @@ export function DebugPanel() {
               <div className="stat p-3 place-items-center border-l border-base-content/10">
                 <div className="stat-title text-[10px] uppercase font-bold opacity-50 tracking-widest">Status</div>
                 <div className={`stat-value text-xs font-black p-1 rounded ${isPolicyLocked ? 'text-success' : 'text-info animate-pulse'}`}>
-                    {isPolicyLocked ? 'LOCKED' : 'LEARNING'}
+                    {isPolicyLocked ? 'ACTIVE' : 'MONITORING'}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] uppercase tracking-widest">
+          <div className="grid grid-cols-3 gap-2 mb-6 text-[10px] uppercase tracking-widest">
             <div className="rounded-lg bg-base-200/70 p-3">
               <div className="font-bold opacity-50">Mode</div>
               <div className="font-black text-primary">{mode}</div>
@@ -197,6 +198,12 @@ export function DebugPanel() {
               <div className="font-bold opacity-50">Confidence</div>
               <div className="font-black text-primary">
                 {decisionConfidence === undefined ? '--' : `${Math.round(decisionConfidence * 100)}%`}
+              </div>
+            </div>
+            <div className="rounded-lg bg-base-200/70 p-3">
+              <div className="font-bold opacity-50">Fallback</div>
+              <div className={`font-black ${lastDecision?.isFallback ? 'text-warning' : 'text-primary'}`}>
+                {lastDecision === undefined ? '--' : lastDecision.isFallback ? 'YES' : 'NO'}
               </div>
             </div>
           </div>
@@ -227,7 +234,7 @@ export function DebugPanel() {
             </select>
             {isPolicyLocked && (
               <label className="label py-1">
-                <span className="label-text-alt text-[9px] text-primary italic font-medium">Policy locked via behavioral bandit model</span>
+                <span className="label-text-alt text-[9px] text-primary italic font-medium">Adaptive monitoring is active for this session</span>
               </label>
             )}
           </div>
