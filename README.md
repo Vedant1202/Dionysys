@@ -4,6 +4,10 @@ Adaptive UI experimentation for product teams building personalized interfaces w
 
 Dionysys packages the decision logic, React runtime, telemetry backend, and reference demo needed to test adaptive experiences without hard-wiring everything into a single app. It is designed for teams that want to iterate on persona inference, variant selection, and runtime UI control while keeping the core logic reusable across products.
 
+## Promo Video
+
+[![Watch the 25-second Dionysys promo video](https://img.youtube.com/vi/SKq7UhHC5JU/hqdefault.jpg)](https://www.youtube.com/watch?v=SKq7UhHC5JU)
+
 ## Features
 
 - Deterministic adaptive mode powered by `InferenceEngine` and `PolicyEngine`
