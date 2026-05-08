@@ -29,6 +29,18 @@ Dionysys packages the decision logic, React runtime, telemetry backend, and refe
 - `docs`: canonical markdown documentation source
 - `web-docs`: Docusaurus shell that renders the root docs as a deployable site
 
+## Docs
+
+Start with the canonical markdown docs in [`docs/`](./docs):
+
+- [Usage](./docs/usage.md)
+- [Configuration](./docs/configuration.md)
+- [Admin Console](./docs/admin-console.md)
+- [Excalidraw Configuration](./docs/excalidraw-configuration.md)
+- [Architecture](./docs/architecture.md)
+
+You can also run the web docs locally with `npm run docs`.
+
 ## Quick Start
 
 ### Prerequisites
@@ -217,18 +229,6 @@ If you deploy the docs site under a subpath instead of a root domain, set `DOCS_
 - Admin APIs are intentionally environment-gated and should stay off by default in production
 - Runtime admin edits are in-memory only; they do not write back to source files or the database
 - The frontend and backend share local workspace packages, so build and deploy commands should run from the monorepo root
-
-## Docs
-
-Start with the canonical markdown docs in [`docs/`](./docs):
-
-- [Usage](./docs/usage.md)
-- [Configuration](./docs/configuration.md)
-- [Admin Console](./docs/admin-console.md)
-- [Excalidraw Configuration](./docs/excalidraw-configuration.md)
-- [Architecture](./docs/architecture.md)
-
-You can also run the web docs locally with `npm run docs`.
 
 ## Contributing
 
