@@ -1,6 +1,9 @@
 {
   "name": "dionysys-adaptive-ui",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "workspaces": [
     "packages/*",
     "frontend",
@@ -9,11 +12,16 @@
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:docs": "npm --prefix web-docs run build",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "docs": "cd web-docs && ./node_modules/.bin/docusaurus start",
-    "docs:build": "cd web-docs && ./node_modules/.bin/docusaurus build",
-    "docs:serve": "cd web-docs && ./node_modules/.bin/docusaurus serve",
-    "docs:typecheck": "cd web-docs && ./node_modules/.bin/tsc"
+    "start:backend": "npm run start --workspace=backend",
+    "preview:frontend": "npm run preview --workspace=frontend",
+    "docs": "npm --prefix web-docs run start",
+    "docs:build": "npm --prefix web-docs run build",
+    "docs:serve": "npm --prefix web-docs run serve",
+    "docs:typecheck": "npm --prefix web-docs run typecheck"
   }
 }

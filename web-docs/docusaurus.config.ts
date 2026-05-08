@@ -4,13 +4,16 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
+const docsSiteUrl = process.env.DOCS_SITE_URL?.trim() || 'https://vedant1202.github.io';
+const docsBaseUrl = process.env.DOCS_BASE_URL?.trim() || '/Dionysys/';
+
 const config: Config = {
   title: 'Dionysys',
   tagline: 'Adaptive UI experimentation for deterministic and MCP-driven modes',
   favicon: 'img/logo.svg',
 
-  url: 'https://vedant1202.github.io',
-  baseUrl: '/Dionysys/',
+  url: docsSiteUrl,
+  baseUrl: docsBaseUrl,
 
   organizationName: 'Vedant1202',
   projectName: 'Dionysys',

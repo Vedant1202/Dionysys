@@ -1,0 +1,14 @@
+.git
+.github
+.agents
+node_modules
+**/node_modules
+backend/dist
+frontend/dist
+packages/*/dist
+web-docs/build
+web-docs/.docusaurus
+.env
+**/.env
+npm-debug.log*
+coverage

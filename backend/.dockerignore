@@ -1,0 +1,8 @@
+# Docker uses the repository-root `.dockerignore` when you build with:
+# `docker build -f backend/Dockerfile .`
+# This mirror keeps the backend deployment assets self-describing.
+.git
+node_modules
+dist
+.env
+npm-debug.log*
