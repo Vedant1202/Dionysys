@@ -8,6 +8,9 @@ Dionysys packages the decision logic, React runtime, telemetry backend, and refe
 
 [![Watch the 25-second Dionysys promo video](https://img.youtube.com/vi/SKq7UhHC5JU/hqdefault.jpg)](https://www.youtube.com/watch?v=SKq7UhHC5JU)
 
+### Blog 
+Notion Page - https://mewing-tuck-66c.notion.site/Dionysys-35a83d3a8f1d80ae9e3ee7680854f71e?pvs=73
+
 ## Features
 
 - Deterministic adaptive mode powered by `InferenceEngine` and `PolicyEngine`
