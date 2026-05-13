@@ -88,6 +88,7 @@ export function App() {
       mode="deterministic"
       presentationMode="production"
       decisionApplication="next-refresh"
+      persistenceMode="browser"
       sessionId="session_123"
       defaultVariant="neutral"
       pollingIntervalMs={3000}
@@ -224,6 +225,7 @@ export function App() {
       mode="mcp"
       presentationMode="production"
       decisionApplication="next-refresh"
+      persistenceMode="browser"
       sessionId="session_123"
       defaultVariant="neutral"
       minEventsBeforeLock={5}
@@ -284,6 +286,7 @@ State fields:
 | --- | --- |
 | `mode` | Current adaptive mode: `deterministic` or `mcp`. |
 | `presentationMode` | `prototype` shows diagnostics and controls; `production` should hide experiment details. |
+| `persistenceMode` | Built-in persistence lifetime: `memory`, `tab`, or `browser`. |
 | `currentVariant` | Active variant name. Deterministic mode gets this from policy; MCP mode gets it from the selected action UI state. |
 | `currentUIState` | MCP action UI state, or the optional default UI state. |
 | `currentPersonality` | Selected MCP personality id. |
@@ -373,13 +376,20 @@ export function FeedbackSlot() {
 
 Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount or browser refresh.
 
-With `sessionId`, the package uses localStorage by default. This is the demo-friendly path and requires no extra persistence API:
+Use `persistenceMode` to control how both the session id and built-in pending-decision persistence survive reloads:
+
+- `memory` resets on full refresh
+- `tab` persists within the same browser tab
+- `browser` persists across refreshes using `localStorage`
+
+With `sessionId`, `persistenceMode="browser"` is the demo-friendly path and requires no extra persistence API:
 
 ```tsx
 <AdaptiveProvider
   mode="mcp"
   presentationMode="production"
   decisionApplication="next-refresh"
+  persistenceMode="browser"
   sessionId="session_123"
   defaultVariant="neutral"
   resolveDecision={resolveDecision}

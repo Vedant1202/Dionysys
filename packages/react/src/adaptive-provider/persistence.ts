@@ -1,6 +1,7 @@
 import {
   splitComposedUiVariant,
   type AdaptiveDecision,
+  type AdaptivePersistenceMode,
   type AdaptiveUIDefinition,
   type PendingAdaptiveDecision,
 } from '@dionysys/core';
@@ -66,6 +67,7 @@ export function getPendingUIState(decision?: PendingAdaptiveDecision): AdaptiveU
 export function readInitialPendingDecision(
   loadPendingDecision: LoadPendingDecision | undefined,
   sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
 ): PendingAdaptiveDecision | undefined {
   if (loadPendingDecision) {
     try {
@@ -77,20 +79,21 @@ export function readInitialPendingDecision(
     }
   }
 
-  return readDefaultPendingDecision(sessionId);
+  return readDefaultPendingDecision(sessionId, persistenceMode);
 }
 
 export async function savePersistedPendingDecision(
   decision: PendingAdaptiveDecision,
   savePendingDecision: SavePendingDecision | undefined,
   sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
 ): Promise<void> {
   try {
     if (savePendingDecision) {
       await savePendingDecision(decision);
       return;
     }
-    writeDefaultPendingDecision(sessionId, decision);
+    writeDefaultPendingDecision(sessionId, persistenceMode, decision);
   } catch (err) {
     console.error('Failed to save pending adaptive decision', err);
   }
@@ -99,43 +102,70 @@ export async function savePersistedPendingDecision(
 export async function clearPersistedPendingDecision(
   clearPendingDecision: ClearPendingDecision | undefined,
   sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
 ): Promise<void> {
   try {
     if (clearPendingDecision) {
       await clearPendingDecision();
       return;
     }
-    clearDefaultPendingDecision(sessionId);
+    clearDefaultPendingDecision(sessionId, persistenceMode);
   } catch (err) {
     console.error('Failed to clear pending adaptive decision', err);
   }
 }
 
-function readDefaultPendingDecision(sessionId: string | undefined): PendingAdaptiveDecision | undefined {
-  if (!sessionId || typeof window === 'undefined') return undefined;
-  const raw = window.localStorage.getItem(getPendingDecisionStorageKey(sessionId));
+function readDefaultPendingDecision(
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+): PendingAdaptiveDecision | undefined {
+  if (!sessionId) return undefined;
+
+  const storage = getStorage(persistenceMode);
+  if (!storage) return undefined;
+
+  const raw = storage.getItem(getPendingDecisionStorageKey(sessionId));
   if (!raw) return undefined;
 
   try {
     return JSON.parse(raw) as PendingAdaptiveDecision;
   } catch {
-    clearDefaultPendingDecision(sessionId);
+    clearDefaultPendingDecision(sessionId, persistenceMode);
     return undefined;
   }
 }
 
-function writeDefaultPendingDecision(sessionId: string | undefined, decision: PendingAdaptiveDecision): void {
-  if (!sessionId || typeof window === 'undefined') return;
-  window.localStorage.setItem(getPendingDecisionStorageKey(sessionId), JSON.stringify(decision));
+function writeDefaultPendingDecision(
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+  decision: PendingAdaptiveDecision,
+): void {
+  if (!sessionId) return;
+
+  const storage = getStorage(persistenceMode);
+  if (!storage) return;
+
+  storage.setItem(getPendingDecisionStorageKey(sessionId), JSON.stringify(decision));
 }
 
-function clearDefaultPendingDecision(sessionId: string | undefined): void {
-  if (!sessionId || typeof window === 'undefined') return;
-  window.localStorage.removeItem(getPendingDecisionStorageKey(sessionId));
+function clearDefaultPendingDecision(sessionId: string | undefined, persistenceMode: AdaptivePersistenceMode): void {
+  if (!sessionId) return;
+
+  const storage = getStorage(persistenceMode);
+  if (!storage) return;
+
+  storage.removeItem(getPendingDecisionStorageKey(sessionId));
 }
 
 function getPendingDecisionStorageKey(sessionId: string): string {
   return `dionysys:pending-decision:${sessionId}`;
+}
+
+function getStorage(persistenceMode: AdaptivePersistenceMode): Storage | undefined {
+  if (typeof window === 'undefined') return undefined;
+  if (persistenceMode === 'tab') return window.sessionStorage;
+  if (persistenceMode === 'browser') return window.localStorage;
+  return undefined;
 }
 
 function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {

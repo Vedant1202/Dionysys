@@ -3,6 +3,7 @@ import type {
   AdaptiveDecision,
   AdaptiveDecisionApplication,
   AdaptiveMode,
+  AdaptivePersistenceMode,
   AdaptivePresentationMode,
   AdaptiveUIDefinition,
   ExpertisePersona,
@@ -71,6 +72,7 @@ export interface AdaptiveProviderProps {
   mode?: AdaptiveMode;
   presentationMode?: AdaptivePresentationMode;
   decisionApplication?: AdaptiveDecisionApplication;
+  persistenceMode?: AdaptivePersistenceMode;
   sessionId?: string;
   defaultVariant: string;
   defaultUIState?: AdaptiveUIDefinition;

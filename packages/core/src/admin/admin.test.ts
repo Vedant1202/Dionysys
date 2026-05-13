@@ -11,6 +11,7 @@ const config: AdminConsoleConfig = {
     defaultMode: 'deterministic',
     presentationMode: 'prototype',
     decisionApplication: 'next-refresh',
+    persistenceMode: 'browser',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   },
@@ -115,6 +116,7 @@ describe('AdminConsoleConfigSchema', () => {
     expect(parsed.mode.defaultMode).toBe('deterministic');
     expect(parsed.mode.presentationMode).toBe('prototype');
     expect(parsed.mode.decisionApplication).toBe('next-refresh');
+    expect(parsed.mode.persistenceMode).toBe('browser');
     expect(parsed.deterministic.axes.modality.personas[1]).toBe('draw_first');
     expect(parsed.mcp.axes.modalityResources[0]?.actions[0]?.uiState.variant).toBe('neutral');
   });

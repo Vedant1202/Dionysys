@@ -1,5 +1,5 @@
-import type { AdminConsoleConfig, AdminModeConfig } from '@dionysys/core';
-import { Field, SectionCard } from '../primitives.js';
+import type { AdaptivePersistenceMode, AdminConsoleConfig, AdminModeConfig } from '@dionysys/core';
+import { ComparisonRows, Field, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { toBoundedNumber, toPositiveInteger } from '../utils.js';
 import type { AdminConfigUpdater } from '../types.js';
@@ -7,9 +7,17 @@ import type { AdminConfigUpdater } from '../types.js';
 export function ModesPanel({
   config,
   updateConfig,
+  sessionId,
+  persistenceMode,
+  canRandomizeSession,
+  onRandomizeSession,
 }: {
   config: AdminConsoleConfig;
   updateConfig: AdminConfigUpdater;
+  sessionId?: string;
+  persistenceMode?: AdaptivePersistenceMode;
+  canRandomizeSession?: boolean;
+  onRandomizeSession?: () => void;
 }) {
   const updateMode = (patch: Partial<AdminModeConfig>) => updateConfig((current) => ({
     ...current,
@@ -49,6 +57,17 @@ export function ModesPanel({
             <option value="immediate">Immediate: change active UI when resolved</option>
           </select>
         </Field>
+        <Field label="Persistence mode">
+          <select
+            style={styles.input}
+            value={config.mode.persistenceMode}
+            onChange={(event) => updateMode({ persistenceMode: event.target.value as AdminModeConfig['persistenceMode'] })}
+          >
+            <option value="memory">Memory: page-lifetime only</option>
+            <option value="tab">Tab: persist within this tab</option>
+            <option value="browser">Browser: persist across refreshes</option>
+          </select>
+        </Field>
         <Field label="Events before lock">
           <input
             style={styles.input}
@@ -69,40 +88,61 @@ export function ModesPanel({
         </Field>
       </SectionCard>
 
-      <SectionCard title="MCP Resolver Settings">
-        <Field label="Minimum LLM confidence">
-          <input
-            style={styles.input}
-            type="number"
-            min={0}
-            max={1}
-            step={0.01}
-            value={config.mcp.minConfidence}
-            onChange={(event) => updateConfig((current) => ({
-              ...current,
-              mcp: { ...current.mcp, minConfidence: toBoundedNumber(event.target.value, current.mcp.minConfidence, 0, 1) },
-            }))}
+      <div style={styles.stack}>
+        <SectionCard title="Session Tools">
+          <ComparisonRows
+            rows={[
+              ['Current session', sessionId ?? 'No active session'],
+              ['Active persistence', persistenceMode ?? config.mode.persistenceMode],
+            ]}
           />
-        </Field>
-        <Field label="Fallback variant">
-          <input
-            style={styles.input}
-            value={config.mcp.fallbackVariant}
-            onChange={(event) => updateConfig((current) => ({
-              ...current,
-              mcp: { ...current.mcp, fallbackVariant: event.target.value },
-            }))}
-          />
-        </Field>
-        <p style={styles.helpText}>
-          Changes apply after Save. The frontend can remount the provider from this runtime config without mutating source files.
-        </p>
-        {config.mode.presentationMode === 'production' && (
-          <p style={styles.noticeText}>
-            Production mode hides personality, scores, variants, debug details, and admin controls from front-facing users.
+          <p style={styles.helpText}>
+            Randomize the current session only in non-production builds. This clears the active mode-scoped session id and queued adaptive decision, then reloads the app.
           </p>
-        )}
-      </SectionCard>
+          {canRandomizeSession && onRandomizeSession && (
+            <div style={styles.rowActions}>
+              <button type="button" style={styles.secondaryButton} onClick={onRandomizeSession}>
+                Randomize session
+              </button>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="MCP Resolver Settings">
+          <Field label="Minimum LLM confidence">
+            <input
+              style={styles.input}
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={config.mcp.minConfidence}
+              onChange={(event) => updateConfig((current) => ({
+                ...current,
+                mcp: { ...current.mcp, minConfidence: toBoundedNumber(event.target.value, current.mcp.minConfidence, 0, 1) },
+              }))}
+            />
+          </Field>
+          <Field label="Fallback variant">
+            <input
+              style={styles.input}
+              value={config.mcp.fallbackVariant}
+              onChange={(event) => updateConfig((current) => ({
+                ...current,
+                mcp: { ...current.mcp, fallbackVariant: event.target.value },
+              }))}
+            />
+          </Field>
+          <p style={styles.helpText}>
+            Changes apply after Save. The frontend can remount the provider from this runtime config without mutating source files.
+          </p>
+          {config.mode.presentationMode === 'production' && (
+            <p style={styles.noticeText}>
+              Production mode hides personality, scores, variants, debug details, and admin controls from front-facing users.
+            </p>
+          )}
+        </SectionCard>
+      </div>
     </div>
   );
 }

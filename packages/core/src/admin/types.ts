@@ -1,6 +1,7 @@
 import type {
   AdaptiveDecisionApplication,
   AdaptiveMode,
+  AdaptivePersistenceMode,
   AdaptivePresentationMode,
   AxisSelectionSummary,
   InteractionSummary,
@@ -64,6 +65,7 @@ export interface AdminModeConfig {
   defaultMode: AdaptiveMode;
   presentationMode: AdaptivePresentationMode;
   decisionApplication: AdaptiveDecisionApplication;
+  persistenceMode: AdaptivePersistenceMode;
   minEventsBeforeLock: number;
   pollingIntervalMs: number;
 }

@@ -50,6 +50,7 @@ describe('AdminConfigService', () => {
     expect(reset.mode.defaultMode).toBe('deterministic');
     expect(reset.mode.presentationMode).toBe('prototype');
     expect(reset.mode.decisionApplication).toBe('next-refresh');
+    expect(reset.mode.persistenceMode).toBe('browser');
     expect(reset.mode.minEventsBeforeLock).toBe(5);
     expect(reset.mcp.minConfidence).toBe(0.3);
   });

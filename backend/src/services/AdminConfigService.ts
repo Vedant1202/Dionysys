@@ -35,6 +35,7 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
     defaultMode: 'deterministic',
     presentationMode: 'prototype',
     decisionApplication: 'next-refresh',
+    persistenceMode: 'browser',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   },

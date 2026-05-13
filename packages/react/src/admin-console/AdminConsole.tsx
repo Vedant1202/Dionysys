@@ -17,6 +17,9 @@ export type { AdminConsoleProps } from './types.js';
 export function AdminConsole({
   apiBaseUrl = 'http://localhost:3001',
   sessionId,
+  persistenceMode,
+  canRandomizeSession,
+  onRandomizeSession,
   onClose,
   onConfigSaved,
 }: AdminConsoleProps) {
@@ -102,7 +105,14 @@ export function AdminConsole({
             <OverviewPanel config={config} overview={overview} />
           )}
           {!isLoading && config && activeTab === 'modes' && (
-            <ModesPanel config={config} updateConfig={updateConfig} />
+            <ModesPanel
+              config={config}
+              updateConfig={updateConfig}
+              sessionId={sessionId}
+              persistenceMode={persistenceMode}
+              canRandomizeSession={canRandomizeSession}
+              onRandomizeSession={onRandomizeSession}
+            />
           )}
           {!isLoading && config && activeTab === 'personalities' && (
             <PersonalitiesPanel

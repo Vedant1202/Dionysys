@@ -4,6 +4,7 @@ import { AdaptiveUIDefinitionSchema } from '../schema/uiSchema.js';
 export const AdaptiveModeSchema = z.enum(['deterministic', 'mcp']);
 export const AdaptivePresentationModeSchema = z.enum(['prototype', 'production']);
 export const AdaptiveDecisionApplicationSchema = z.enum(['immediate', 'next-refresh']);
+export const AdaptivePersistenceModeSchema = z.enum(['memory', 'tab', 'browser']);
 export const ModalityPersonaSchema = z.enum(['neutral', 'draw_first', 'text_first']);
 export const ExpertisePersonaSchema = z.enum(['novice', 'standard', 'power_user']);
 

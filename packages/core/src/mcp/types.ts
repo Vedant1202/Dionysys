@@ -4,6 +4,7 @@ import type { ExpertisePersona, ModalityPersona } from './personaAxes.js';
 export type AdaptiveMode = 'deterministic' | 'mcp';
 export type AdaptivePresentationMode = 'prototype' | 'production';
 export type AdaptiveDecisionApplication = 'immediate' | 'next-refresh';
+export type AdaptivePersistenceMode = 'memory' | 'tab' | 'browser';
 
 export interface SummarizableInteractionEvent {
   eventType: string;

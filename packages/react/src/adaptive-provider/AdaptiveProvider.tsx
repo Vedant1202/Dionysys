@@ -79,6 +79,7 @@ export function AdaptiveProvider({
   mode = 'deterministic',
   presentationMode = 'prototype',
   decisionApplication = 'immediate',
+  persistenceMode = 'browser',
   sessionId,
   defaultVariant,
   defaultUIState,
@@ -91,7 +92,9 @@ export function AdaptiveProvider({
   pollingIntervalMs = 3000,
   minEventsBeforeLock = 5,
 }: AdaptiveProviderProps) {
-  const initialPendingDecisionRef = React.useRef(readInitialPendingDecision(loadPendingDecision, sessionId));
+  const initialPendingDecisionRef = React.useRef(
+    readInitialPendingDecision(loadPendingDecision, sessionId, persistenceMode),
+  );
   const resolutionStateRef = React.useRef({
     isResolving: false,
     rerunRequested: false,
@@ -113,7 +116,7 @@ export function AdaptiveProvider({
   React.useEffect(() => {
     const initialPendingDecision = initialPendingDecisionRef.current;
     if (initialPendingDecision) {
-      void clearPersistedPendingDecision(clearPendingDecision, sessionId);
+      void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
       return;
     }
 
@@ -124,7 +127,7 @@ export function AdaptiveProvider({
       .then((pendingDecision) => {
         if (!isMounted || !pendingDecision) return;
         store.getState().applyPendingDecisionNow(pendingDecision);
-        void clearPersistedPendingDecision(clearPendingDecision, sessionId);
+        void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
       })
       .catch((err) => {
         console.error('Failed to load pending adaptive decision', err);
@@ -133,7 +136,7 @@ export function AdaptiveProvider({
     return () => {
       isMounted = false;
     };
-  }, [clearPendingDecision, loadPendingDecision, sessionId, store]);
+  }, [clearPendingDecision, loadPendingDecision, persistenceMode, sessionId, store]);
 
   React.useEffect(() => {
     if (!pollInference) return;
@@ -156,7 +159,7 @@ export function AdaptiveProvider({
 
     const clearPendingDecisionState = () => {
       store.getState().clearPendingDecision();
-      void clearPersistedPendingDecision(clearPendingDecision, sessionId);
+      void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
     };
 
     const applyDeterministicDecision = (selection: string | DeterministicAdaptiveSelection) => {
@@ -180,7 +183,7 @@ export function AdaptiveProvider({
           return;
         }
 
-        void savePersistedPendingDecision(pendingDecision, savePendingDecision, sessionId);
+        void savePersistedPendingDecision(pendingDecision, savePendingDecision, sessionId, persistenceMode);
         currentState.queuePendingDecision(pendingDecision);
         return;
       }
@@ -221,7 +224,7 @@ export function AdaptiveProvider({
           return;
         }
 
-        void savePersistedPendingDecision(pendingDecision, savePendingDecision, sessionId);
+        void savePersistedPendingDecision(pendingDecision, savePendingDecision, sessionId, persistenceMode);
         currentState.queuePendingDecision(pendingDecision);
         return;
       }
@@ -301,6 +304,7 @@ export function AdaptiveProvider({
     evaluatePolicy,
     minEventsBeforeLock,
     mode,
+    persistenceMode,
     resolveDecision,
     savePendingDecision,
     sessionId,

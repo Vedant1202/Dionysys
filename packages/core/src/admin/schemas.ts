@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AdaptiveDecisionApplicationSchema,
   AdaptiveModeSchema,
+  AdaptivePersistenceModeSchema,
   AdaptivePresentationModeSchema,
   PersonalityResourcesSchema,
 } from '../mcp/schemas.js';
@@ -61,6 +62,7 @@ export const AdminModeConfigSchema = z.object({
   defaultMode: AdaptiveModeSchema,
   presentationMode: AdaptivePresentationModeSchema,
   decisionApplication: AdaptiveDecisionApplicationSchema,
+  persistenceMode: AdaptivePersistenceModeSchema,
   minEventsBeforeLock: z.number().int().positive(),
   pollingIntervalMs: z.number().int().positive(),
 });

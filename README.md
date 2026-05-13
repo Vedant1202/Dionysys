@@ -206,6 +206,9 @@ If you deploy the docs site under a subpath instead of a root domain, set `DOCS_
 - `prototype` presentation: show scores, personalities, pending decisions, and admin/debug controls
 - `production` presentation: hide experiment internals and expose only the experience plus feedback
 - `next-refresh` decision application: store a resolved decision now and apply the UI change on the next provider mount or page refresh
+- `memory` / `tab` / `browser` persistence modes: align session-id lifetime with built-in pending-decision persistence
+
+In non-production builds, the admin console includes a session randomize tool for testing persistence behavior without exposing that reset path in production.
 
 ## Operational Notes
 
