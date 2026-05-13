@@ -32,7 +32,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     currentVariant,
     adaptiveMode === 'mcp' ? currentUIState : undefined,
   );
-  const keepsNativeToolbar = currentVariant === 'neutral' || currentVariant === 'power_user';
+  const keepsNativeToolbar = config?.toolbar?.mode === 'blocklist';
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
   };
 
   const getUIOptions = (): any => {
-    if (!config || currentVariant === 'neutral') return undefined;
+    if (!config || keepsNativeToolbar) return undefined;
     return {
       canvasActions: config.canvasActions
     };

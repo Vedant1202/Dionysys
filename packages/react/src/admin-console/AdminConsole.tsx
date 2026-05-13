@@ -120,7 +120,11 @@ export function AdminConsole({
             <DataPanel overview={overview} />
           )}
           {!isLoading && config && activeTab === 'apis' && (
-            <ApisPanel overview={overview} resources={config.mcp.resources} />
+            <ApisPanel
+              overview={overview}
+              modalityResources={config.mcp.axes.modalityResources}
+              expertiseResources={config.mcp.axes.expertiseResources}
+            />
           )}
           {!isLoading && config && activeTab === 'export' && (
             <ExportPanel

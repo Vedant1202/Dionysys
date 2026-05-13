@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AdminConsoleConfigSchema } from './schemas.js';
-import { inferPersonaFromAdminConfig, selectVariantFromAdminConfig } from './deterministicConfig.js';
+import { inferDeterministicAxesFromAdminConfig, inferPersonaFromAdminConfig, selectVariantFromAdminConfig } from './deterministicConfig.js';
 import type { AdminConsoleConfig } from './types.js';
 import type { GenericEvent } from '../inference/InferenceEngine.js';
 
@@ -15,44 +15,46 @@ const config: AdminConsoleConfig = {
     pollingIntervalMs: 3000,
   },
   deterministic: {
-    personas: ['neutral', 'draw_first', 'text_first', 'guided_novice'],
-    initialCounts: {
-      neutral: 1,
-      draw_first: 1,
-      text_first: 1,
-      guided_novice: 1,
-    },
-    eventRules: [
-      {
-        id: 'drawn_shape_weight',
-        description: 'Shape-like elements increase draw-first probability.',
-        eventType: 'element_drawn',
-        weights: { draw_first: 2 },
-        conditions: [
+    axes: {
+      modality: {
+        personas: ['neutral', 'draw_first', 'text_first'],
+        initialCounts: {
+          neutral: 1,
+          draw_first: 1,
+          text_first: 1,
+        },
+        eventRules: [],
+        heuristics: [],
+      },
+      expertise: {
+        personas: ['novice', 'standard', 'power_user'],
+        initialCounts: {
+          novice: 1,
+          standard: 1,
+          power_user: 1,
+        },
+        eventRules: [],
+        heuristics: [
           {
-            field: 'type',
-            operator: 'in',
-            value: ['rectangle', 'ellipse'],
+            id: 'low_event_novice',
+            description: 'Low event volume increases novice probability.',
+            metric: 'totalEvents',
+            operator: '<',
+            value: 5,
+            weights: { novice: 3 },
+          },
+          {
+            id: 'text_event_standard',
+            description: 'Text activity keeps the standard baseline active.',
+            metric: 'eventCount',
+            eventType: 'text_added',
+            operator: '>=',
+            value: 1,
+            weights: { standard: 1 },
           },
         ],
       },
-      {
-        id: 'text_added_weight',
-        description: 'Text elements increase text-first probability.',
-        eventType: 'text_added',
-        weights: { text_first: 3 },
-      },
-    ],
-    heuristics: [
-      {
-        id: 'low_event_guided_novice',
-        description: 'Low event volume increases guided novice probability.',
-        metric: 'totalEvents',
-        operator: '<',
-        value: 5,
-        weights: { guided_novice: 2 },
-      },
-    ],
+    },
     policy: {
       epsilon: 0,
     },
@@ -60,25 +62,45 @@ const config: AdminConsoleConfig = {
   mcp: {
     minConfidence: 0.5,
     fallbackVariant: 'neutral',
-    resources: [
-      {
-        id: 'neutral',
-        name: 'Neutral',
-        description: 'Default resource.',
-        scoring: { baseWeight: 1, signals: [] },
-        actions: [
-          {
-            id: 'show_neutral',
-            description: 'Show neutral UI.',
-            isSafeFallback: true,
-            uiState: {
-              variant: 'neutral',
-              toolbar: { mode: 'blocklist', tools: [] },
+    axes: {
+      modalityResources: [
+        {
+          id: 'neutral',
+          name: 'Neutral',
+          description: 'Default resource.',
+          scoring: { baseWeight: 1, signals: [] },
+          actions: [
+            {
+              id: 'show_neutral',
+              description: 'Show neutral UI.',
+              isSafeFallback: true,
+              uiState: {
+                variant: 'neutral',
+                toolbar: { mode: 'blocklist', tools: [] },
+              },
             },
-          },
-        ],
-      },
-    ],
+          ],
+        },
+      ],
+      expertiseResources: [
+        {
+          id: 'standard',
+          name: 'Standard',
+          description: 'Default expertise overlay.',
+          scoring: { baseWeight: 1, signals: [] },
+          actions: [
+            {
+              id: 'apply_standard',
+              description: 'Keep the base UI.',
+              isSafeFallback: true,
+              uiState: {
+                variant: 'standard',
+              },
+            },
+          ],
+        },
+      ],
+    },
   },
   ui: {
     supportedTools: ['selection', 'rectangle', 'text'],
@@ -93,8 +115,8 @@ describe('AdminConsoleConfigSchema', () => {
     expect(parsed.mode.defaultMode).toBe('deterministic');
     expect(parsed.mode.presentationMode).toBe('prototype');
     expect(parsed.mode.decisionApplication).toBe('next-refresh');
-    expect(parsed.deterministic.eventRules[0]?.id).toBe('drawn_shape_weight');
-    expect(parsed.mcp.resources[0]?.actions[0]?.uiState.variant).toBe('neutral');
+    expect(parsed.deterministic.axes.modality.personas[1]).toBe('draw_first');
+    expect(parsed.mcp.axes.modalityResources[0]?.actions[0]?.uiState.variant).toBe('neutral');
   });
 
   it('rejects invalid confidence thresholds', () => {
@@ -113,10 +135,13 @@ describe('admin deterministic config helpers', () => {
     ];
 
     const scores = inferPersonaFromAdminConfig(config.deterministic, events);
+    const axisScores = inferDeterministicAxesFromAdminConfig(config.deterministic, events);
 
-    expect(scores.draw_first).toBeCloseTo(3 / 11, 5);
-    expect(scores.text_first).toBeCloseTo(4 / 11, 5);
-    expect(scores.guided_novice).toBeCloseTo(3 / 11, 5);
+    expect(scores.neutral).toBeCloseTo(0.7, 5);
+    expect(scores.draw_first).toBeCloseTo(0.15, 5);
+    expect(scores.text_first).toBeCloseTo(0.15, 5);
+    expect(axisScores.selectedModality).toBe('neutral');
+    expect(axisScores.selectedExpertise).toBe('novice');
   });
 
   it('selects variants through the configured policy', () => {
@@ -124,10 +149,15 @@ describe('admin deterministic config helpers', () => {
       neutral: 0.1,
       draw_first: 0.8,
       text_first: 0.05,
-      guided_novice: 0.05,
+    }, {
+      novice: 0.05,
+      standard: 0.15,
+      power_user: 0.8,
     });
 
-    expect(selected.chosenVariant).toBe('draw_first');
+    expect(selected.chosenVariant).toBe('draw_first__power_user');
+    expect(selected.selectedModality).toBe('draw_first');
+    expect(selected.selectedExpertise).toBe('power_user');
     expect(selected.propensity).toBeGreaterThan(0);
   });
 });

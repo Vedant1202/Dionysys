@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { PolicyService } from '../services/PolicyService.js';
 import type { Persona } from '../services/InferenceService.js';
 
-const PERSONAS: Persona[] = ['neutral', 'draw_first', 'text_first', 'guided_novice', 'power_user'];
+const PERSONAS: Persona[] = ['neutral', 'draw_first', 'text_first'];
 
 // Uniform distribution helper
 const uniformProbs = (): Record<Persona, number> =>
-  Object.fromEntries(PERSONAS.map(p => [p, 0.2])) as Record<Persona, number>;
+  Object.fromEntries(PERSONAS.map(p => [p, 1 / PERSONAS.length])) as Record<Persona, number>;
 
 // Skewed distribution — heavily favors one persona
 const skewedProbs = (dominant: Persona): Record<Persona, number> => {
@@ -16,7 +16,7 @@ const skewedProbs = (dominant: Persona): Record<Persona, number> => {
 };
 
 describe('PolicyService.selectVariant', () => {
-  it('returns a variant that is one of the 5 known personas', () => {
+  it('returns a variant that is one of the known modality personas', () => {
     const { chosenVariant } = PolicyService.selectVariant(uniformProbs(), 0.0);
     expect(PERSONAS).toContain(chosenVariant);
   });
@@ -50,6 +50,6 @@ describe('PolicyService.selectVariant', () => {
   });
 
   it('is deterministic within a single call — does not throw', () => {
-    expect(() => PolicyService.selectVariant(skewedProbs('power_user'), 0.1)).not.toThrow();
+    expect(() => PolicyService.selectVariant(skewedProbs('draw_first'), 0.1)).not.toThrow();
   });
 });

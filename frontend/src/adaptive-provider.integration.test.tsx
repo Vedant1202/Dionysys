@@ -34,7 +34,7 @@ describe('AdaptiveProvider', () => {
   it('re-evaluates deterministic decisions after later event flushes', async () => {
     const evaluatePolicy = vi
       .fn<() => Promise<string>>()
-      .mockResolvedValueOnce('text_first')
+      .mockResolvedValueOnce('text_first__novice')
       .mockResolvedValueOnce('draw_first');
 
     render(
@@ -55,7 +55,7 @@ describe('AdaptiveProvider', () => {
     });
 
     await vi.waitFor(() => {
-      expect(latestState?.currentVariant).toBe('text_first');
+      expect(latestState?.currentVariant).toBe('text_first__novice');
     });
 
     act(() => {
@@ -73,22 +73,40 @@ describe('AdaptiveProvider', () => {
     const sessionId = 'sess_provider_test';
     const decision: AdaptiveDecision = {
       mode: 'mcp',
-      variant: 'text_first',
-      personalityId: 'text_first',
+      variant: 'text_first__novice',
+      personalityId: 'text_first__novice',
       actionId: 'show_text_toolbar',
       confidence: 0.64,
       uiState: {
-        variant: 'text_first',
-        showWelcomeScreen: false,
+        variant: 'text_first__novice',
+        showWelcomeScreen: true,
         toolbar: { mode: 'allowlist', tools: ['selection', 'text'] },
-        canvasActions: { toggleTheme: true },
-        mainMenuItems: ['help', 'toggleTheme'],
-        mainMenu: { allowedItems: ['help', 'toggleTheme'] },
+        canvasActions: {
+          saveAsImage: false,
+          saveToActiveFile: false,
+          clearCanvas: false,
+          toggleTheme: false,
+        },
+        mainMenuItems: ['help'],
+        mainMenu: { allowedItems: ['help'] },
       },
       rationale: 'Text events are dominant.',
-      personaScores: { text_first: 0.64, draw_first: 0.12, neutral: 0.12, guided_novice: 0.06, power_user: 0.06 },
-      rawScores: { text_first: 8, draw_first: 2, neutral: 1, guided_novice: 1, power_user: 1 },
-      matchedSignals: { text_first: ['text_added_recent'], draw_first: [], neutral: [], guided_novice: [], power_user: [] },
+      modalityScores: { text_first: 0.8, draw_first: 0.1, neutral: 0.1 },
+      expertiseScores: { novice: 0.64, standard: 0.24, power_user: 0.12 },
+      selectedModality: 'text_first',
+      selectedExpertise: 'novice',
+      composedUiVariant: 'text_first__novice',
+      personaScores: { text_first: 0.8, draw_first: 0.1, neutral: 0.1 },
+      rawScores: { text_first: 8, draw_first: 2, neutral: 1 },
+      matchedSignals: { text_first: ['text_added_recent'], draw_first: [], neutral: [] },
+      axisRawScores: {
+        modality: { text_first: 8, draw_first: 2, neutral: 1 },
+        expertise: { novice: 4, standard: 1, power_user: 1 },
+      },
+      axisMatchedSignals: {
+        modality: { text_first: ['text_added_recent'], draw_first: [], neutral: [] },
+        expertise: { novice: ['low_event_volume'], standard: [], power_user: [] },
+      },
       interactionSummary: {
         totalEvents: 4,
         eventCountsByType: { text_added: 3, element_drawn: 1 },
@@ -124,7 +142,7 @@ describe('AdaptiveProvider', () => {
 
     await vi.waitFor(() => {
       expect(latestState?.hasPendingUIChange).toBe(true);
-      expect(latestState?.pendingPersonality).toBe('text_first');
+      expect(latestState?.pendingPersonality).toBe('text_first__novice');
       expect(latestState?.decisionConfidence).toBeCloseTo(0.64, 5);
     });
 
@@ -144,9 +162,11 @@ describe('AdaptiveProvider', () => {
     );
 
     await vi.waitFor(() => {
-      expect(latestState?.currentVariant).toBe('text_first');
-      expect(latestState?.currentUIState?.variant).toBe('text_first');
-      expect(latestState?.currentPersonality).toBe('text_first');
+      expect(latestState?.currentVariant).toBe('text_first__novice');
+      expect(latestState?.currentUIState?.variant).toBe('text_first__novice');
+      expect(latestState?.currentPersonality).toBe('text_first__novice');
+      expect(latestState?.selectedModality).toBe('text_first');
+      expect(latestState?.selectedExpertise).toBe('novice');
       expect(latestState?.hasPendingUIChange).toBe(false);
     });
   });

@@ -1,10 +1,12 @@
-import type {
-  AdaptiveDecision,
-  AdaptiveUIDefinition,
-  PendingAdaptiveDecision,
+import {
+  splitComposedUiVariant,
+  type AdaptiveDecision,
+  type AdaptiveUIDefinition,
+  type PendingAdaptiveDecision,
 } from '@dionysys/core';
 import type {
   ClearPendingDecision,
+  DeterministicAdaptiveSelection,
   LoadPendingDecision,
   MaybePromise,
   SavePendingDecision,
@@ -18,9 +20,16 @@ export function buildPendingDecisionFromMcp(decision: AdaptiveDecision): Pending
     actionId: decision.actionId,
     confidence: decision.confidence,
     uiState: decision.uiState,
+    modalityScores: decision.modalityScores,
+    expertiseScores: decision.expertiseScores,
+    selectedModality: decision.selectedModality,
+    selectedExpertise: decision.selectedExpertise,
+    composedUiVariant: decision.composedUiVariant,
     personaScores: decision.personaScores,
     rawScores: decision.rawScores,
     matchedSignals: decision.matchedSignals,
+    axisRawScores: decision.axisRawScores,
+    axisMatchedSignals: decision.axisMatchedSignals,
     rationale: decision.rationale,
     createdAt: new Date().toISOString(),
     decision,
@@ -28,13 +37,23 @@ export function buildPendingDecisionFromMcp(decision: AdaptiveDecision): Pending
 }
 
 export function buildPendingDecisionFromVariant(
-  variant: string,
+  selection: string | DeterministicAdaptiveSelection,
   personaScores: Record<string, number>,
 ): PendingAdaptiveDecision {
+  const variant = typeof selection === 'string' ? selection : selection.variant;
+  const axisSelection = splitComposedUiVariant(
+    typeof selection === 'string' ? variant : selection.composedUiVariant,
+  );
+
   return {
     mode: 'deterministic',
     variant,
-    personalityId: getTopPersona(personaScores) ?? variant,
+    personalityId: typeof selection === 'string' ? variant : selection.composedUiVariant,
+    modalityScores: typeof selection === 'string' ? undefined : selection.modalityScores,
+    expertiseScores: typeof selection === 'string' ? undefined : selection.expertiseScores,
+    selectedModality: typeof selection === 'string' ? axisSelection.modality : selection.selectedModality,
+    selectedExpertise: typeof selection === 'string' ? axisSelection.expertise : selection.selectedExpertise,
+    composedUiVariant: typeof selection === 'string' ? variant : selection.composedUiVariant,
     personaScores,
     createdAt: new Date().toISOString(),
   };
@@ -90,10 +109,6 @@ export async function clearPersistedPendingDecision(
   } catch (err) {
     console.error('Failed to clear pending adaptive decision', err);
   }
-}
-
-function getTopPersona(personaScores: Record<string, number>): string | undefined {
-  return Object.entries(personaScores).sort((left, right) => right[1] - left[1])[0]?.[0];
 }
 
 function readDefaultPendingDecision(sessionId: string | undefined): PendingAdaptiveDecision | undefined {

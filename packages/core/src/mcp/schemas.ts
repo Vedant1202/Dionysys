@@ -4,6 +4,8 @@ import { AdaptiveUIDefinitionSchema } from '../schema/uiSchema.js';
 export const AdaptiveModeSchema = z.enum(['deterministic', 'mcp']);
 export const AdaptivePresentationModeSchema = z.enum(['prototype', 'production']);
 export const AdaptiveDecisionApplicationSchema = z.enum(['immediate', 'next-refresh']);
+export const ModalityPersonaSchema = z.enum(['neutral', 'draw_first', 'text_first']);
+export const ExpertisePersonaSchema = z.enum(['novice', 'standard', 'power_user']);
 
 export const SanitizedInteractionEventSchema = z.object({
   eventType: z.string().min(1),
@@ -67,6 +69,19 @@ export const PersonalityResourceSchema = z.object({
 });
 
 export const PersonalityResourcesSchema = z.array(PersonalityResourceSchema).min(1);
+export const PersonalityResourcesByAxisSchema = z.object({
+  modalityResources: PersonalityResourcesSchema,
+  expertiseResources: PersonalityResourcesSchema,
+});
+
+export const AxisScoreMapSchema = z.object({
+  modalityScores: z.record(z.number()),
+  expertiseScores: z.record(z.number()),
+  selectedModality: ModalityPersonaSchema,
+  selectedExpertise: ExpertisePersonaSchema,
+  composedUiVariant: z.string().min(1),
+  personaScores: z.record(z.number()),
+});
 
 export const LLMDecisionResultSchema = z.object({
   personalityId: z.string().min(1),
@@ -83,9 +98,22 @@ export const AdaptiveDecisionSchema = z.object({
   confidence: z.number().min(0).max(1),
   uiState: AdaptiveUIDefinitionSchema,
   rationale: z.string().optional(),
+  modalityScores: z.record(z.number()),
+  expertiseScores: z.record(z.number()),
+  selectedModality: ModalityPersonaSchema,
+  selectedExpertise: ExpertisePersonaSchema,
+  composedUiVariant: z.string().min(1),
   personaScores: z.record(z.number()),
   rawScores: z.record(z.number()),
   matchedSignals: z.record(z.array(z.string())),
+  axisRawScores: z.object({
+    modality: z.record(z.number()),
+    expertise: z.record(z.number()),
+  }),
+  axisMatchedSignals: z.object({
+    modality: z.record(z.array(z.string())),
+    expertise: z.record(z.array(z.string())),
+  }),
   interactionSummary: InteractionSummarySchema,
   isFallback: z.boolean(),
 });

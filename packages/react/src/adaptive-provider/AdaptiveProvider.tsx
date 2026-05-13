@@ -8,7 +8,7 @@ import {
   savePersistedPendingDecision,
 } from './persistence.js';
 import { AdaptiveUIContext, createAdaptiveUIStore } from './store.js';
-import type { AdaptiveProviderProps, AdaptiveUIState } from './types.js';
+import type { AdaptiveProviderProps, AdaptiveUIState, DeterministicAdaptiveSelection } from './types.js';
 
 export { AdaptiveUIContext } from './store.js';
 export type {
@@ -159,9 +159,10 @@ export function AdaptiveProvider({
       void clearPersistedPendingDecision(clearPendingDecision, sessionId);
     };
 
-    const applyDeterministicDecision = (variant: string) => {
+    const applyDeterministicDecision = (selection: string | DeterministicAdaptiveSelection) => {
       const currentState = store.getState();
       const currentDecisionKey = getCurrentDecisionKey(currentState);
+      const variant = typeof selection === 'string' ? selection : selection.variant;
       const nextDecisionKey = getResolvedDecisionKey(mode, variant);
 
       if (decisionApplication === 'next-refresh') {
@@ -172,7 +173,7 @@ export function AdaptiveProvider({
           return;
         }
 
-        const pendingDecision = buildPendingDecisionFromVariant(variant, currentState.personaProbs);
+        const pendingDecision = buildPendingDecisionFromVariant(selection, currentState.personaProbs);
         const pendingDecisionKey = getPendingDecisionKey(currentState.pendingDecision);
 
         if (pendingDecisionKey === nextDecisionKey) {
@@ -191,7 +192,7 @@ export function AdaptiveProvider({
         return;
       }
 
-      currentState.lockPolicy(variant);
+      currentState.lockPolicy(selection);
     };
 
     const applyMcpDecision = (decision: AdaptiveDecision) => {
@@ -257,9 +258,9 @@ export function AdaptiveProvider({
           if (!decision) return;
           applyMcpDecision(decision);
         })
-        : evaluatePolicy?.().then((variant) => {
-          if (!variant) return;
-          applyDeterministicDecision(variant);
+        : evaluatePolicy?.().then((selection) => {
+          if (!selection) return;
+          applyDeterministicDecision(selection);
         });
 
       void Promise.resolve(resolution)

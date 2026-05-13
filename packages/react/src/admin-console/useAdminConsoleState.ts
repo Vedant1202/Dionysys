@@ -61,8 +61,9 @@ export function useAdminConsoleState({
 
   React.useEffect(() => {
     if (!config) return;
-    if (selectedResourceIndex >= config.mcp.resources.length) {
-      setSelectedResourceIndex(Math.max(0, config.mcp.resources.length - 1));
+    const totalResources = config.mcp.axes.modalityResources.length + config.mcp.axes.expertiseResources.length;
+    if (selectedResourceIndex >= totalResources) {
+      setSelectedResourceIndex(Math.max(0, totalResources - 1));
     }
   }, [config, selectedResourceIndex]);
 
@@ -155,7 +156,7 @@ export function useAdminConsoleState({
     setActiveTab,
     config,
     overview,
-    selectedResource: config?.mcp.resources[selectedResourceIndex],
+    selectedResource: config ? getAllResources(config)[selectedResourceIndex] : undefined,
     selectedResourceIndex,
     setSelectedResourceIndex,
     isLoading,
@@ -171,4 +172,11 @@ export function useAdminConsoleState({
     exportConfig,
     applyJsonDraft,
   };
+}
+
+function getAllResources(config: AdminConsoleConfig) {
+  return [
+    ...config.mcp.axes.modalityResources,
+    ...config.mcp.axes.expertiseResources,
+  ];
 }

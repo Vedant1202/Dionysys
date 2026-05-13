@@ -107,7 +107,7 @@ function App() {
              body: JSON.stringify({ sessionId: SESSION_ID, mode: 'deterministic' })
            });
            const data = await response.json();
-           return data.variant ?? data.chosenVariant;
+           return data;
          } : undefined}
          resolveDecision={adaptiveMode === 'mcp' ? async () => {
            const response = await fetch(`${API_BASE_URL}/api/adaptive/decision`, {

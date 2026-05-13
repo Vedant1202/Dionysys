@@ -74,15 +74,23 @@ describe('AdminConfigService', () => {
       ...current,
       deterministic: {
         ...current.deterministic,
-        eventRules: [
-          {
-            id: 'text_power_user_override',
-            description: 'Text events route to power user for this runtime test.',
-            eventType: 'text_added',
-            weights: { power_user: 100 },
+        axes: {
+          ...current.deterministic.axes,
+          expertise: {
+            ...current.deterministic.axes.expertise,
+            heuristics: [
+              {
+                id: 'text_power_user_override',
+                description: 'Text events route to power user for this runtime test.',
+                metric: 'eventCount',
+                eventType: 'text_added',
+                operator: '>=',
+                value: 2,
+                weights: { power_user: 100 },
+              },
+            ],
           },
-        ],
-        heuristics: [],
+        },
         policy: {
           ...current.deterministic.policy,
           epsilon: 0,
@@ -92,9 +100,10 @@ describe('AdminConfigService', () => {
 
     const decision = await resolveAdaptiveDecisionForEvents('deterministic', [
       makeEvent('text_added', { type: 'text' }, 1_000),
+      makeEvent('text_added', { type: 'text' }, 1_010),
     ]);
 
     expect(decision.mode).toBe('deterministic');
-    expect(decision.variant).toBe('power_user');
+    expect(decision.variant).toBe('text_first__power_user');
   });
 });
