@@ -13,7 +13,14 @@ import { adminRouter } from './routes/admin.js';
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173' }));
+
+const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
+app.use(cors({ 
+  origin: allowedOrigin === '*' 
+    ? true // Reflects request origin, effectively allowing all
+    : allowedOrigin.split(',').map(s => s.trim()),
+  credentials: true
+}));
 app.use(express.json());
 
 const port = process.env.PORT || 3001;
