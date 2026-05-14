@@ -172,6 +172,11 @@ Required production backend env values:
 - `PORT`: service port exposed by your host
 - `ADMIN_CONSOLE_ENABLED=false`
 
+MongoDB Atlas note:
+
+- Atlas access lists accept IPs or CIDR ranges, not domains.
+- If your backend runs on Render, allow the service's outbound IP range(s) in Atlas instead of relying on `0.0.0.0/0`.
+
 Recommended verification:
 
 - `GET /health` returns `{ status: "ok", dbConnected: true }`
@@ -201,10 +206,17 @@ The backend should remain an external Node service. Do not deploy the current Ex
 For the frontend Vercel project:
 
 - Root Directory: repository root
-- Install Command: `npm install`
+- Install Command: `npm install --include=optional && npm install --workspace=frontend @tailwindcss/oxide-linux-x64-gnu@4.2.2 --no-save`
 - Build Command: `npm run build:frontend`
 - Output Directory: `frontend/dist`
-- Environment Variable: `VITE_API_BASE_URL=https://your-backend.example.com`
+- Build Environment Variable: `VITE_API_BASE_URL=https://your-backend.example.com`
+- Optional Build Environment Variable: `VITE_ADMIN_CONSOLE_ENABLED=true`
+
+Important:
+
+- This frontend is built with Vite, so `VITE_*` values must be present at build time.
+- On Vercel, prefer build-time env configuration or commit a non-secret `frontend/.env.production` for stable production defaults.
+- The deployed frontend uses the same `VITE_API_BASE_URL` for admin requests, adaptive decisions, telemetry event flushes, and feedback submission. If this value is wrong, admin reads, admin saves, and session event persistence will all fail together.
 
 For the docs Vercel project:
 

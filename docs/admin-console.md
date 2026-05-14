@@ -48,6 +48,15 @@ VITE_ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=frontend
 
 The backend remains the authority. If the frontend button is visible but `ADMIN_CONSOLE_ENABLED` is not set, the console will show that the admin API is disabled.
 
+For hosted production builds, the frontend flag is build-time configuration because the demo uses Vite `import.meta.env`. For example, on Vercel set `VITE_ADMIN_CONSOLE_ENABLED=true` as a build environment variable, not only as a runtime variable.
+
+To use the live console successfully, all of the following must agree:
+
+- the frontend build must point `VITE_API_BASE_URL` at the real backend origin
+- the backend must allow the deployed frontend origin through `ALLOWED_ORIGIN`
+- `ADMIN_CONSOLE_ENABLED=true` must be set on the backend
+- `VITE_ADMIN_CONSOLE_ENABLED=true` must be present when the frontend is built
+
 ## Package Component
 
 `@dionysys/react` exports the reusable console:
