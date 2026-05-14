@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InferenceService, PERSONAS } from '../services/InferenceService.ts';
+import { InferenceService, PERSONAS } from '../services/InferenceService.js';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
 
 // Helper to create a minimal IEvent

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PolicyService } from '../services/PolicyService.ts';
-import type { Persona } from '../services/InferenceService.ts';
+import { PolicyService } from '../services/PolicyService.js';
+import type { Persona } from '../services/InferenceService.js';
 
 const PERSONAS: Persona[] = ['neutral', 'draw_first', 'text_first'];
 
