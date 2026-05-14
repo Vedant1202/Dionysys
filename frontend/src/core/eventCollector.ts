@@ -40,6 +40,10 @@ class EventCollector {
     this.sessionId = sessionId;
   }
 
+  setApiBaseUrl(apiBaseUrl: string) {
+    this.backendUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/events`;
+  }
+
   private async flush() {
     if (this.batch.length === 0) return;
     if (!this.sessionId) return;

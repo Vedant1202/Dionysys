@@ -44,12 +44,13 @@ export function EditorShell({
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
+    eventCollector.setApiBaseUrl(apiBaseUrl);
     eventCollector.setSessionId(sessionId);
     eventCollector.onFlush = incrementEventsSent;
     return () => {
       eventCollector.onFlush = undefined;
     };
-  }, [incrementEventsSent, sessionId]);
+  }, [apiBaseUrl, incrementEventsSent, sessionId]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
