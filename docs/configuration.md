@@ -163,14 +163,16 @@ The mode config also controls presentation and application timing:
 
 Use `presentationMode: "production"` for front-facing users so personalities, scores, variants, and admin controls are hidden. Use `decisionApplication: "next-refresh"` to store the inferred personality/decision without changing the active workspace UI until refresh.
 
-Use `persistenceMode` to keep the session id and built-in pending-decision storage aligned:
+Use `persistenceMode` to keep the session id and built-in adaptive state storage aligned:
 
 - `memory`: keep session state only for the current page lifetime
 - `tab`: persist within the current browser tab via `sessionStorage`
 - `browser`: persist across refreshes via `localStorage`
 
+For `next-refresh`, the provider stores both a queued pending decision and the currently applied adaptive state. After the first refresh consumes the pending decision, later refreshes continue to load the applied UI instead of falling back to neutral.
+
 The file-seeded Excalidraw demo default is `presentationMode: "prototype"` plus `decisionApplication: "next-refresh"` and `persistenceMode: "browser"` so builders can see diagnostics while the active canvas UI still stays stable until refresh. `decisionApplication: "immediate"` remains useful for tests, demos, and backward-compatible integrations where mid-session UI changes are acceptable; prefer `next-refresh` for real active workspaces.
 
-In non-production builds, the admin console includes a session tool to randomize the current session id. It clears the active mode-scoped session id and queued pending decision, then reloads the app so you can verify persistence behavior cleanly.
+In non-production builds, the admin console includes a session tool to randomize the current session id. It clears the active mode-scoped session id, queued pending decision, and applied adaptive state, then reloads the app so you can verify persistence behavior cleanly.
 
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.

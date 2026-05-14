@@ -4,7 +4,9 @@ import {
   buildPendingDecisionFromMcp,
   buildPendingDecisionFromVariant,
   clearPersistedPendingDecision,
-  readInitialPendingDecision,
+  loadPersistedDecision,
+  readInitialPersistedDecision,
+  savePersistedAppliedDecision,
   savePersistedPendingDecision,
 } from './persistence.js';
 import { AdaptiveUIContext, createAdaptiveUIStore } from './store.js';
@@ -14,10 +16,13 @@ export { AdaptiveUIContext } from './store.js';
 export type {
   AdaptiveProviderProps,
   AdaptiveUIState,
+  ClearAppliedDecision,
   ClearPendingDecision,
+  LoadAppliedDecision,
   LoadPendingDecision,
   ManualAdaptiveSelection,
   MaybePromise,
+  SaveAppliedDecision,
   SavePendingDecision,
 } from './types.js';
 
@@ -89,11 +94,13 @@ export function AdaptiveProvider({
   loadPendingDecision,
   savePendingDecision,
   clearPendingDecision,
+  loadAppliedDecision,
+  saveAppliedDecision,
   pollingIntervalMs = 3000,
   minEventsBeforeLock = 5,
 }: AdaptiveProviderProps) {
-  const initialPendingDecisionRef = React.useRef(
-    readInitialPendingDecision(loadPendingDecision, sessionId, persistenceMode),
+  const initialDecisionRef = React.useRef(
+    readInitialPersistedDecision(loadPendingDecision, loadAppliedDecision, sessionId, persistenceMode),
   );
   const resolutionStateRef = React.useRef({
     isResolving: false,
@@ -106,37 +113,53 @@ export function AdaptiveProvider({
     presentationMode,
     defaultVariant,
     defaultUIState,
-    initialPendingDecision: initialPendingDecisionRef.current,
+    initialPendingDecision: initialDecisionRef.current.decision,
   }));
+
+  const syncAppliedDecision = React.useCallback(async (decision: Parameters<AdaptiveUIState['applyPendingDecisionNow']>[0]) => {
+    await savePersistedAppliedDecision(decision, saveAppliedDecision, sessionId, persistenceMode);
+  }, [persistenceMode, saveAppliedDecision, sessionId]);
 
   React.useEffect(() => {
     store.setState({ mode, presentationMode });
   }, [mode, presentationMode, store]);
 
   React.useEffect(() => {
-    const initialPendingDecision = initialPendingDecisionRef.current;
-    if (initialPendingDecision) {
-      void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
+    const initialDecision = initialDecisionRef.current;
+    if (initialDecision.decision) {
+      if (initialDecision.source === 'pending') {
+        void syncAppliedDecision(initialDecision.decision)
+          .finally(() => clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode));
+      }
       return;
     }
 
-    if (!loadPendingDecision) return;
-
     let isMounted = true;
-    Promise.resolve(loadPendingDecision())
-      .then((pendingDecision) => {
-        if (!isMounted || !pendingDecision) return;
-        store.getState().applyPendingDecisionNow(pendingDecision);
-        void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
+    void loadPersistedDecision(loadPendingDecision, loadAppliedDecision, sessionId, persistenceMode)
+      .then(({ decision, source }) => {
+        if (!isMounted || !decision) return;
+        store.getState().applyPendingDecisionNow(decision);
+        if (source === 'pending') {
+          return syncAppliedDecision(decision)
+            .finally(() => clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode));
+        }
       })
       .catch((err) => {
-        console.error('Failed to load pending adaptive decision', err);
+        console.error('Failed to load persisted adaptive decision', err);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [clearPendingDecision, loadPendingDecision, persistenceMode, sessionId, store]);
+  }, [
+    clearPendingDecision,
+    loadAppliedDecision,
+    loadPendingDecision,
+    persistenceMode,
+    sessionId,
+    store,
+    syncAppliedDecision,
+  ]);
 
   React.useEffect(() => {
     if (!pollInference) return;
@@ -160,6 +183,18 @@ export function AdaptiveProvider({
     const clearPendingDecisionState = () => {
       store.getState().clearPendingDecision();
       void clearPersistedPendingDecision(clearPendingDecision, sessionId, persistenceMode);
+    };
+
+    const persistAppliedDeterministicSelection = (
+      selection: string | DeterministicAdaptiveSelection,
+      personaScores: Record<string, number>,
+    ) => {
+      const appliedDecision = buildPendingDecisionFromVariant(selection, personaScores);
+      void savePersistedAppliedDecision(appliedDecision, saveAppliedDecision, sessionId, persistenceMode);
+    };
+
+    const persistAppliedMcpDecision = (decision: AdaptiveDecision) => {
+      void savePersistedAppliedDecision(buildPendingDecisionFromMcp(decision), saveAppliedDecision, sessionId, persistenceMode);
     };
 
     const applyDeterministicDecision = (selection: string | DeterministicAdaptiveSelection) => {
@@ -195,7 +230,9 @@ export function AdaptiveProvider({
         return;
       }
 
+      const personaScores = currentState.personaProbs;
       currentState.lockPolicy(selection);
+      persistAppliedDeterministicSelection(selection, personaScores);
     };
 
     const applyMcpDecision = (decision: AdaptiveDecision) => {
@@ -237,6 +274,7 @@ export function AdaptiveProvider({
       }
 
       currentState.applyDecision(decision);
+      persistAppliedMcpDecision(decision);
     };
 
     const maybeResolve = () => {
@@ -300,6 +338,7 @@ export function AdaptiveProvider({
     return () => unsubscribe();
   }, [
     clearPendingDecision,
+    saveAppliedDecision,
     decisionApplication,
     evaluatePolicy,
     minEventsBeforeLock,

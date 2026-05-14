@@ -39,15 +39,15 @@ Top-level exports remain stable. Consumers still import from `@dionysys/react`, 
 3. `AdaptiveProvider` polls or resolves decisions through app-supplied hooks.
 4. The provider updates a package-owned Zustand store and exposes state through `useAdaptiveUI()`.
 5. In `immediate` mode, the chosen variant or MCP UI state is applied right away.
-6. In `next-refresh` mode, the provider stores a pending decision and keeps the active workspace UI stable until the next provider mount or refresh.
+6. In `next-refresh` mode, the provider stores a pending decision for the next mount while also persisting the currently applied adaptive UI for later refreshes.
 
-## Pending-Decision Model
+## Adaptive Persistence Model
 
 The provider is now intentionally split into:
 
 - a public API layer (`AdaptiveProvider` props and exported hook types)
 - a store layer (state plus actions)
-- a persistence layer (load/save/clear pending decision helpers)
+- a persistence layer (load/save/clear pending and applied decision helpers)
 - a runtime orchestration layer (polling, decision resolution, next-refresh behavior)
 
 That split keeps package consumers on stable exports while making the implementation easier to extend. Manual layout previews should go through `setManualOverride(...)` rather than mutating the raw store directly.

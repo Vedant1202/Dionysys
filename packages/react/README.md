@@ -15,7 +15,7 @@ import {
 } from '@dionysys/react';
 ```
 
-- `AdaptiveProvider`: orchestrates polling, decision resolution, and pending-decision application
+- `AdaptiveProvider`: orchestrates polling, decision resolution, queued next-refresh decisions, and applied adaptive-state persistence
 - `useAdaptiveUI()`: reads adaptive state from the provider
 - `AdminConsole`: reusable runtime configuration UI
 - `AdaptiveFeedback`: front-facing feedback component for production experiences

@@ -10,6 +10,7 @@ import type {
 } from '@dionysys/core';
 import { EditorShell } from './components/EditorShell';
 import {
+  clearStoredAppliedDecision,
   clearStoredPendingDecision,
   getOrCreateSessionId,
   randomizeSessionId,
@@ -86,6 +87,7 @@ function App() {
     if (import.meta.env.PROD) return;
 
     clearStoredPendingDecision(persistenceMode, sessionId);
+    clearStoredAppliedDecision(persistenceMode, sessionId);
     randomizeSessionId(persistenceMode);
     window.location.reload();
   };

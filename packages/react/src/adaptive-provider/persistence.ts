@@ -6,12 +6,20 @@ import {
   type PendingAdaptiveDecision,
 } from '@dionysys/core';
 import type {
+  ClearAppliedDecision,
   ClearPendingDecision,
   DeterministicAdaptiveSelection,
+  LoadAppliedDecision,
   LoadPendingDecision,
   MaybePromise,
+  SaveAppliedDecision,
   SavePendingDecision,
 } from './types.js';
+
+type PersistedDecisionLoadResult = {
+  decision?: PendingAdaptiveDecision;
+  source?: 'pending' | 'applied';
+};
 
 export function buildPendingDecisionFromMcp(decision: AdaptiveDecision): PendingAdaptiveDecision {
   return {
@@ -64,22 +72,84 @@ export function getPendingUIState(decision?: PendingAdaptiveDecision): AdaptiveU
   return decision?.uiState ?? decision?.decision?.uiState;
 }
 
-export function readInitialPendingDecision(
+export function readInitialPersistedDecision(
   loadPendingDecision: LoadPendingDecision | undefined,
+  loadAppliedDecision: LoadAppliedDecision | undefined,
   sessionId: string | undefined,
   persistenceMode: AdaptivePersistenceMode,
-): PendingAdaptiveDecision | undefined {
+): PersistedDecisionLoadResult {
   if (loadPendingDecision) {
     try {
       const loaded = loadPendingDecision();
-      return isPromiseLike(loaded) ? undefined : loaded ?? undefined;
+      if (!isPromiseLike(loaded) && loaded) {
+        return { decision: loaded, source: 'pending' };
+      }
     } catch (err) {
       console.error('Failed to load pending adaptive decision', err);
-      return undefined;
     }
   }
 
-  return readDefaultPendingDecision(sessionId, persistenceMode);
+  if (loadAppliedDecision) {
+    try {
+      const loaded = loadAppliedDecision();
+      if (!isPromiseLike(loaded) && loaded) {
+        return { decision: loaded, source: 'applied' };
+      }
+    } catch (err) {
+      console.error('Failed to load applied adaptive decision', err);
+    }
+  }
+
+  const pendingDecision = readDefaultDecision(sessionId, persistenceMode, 'pending');
+  if (pendingDecision) {
+    return { decision: pendingDecision, source: 'pending' };
+  }
+
+  const appliedDecision = readDefaultDecision(sessionId, persistenceMode, 'applied');
+  return appliedDecision
+    ? { decision: appliedDecision, source: 'applied' }
+    : {};
+}
+
+export async function loadPersistedDecision(
+  loadPendingDecision: LoadPendingDecision | undefined,
+  loadAppliedDecision: LoadAppliedDecision | undefined,
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+): Promise<PersistedDecisionLoadResult> {
+  try {
+    if (loadPendingDecision) {
+      const pendingDecision = await loadPendingDecision();
+      if (pendingDecision) {
+        return { decision: pendingDecision, source: 'pending' };
+      }
+    } else {
+      const pendingDecision = readDefaultDecision(sessionId, persistenceMode, 'pending');
+      if (pendingDecision) {
+        return { decision: pendingDecision, source: 'pending' };
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load pending adaptive decision', err);
+  }
+
+  try {
+    if (loadAppliedDecision) {
+      const appliedDecision = await loadAppliedDecision();
+      if (appliedDecision) {
+        return { decision: appliedDecision, source: 'applied' };
+      }
+    } else {
+      const appliedDecision = readDefaultDecision(sessionId, persistenceMode, 'applied');
+      if (appliedDecision) {
+        return { decision: appliedDecision, source: 'applied' };
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load applied adaptive decision', err);
+  }
+
+  return {};
 }
 
 export async function savePersistedPendingDecision(
@@ -93,9 +163,26 @@ export async function savePersistedPendingDecision(
       await savePendingDecision(decision);
       return;
     }
-    writeDefaultPendingDecision(sessionId, persistenceMode, decision);
+    writeDefaultDecision(sessionId, persistenceMode, 'pending', decision);
   } catch (err) {
     console.error('Failed to save pending adaptive decision', err);
+  }
+}
+
+export async function savePersistedAppliedDecision(
+  decision: PendingAdaptiveDecision,
+  saveAppliedDecision: SaveAppliedDecision | undefined,
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+): Promise<void> {
+  try {
+    if (saveAppliedDecision) {
+      await saveAppliedDecision(decision);
+      return;
+    }
+    writeDefaultDecision(sessionId, persistenceMode, 'applied', decision);
+  } catch (err) {
+    console.error('Failed to save applied adaptive decision', err);
   }
 }
 
@@ -109,35 +196,53 @@ export async function clearPersistedPendingDecision(
       await clearPendingDecision();
       return;
     }
-    clearDefaultPendingDecision(sessionId, persistenceMode);
+    clearDefaultDecision(sessionId, persistenceMode, 'pending');
   } catch (err) {
     console.error('Failed to clear pending adaptive decision', err);
   }
 }
 
-function readDefaultPendingDecision(
+export async function clearPersistedAppliedDecision(
+  clearAppliedDecision: ClearAppliedDecision | undefined,
   sessionId: string | undefined,
   persistenceMode: AdaptivePersistenceMode,
+): Promise<void> {
+  try {
+    if (clearAppliedDecision) {
+      await clearAppliedDecision();
+      return;
+    }
+    clearDefaultDecision(sessionId, persistenceMode, 'applied');
+  } catch (err) {
+    console.error('Failed to clear applied adaptive decision', err);
+  }
+}
+
+function readDefaultDecision(
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+  decisionType: 'pending' | 'applied',
 ): PendingAdaptiveDecision | undefined {
   if (!sessionId) return undefined;
 
   const storage = getStorage(persistenceMode);
   if (!storage) return undefined;
 
-  const raw = storage.getItem(getPendingDecisionStorageKey(sessionId));
+  const raw = storage.getItem(getDecisionStorageKey(decisionType, sessionId));
   if (!raw) return undefined;
 
   try {
     return JSON.parse(raw) as PendingAdaptiveDecision;
   } catch {
-    clearDefaultPendingDecision(sessionId, persistenceMode);
+    clearDefaultDecision(sessionId, persistenceMode, decisionType);
     return undefined;
   }
 }
 
-function writeDefaultPendingDecision(
+function writeDefaultDecision(
   sessionId: string | undefined,
   persistenceMode: AdaptivePersistenceMode,
+  decisionType: 'pending' | 'applied',
   decision: PendingAdaptiveDecision,
 ): void {
   if (!sessionId) return;
@@ -145,20 +250,24 @@ function writeDefaultPendingDecision(
   const storage = getStorage(persistenceMode);
   if (!storage) return;
 
-  storage.setItem(getPendingDecisionStorageKey(sessionId), JSON.stringify(decision));
+  storage.setItem(getDecisionStorageKey(decisionType, sessionId), JSON.stringify(decision));
 }
 
-function clearDefaultPendingDecision(sessionId: string | undefined, persistenceMode: AdaptivePersistenceMode): void {
+function clearDefaultDecision(
+  sessionId: string | undefined,
+  persistenceMode: AdaptivePersistenceMode,
+  decisionType: 'pending' | 'applied',
+): void {
   if (!sessionId) return;
 
   const storage = getStorage(persistenceMode);
   if (!storage) return;
 
-  storage.removeItem(getPendingDecisionStorageKey(sessionId));
+  storage.removeItem(getDecisionStorageKey(decisionType, sessionId));
 }
 
-function getPendingDecisionStorageKey(sessionId: string): string {
-  return `dionysys:pending-decision:${sessionId}`;
+function getDecisionStorageKey(decisionType: 'pending' | 'applied', sessionId: string): string {
+  return `dionysys:${decisionType}-decision:${sessionId}`;
 }
 
 function getStorage(persistenceMode: AdaptivePersistenceMode): Storage | undefined {

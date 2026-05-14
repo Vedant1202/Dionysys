@@ -1,6 +1,6 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AdaptiveDecision, AdaptiveUIDefinition } from '@dionysys/core';
+import type { AdaptiveDecision, AdaptiveUIDefinition, PendingAdaptiveDecision } from '@dionysys/core';
 import { AdaptiveProvider } from '../../packages/react/src/AdaptiveProvider.tsx';
 import { useAdaptiveUI, type UseAdaptiveUIResult } from '../../packages/react/src/useAdaptiveUI.ts';
 
@@ -145,6 +145,7 @@ describe('AdaptiveProvider', () => {
       expect(latestState?.pendingPersonality).toBe('text_first__novice');
       expect(latestState?.decisionConfidence).toBeCloseTo(0.64, 5);
     });
+    expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeTruthy();
 
     firstRender.unmount();
     latestState = null;
@@ -168,6 +169,327 @@ describe('AdaptiveProvider', () => {
       expect(latestState?.selectedModality).toBe('text_first');
       expect(latestState?.selectedExpertise).toBe('novice');
       expect(latestState?.hasPendingUIChange).toBe(false);
+    });
+    await vi.waitFor(() => {
+      expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
+    });
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeTruthy();
+
+    cleanup();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="mcp"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('text_first__novice');
+      expect(latestState?.currentUIState?.variant).toBe('text_first__novice');
+      expect(latestState?.hasPendingUIChange).toBe(false);
+    });
+  });
+
+  it('persists the applied deterministic state across repeated remounts in immediate mode', async () => {
+    const sessionId = 'sess_immediate_persist';
+    const evaluatePolicy = vi.fn<() => Promise<string>>().mockResolvedValue('draw_first__novice');
+
+    const firstRender = render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="immediate"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        evaluatePolicy={evaluatePolicy}
+        minEventsBeforeLock={1}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    act(() => {
+      latestState!.incrementEventsSent(1);
+    });
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('draw_first__novice');
+    });
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeTruthy();
+
+    firstRender.unmount();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="immediate"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('draw_first__novice');
+    });
+  });
+
+  it('uses built-in applied persistence when only custom pending hooks are provided', async () => {
+    const sessionId = 'sess_custom_pending_only';
+    let customPendingDecision: PendingAdaptiveDecision | undefined;
+    const savePendingDecision = vi.fn((decision: PendingAdaptiveDecision) => {
+      customPendingDecision = decision;
+    });
+    const loadPendingDecision = vi.fn(() => customPendingDecision);
+    const clearPendingDecision = vi.fn(() => {
+      customPendingDecision = undefined;
+    });
+
+    const firstRender = render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        evaluatePolicy={vi.fn<() => Promise<string>>().mockResolvedValue('text_first__novice')}
+        savePendingDecision={savePendingDecision}
+        loadPendingDecision={loadPendingDecision}
+        clearPendingDecision={clearPendingDecision}
+        minEventsBeforeLock={1}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    act(() => {
+      latestState!.incrementEventsSent(1);
+    });
+
+    await vi.waitFor(() => {
+      expect(latestState?.hasPendingUIChange).toBe(true);
+    });
+    expect(customPendingDecision?.variant).toBe('text_first__novice');
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
+
+    firstRender.unmount();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        loadPendingDecision={loadPendingDecision}
+        clearPendingDecision={clearPendingDecision}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('text_first__novice');
+    });
+    await vi.waitFor(() => {
+      expect(customPendingDecision).toBeUndefined();
+    });
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeTruthy();
+
+    cleanup();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        loadPendingDecision={vi.fn(() => undefined)}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('text_first__novice');
+    });
+  });
+
+  it('uses sessionStorage for pending and applied state in tab mode', async () => {
+    const sessionId = 'sess_tab_mode';
+
+    const firstRender = render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="tab"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        evaluatePolicy={vi.fn<() => Promise<string>>().mockResolvedValue('draw_first')}
+        minEventsBeforeLock={1}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    act(() => {
+      latestState!.incrementEventsSent(1);
+    });
+
+    await vi.waitFor(() => {
+      expect(latestState?.hasPendingUIChange).toBe(true);
+    });
+    expect(window.sessionStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeTruthy();
+    expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
+
+    firstRender.unmount();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="tab"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('draw_first');
+    });
+    await vi.waitFor(() => {
+      expect(window.sessionStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
+    });
+    expect(window.sessionStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeTruthy();
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
+  });
+
+  it('prefers custom applied hooks over built-in applied storage', async () => {
+    const sessionId = 'sess_custom_applied';
+    let customAppliedDecision: PendingAdaptiveDecision | undefined;
+    const saveAppliedDecision = vi.fn((decision: PendingAdaptiveDecision) => {
+      customAppliedDecision = decision;
+    });
+    const loadAppliedDecision = vi.fn(() => customAppliedDecision);
+
+    const firstRender = render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="immediate"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        evaluatePolicy={vi.fn<() => Promise<string>>().mockResolvedValue('draw_first__novice')}
+        saveAppliedDecision={saveAppliedDecision}
+        loadAppliedDecision={loadAppliedDecision}
+        minEventsBeforeLock={1}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    act(() => {
+      latestState!.incrementEventsSent(1);
+    });
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('draw_first__novice');
+    });
+    expect(customAppliedDecision?.variant).toBe('draw_first__novice');
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
+
+    firstRender.unmount();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="immediate"
+        sessionId={sessionId}
+        persistenceMode="browser"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        loadAppliedDecision={loadAppliedDecision}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('draw_first__novice');
+    });
+  });
+
+  it('does not persist queued or applied state in memory mode', async () => {
+    const sessionId = 'sess_memory_mode';
+
+    const firstRender = render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="memory"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+        evaluatePolicy={vi.fn<() => Promise<string>>().mockResolvedValue('draw_first')}
+        minEventsBeforeLock={1}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    act(() => {
+      latestState!.incrementEventsSent(1);
+    });
+
+    await vi.waitFor(() => {
+      expect(latestState?.hasPendingUIChange).toBe(true);
+    });
+    expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
+
+    firstRender.unmount();
+    latestState = null;
+
+    render(
+      <AdaptiveProvider
+        mode="deterministic"
+        decisionApplication="next-refresh"
+        sessionId={sessionId}
+        persistenceMode="memory"
+        defaultVariant="neutral"
+        defaultUIState={defaultUIState}
+      >
+        <Harness />
+      </AdaptiveProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(latestState?.currentVariant).toBe('neutral');
     });
   });
 });

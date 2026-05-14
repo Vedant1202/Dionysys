@@ -16,6 +16,9 @@ export type MaybePromise<T> = T | Promise<T>;
 export type LoadPendingDecision = () => MaybePromise<PendingAdaptiveDecision | null | undefined>;
 export type SavePendingDecision = (decision: PendingAdaptiveDecision) => MaybePromise<void>;
 export type ClearPendingDecision = () => MaybePromise<void>;
+export type LoadAppliedDecision = () => MaybePromise<PendingAdaptiveDecision | null | undefined>;
+export type SaveAppliedDecision = (decision: PendingAdaptiveDecision) => MaybePromise<void>;
+export type ClearAppliedDecision = () => MaybePromise<void>;
 
 export interface DeterministicAdaptiveSelection {
   mode: 'deterministic';
@@ -82,6 +85,9 @@ export interface AdaptiveProviderProps {
   loadPendingDecision?: LoadPendingDecision;
   savePendingDecision?: SavePendingDecision;
   clearPendingDecision?: ClearPendingDecision;
+  loadAppliedDecision?: LoadAppliedDecision;
+  saveAppliedDecision?: SaveAppliedDecision;
+  clearAppliedDecision?: ClearAppliedDecision;
   pollingIntervalMs?: number;
   minEventsBeforeLock?: number;
 }

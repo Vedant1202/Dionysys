@@ -2,6 +2,7 @@ import type { AdaptivePersistenceMode } from '@dionysys/core';
 
 const SESSION_STORAGE_KEY = 'dionysys:session-id';
 const PENDING_DECISION_STORAGE_KEY_PREFIX = 'dionysys:pending-decision:';
+const APPLIED_DECISION_STORAGE_KEY_PREFIX = 'dionysys:applied-decision:';
 
 let inMemorySessionId: string | undefined;
 
@@ -52,6 +53,11 @@ export function clearStoredPendingDecision(mode: AdaptivePersistenceMode, sessio
   getStorageForMode(mode)?.removeItem(getPendingDecisionStorageKey(sessionId));
 }
 
+export function clearStoredAppliedDecision(mode: AdaptivePersistenceMode, sessionId: string): void {
+  if (!sessionId) return;
+  getStorageForMode(mode)?.removeItem(getAppliedDecisionStorageKey(sessionId));
+}
+
 export function randomizeSessionId(mode: AdaptivePersistenceMode): string {
   clearStoredSessionId(mode);
   const nextSessionId = createSessionId();
@@ -87,4 +93,8 @@ function getStorageForMode(mode: Exclude<AdaptivePersistenceMode, 'memory'> | Ad
 
 function getPendingDecisionStorageKey(sessionId: string): string {
   return `${PENDING_DECISION_STORAGE_KEY_PREFIX}${sessionId}`;
+}
+
+function getAppliedDecisionStorageKey(sessionId: string): string {
+  return `${APPLIED_DECISION_STORAGE_KEY_PREFIX}${sessionId}`;
 }

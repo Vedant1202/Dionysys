@@ -374,7 +374,12 @@ export function FeedbackSlot() {
 
 ## Refresh-Safe Decisions
 
-Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount or browser refresh.
+Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys still infers the user at the normal threshold, but it splits persistence into two records:
+
+- a pending decision that represents the queued change for the next refresh
+- an applied decision that represents the currently visible adaptive UI for that session
+
+That means the first refresh applies the queued UI, and later refreshes keep that applied UI until a newer decision replaces it or the session is reset.
 
 Use `persistenceMode` to control how both the session id and built-in pending-decision persistence survive reloads:
 
@@ -398,7 +403,7 @@ With `sessionId`, `persistenceMode="browser"` is the demo-friendly path and requ
 </AdaptiveProvider>
 ```
 
-Apps can replace localStorage with server persistence by providing all three hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
+Apps can replace local storage with server persistence by providing both pending and applied hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
 
 ```tsx
 <AdaptiveProvider
@@ -410,6 +415,13 @@ Apps can replace localStorage with server persistence by providing all three hoo
     body: JSON.stringify(decision),
   })}
   clearPendingDecision={() => fetch('/api/pending-decision', { method: 'DELETE' })}
+  loadAppliedDecision={() => fetch('/api/applied-decision').then((res) => res.json())}
+  saveAppliedDecision={(decision) => fetch('/api/applied-decision', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(decision),
+  })}
+  clearAppliedDecision={() => fetch('/api/applied-decision', { method: 'DELETE' })}
   defaultVariant="neutral"
 />
 ```

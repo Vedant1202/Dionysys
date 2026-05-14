@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearStoredAppliedDecision,
+  clearStoredPendingDecision,
   clearStoredSessionId,
   getOrCreateSessionId,
   peekStoredSessionId,
@@ -59,5 +61,17 @@ describe('getOrCreateSessionId', () => {
     expect(peekStoredSessionId('browser')).toBeUndefined();
     expect(peekStoredSessionId('tab')).toBeUndefined();
     expect(peekStoredSessionId('memory')).toBeUndefined();
+  });
+
+  it('clears stored pending and applied decisions for the selected mode', () => {
+    const sessionId = 'sess_cleanup_test';
+    window.localStorage.setItem(`dionysys:pending-decision:${sessionId}`, '{"variant":"text_first"}');
+    window.localStorage.setItem(`dionysys:applied-decision:${sessionId}`, '{"variant":"text_first"}');
+
+    clearStoredPendingDecision('browser', sessionId);
+    clearStoredAppliedDecision('browser', sessionId);
+
+    expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
+    expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
   });
 });

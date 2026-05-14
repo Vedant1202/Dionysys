@@ -16,6 +16,8 @@ It also includes a decision application mode:
 - `immediate`: apply the selected variant or MCP UI state as soon as the decision resolves.
 - `next-refresh`: store the resolved personality/decision now, keep the active workspace stable, and apply the UI change on the next refresh/provider mount.
 
+For prototype testing, the admin console also shows the active persistence mode and includes a non-production session randomize tool. That reset clears the session id plus both queued and applied adaptive state for the current session before reloading.
+
 The Excalidraw demo defaults to `prototype` plus `next-refresh`.
 
 ## Enable / Disable
