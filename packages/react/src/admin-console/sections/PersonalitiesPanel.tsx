@@ -16,14 +16,31 @@ export function PersonalitiesPanel({
   setSelectedResourceIndex: (index: number) => void;
   updateConfig: AdminConfigUpdater;
 }) {
+  const modalityResources = config.mcp.axes.modalityResources;
+  const expertiseResources = config.mcp.axes.expertiseResources;
+  const resources = [...modalityResources, ...expertiseResources];
+
   const updateSelectedResource = (updater: (resource: PersonalityResource) => PersonalityResource) => {
+    const isModalityResource = selectedResourceIndex < modalityResources.length;
+    const resourceIndex = isModalityResource ? selectedResourceIndex : selectedResourceIndex - modalityResources.length;
+
     updateConfig((current) => ({
       ...current,
       mcp: {
         ...current.mcp,
-        resources: current.mcp.resources.map((resource, index) => (
-          index === selectedResourceIndex ? updater(resource) : resource
-        )),
+        axes: {
+          ...current.mcp.axes,
+          modalityResources: isModalityResource
+            ? current.mcp.axes.modalityResources.map((resource, index) => (
+              index === resourceIndex ? updater(resource) : resource
+            ))
+            : current.mcp.axes.modalityResources,
+          expertiseResources: isModalityResource
+            ? current.mcp.axes.expertiseResources
+            : current.mcp.axes.expertiseResources.map((resource, index) => (
+              index === resourceIndex ? updater(resource) : resource
+            )),
+        },
       },
     }));
   };
@@ -35,7 +52,7 @@ export function PersonalitiesPanel({
   return (
     <div style={styles.resourceLayout}>
       <aside style={styles.resourceList}>
-        {config.mcp.resources.map((resource, index) => (
+        {resources.map((resource, index) => (
           <button
             key={resource.id}
             type="button"
@@ -43,7 +60,9 @@ export function PersonalitiesPanel({
             onClick={() => setSelectedResourceIndex(index)}
           >
             <span style={styles.resourceName}>{resource.name}</span>
-            <span style={styles.resourceId}>{resource.id}</span>
+            <span style={styles.resourceId}>
+              {index < modalityResources.length ? 'modality' : 'expertise'}: {resource.id}
+            </span>
           </button>
         ))}
       </aside>

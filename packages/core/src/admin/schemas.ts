@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AdaptiveDecisionApplicationSchema,
   AdaptiveModeSchema,
+  AdaptivePersistenceModeSchema,
   AdaptivePresentationModeSchema,
   PersonalityResourcesSchema,
 } from '../mcp/schemas.js';
@@ -42,11 +43,18 @@ export const AdminPolicyConfigSchema = z.object({
   variantMapping: z.record(z.string()).optional(),
 });
 
-export const AdminDeterministicConfigSchema = z.object({
+export const AdminDeterministicAxisConfigSchema = z.object({
   personas: z.array(z.string().min(1)).min(1),
   initialCounts: z.record(z.number()),
   eventRules: z.array(AdminEventWeightRuleSchema),
   heuristics: z.array(AdminHeuristicRuleSchema),
+});
+
+export const AdminDeterministicConfigSchema = z.object({
+  axes: z.object({
+    modality: AdminDeterministicAxisConfigSchema,
+    expertise: AdminDeterministicAxisConfigSchema,
+  }),
   policy: AdminPolicyConfigSchema,
 });
 
@@ -54,12 +62,16 @@ export const AdminModeConfigSchema = z.object({
   defaultMode: AdaptiveModeSchema,
   presentationMode: AdaptivePresentationModeSchema,
   decisionApplication: AdaptiveDecisionApplicationSchema,
+  persistenceMode: AdaptivePersistenceModeSchema,
   minEventsBeforeLock: z.number().int().positive(),
   pollingIntervalMs: z.number().int().positive(),
 });
 
 export const AdminMcpConfigSchema = z.object({
-  resources: PersonalityResourcesSchema,
+  axes: z.object({
+    modalityResources: PersonalityResourcesSchema,
+    expertiseResources: PersonalityResourcesSchema,
+  }),
   minConfidence: z.number().min(0).max(1),
   fallbackVariant: z.string().min(1),
 });

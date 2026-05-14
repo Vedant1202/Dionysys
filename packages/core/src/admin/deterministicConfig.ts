@@ -1,7 +1,19 @@
 import { InferenceEngine, type EventWeightResolver, type GenericEvent } from '../inference/index.js';
 import { PolicyEngine } from '../policy/PolicyEngine.js';
+import {
+  EXPERTISE_PERSONAS,
+  MODALITY_PERSONAS,
+  buildLockedModalityScores,
+  countModalityEvents,
+  composeUiVariant,
+  getTopScoredKey,
+  type AxisSelectionSummary,
+  type ExpertisePersona,
+  type ModalityPersona,
+} from '../mcp/index.js';
 import type {
   AdminConsoleConfig,
+  AdminDeterministicAxisConfig,
   AdminDeterministicConfig,
   AdminHeuristicRule,
   AdminNumericOperator,
@@ -12,28 +24,79 @@ export function inferPersonaFromAdminConfig(
   config: AdminDeterministicConfig,
   events: GenericEvent[],
 ): Record<string, number> {
+  return inferDeterministicAxesFromAdminConfig(config, events).personaScores;
+}
+
+export function inferDeterministicAxesFromAdminConfig(
+  config: AdminDeterministicConfig,
+  events: GenericEvent[],
+): AxisSelectionSummary {
+  const { drawCount, textCount } = countModalityEvents(events);
+  const modalityScores = buildLockedModalityScores(drawCount, textCount);
+  const expertiseScores = normalizeAxisScores(
+    inferAxisScores(config.axes.expertise, events),
+    EXPERTISE_PERSONAS,
+  );
+
+  const selectedModality = getTopScoredKey<ModalityPersona>(modalityScores, 'neutral');
+  const selectedExpertise = getTopScoredKey<ExpertisePersona>(expertiseScores, 'standard');
+
+  return {
+    modalityScores,
+    expertiseScores,
+    selectedModality,
+    selectedExpertise,
+    composedUiVariant: composeUiVariant(selectedModality, selectedExpertise),
+    personaScores: modalityScores,
+  };
+}
+
+export function selectVariantFromAdminConfig(
+  config: AdminConsoleConfig,
+  modalityScores: Record<string, number>,
+  expertiseScores?: Record<string, number>,
+): { chosenVariant: string; propensity: number; selectedModality: ModalityPersona; selectedExpertise: ExpertisePersona } {
+  const modalityPolicy = new PolicyEngine({
+    personas: config.deterministic.axes.modality.personas,
+    epsilon: config.deterministic.policy.epsilon,
+    variantMapping: config.deterministic.policy.variantMapping,
+  }).selectVariant(modalityScores);
+
+  const selectedModality = getTopScoredKey<ModalityPersona>(
+    { ...modalityScores, [modalityPolicy.chosenVariant]: Number.MAX_SAFE_INTEGER },
+    'neutral',
+  );
+  const selectedExpertise = getTopScoredKey<ExpertisePersona>(expertiseScores ?? {}, 'standard');
+
+  return {
+    chosenVariant: composeUiVariant(selectedModality, selectedExpertise),
+    propensity: modalityPolicy.propensity,
+    selectedModality,
+    selectedExpertise,
+  };
+}
+
+function inferAxisScores(
+  config: AdminDeterministicAxisConfig,
+  events: GenericEvent[],
+): Record<string, number> {
   const engine = new InferenceEngine({
     personas: config.personas,
     initialCounts: config.initialCounts,
     eventWeights: buildEventWeights(config),
     heuristics: buildHeuristics(config),
   });
-
   return engine.inferPersona(events);
 }
 
-export function selectVariantFromAdminConfig(
-  config: AdminConsoleConfig,
-  personaScores: Record<string, number>,
-): { chosenVariant: string; propensity: number } {
-  return new PolicyEngine({
-    personas: config.deterministic.personas,
-    epsilon: config.deterministic.policy.epsilon,
-    variantMapping: config.deterministic.policy.variantMapping,
-  }).selectVariant(personaScores);
+function normalizeAxisScores<T extends readonly string[]>(
+  scores: Record<string, number>,
+  personas: T,
+): Record<T[number], number> {
+  return Object.fromEntries(personas.map((persona) => [persona, scores[persona] ?? 0])) as Record<T[number], number>;
 }
 
-function buildEventWeights(config: AdminDeterministicConfig): Record<string, EventWeightResolver> {
+function buildEventWeights(config: AdminDeterministicAxisConfig): Record<string, EventWeightResolver> {
   const grouped = new Map<string, typeof config.eventRules>();
   for (const rule of config.eventRules.filter((item) => item.enabled !== false)) {
     grouped.set(rule.eventType, [...(grouped.get(rule.eventType) ?? []), rule]);
@@ -48,7 +111,7 @@ function buildEventWeights(config: AdminDeterministicConfig): Record<string, Eve
   ]));
 }
 
-function buildHeuristics(config: AdminDeterministicConfig) {
+function buildHeuristics(config: AdminDeterministicAxisConfig) {
   return config.heuristics
     .filter((rule) => rule.enabled !== false)
     .map((rule) => (events: GenericEvent[]) => (

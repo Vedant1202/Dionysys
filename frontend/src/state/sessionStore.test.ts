@@ -8,11 +8,9 @@ beforeEach(() => {
     useSessionStore.setState({
       currentVariant: 'neutral',
       personaProbs: {
-        neutral: 0.2,
-        draw_first: 0.2,
-        text_first: 0.2,
-        guided_novice: 0.2,
-        power_user: 0.2,
+        neutral: 0.34,
+        draw_first: 0.33,
+        text_first: 0.33,
       },
       eventsSentCount: 0,
       isPolicyLocked: false,
@@ -45,14 +43,14 @@ describe('sessionStore', () => {
   });
 
   it('lockPolicy sets isPolicyLocked to true and updates variant', () => {
-    act(() => useSessionStore.getState().lockPolicy('power_user'));
+    act(() => useSessionStore.getState().lockPolicy('draw_first__power_user'));
     const state = useSessionStore.getState();
     expect(state.isPolicyLocked).toBe(true);
-    expect(state.currentVariant).toBe('power_user');
+    expect(state.currentVariant).toBe('draw_first__power_user');
   });
 
   it('setPersonaProbs updates personaProbs', () => {
-    const newProbs = { neutral: 0.1, draw_first: 0.6, text_first: 0.1, guided_novice: 0.1, power_user: 0.1 };
+    const newProbs = { neutral: 0.1, draw_first: 0.6, text_first: 0.3 };
     act(() => useSessionStore.getState().setPersonaProbs(newProbs));
     expect(useSessionStore.getState().personaProbs).toEqual(newProbs);
   });

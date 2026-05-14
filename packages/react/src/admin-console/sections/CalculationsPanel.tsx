@@ -14,15 +14,40 @@ export function CalculationsPanel({
   return (
     <div style={styles.twoColumn}>
       <SectionCard title="Deterministic Policy">
-        <Field label="Personas (comma separated)">
+        <Field label="Modality personas (comma separated)">
           <input
             style={styles.input}
-            value={config.deterministic.personas.join(', ')}
+            value={config.deterministic.axes.modality.personas.join(', ')}
             onChange={(event) => updateConfig((current) => ({
               ...current,
               deterministic: {
                 ...current.deterministic,
-                personas: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                axes: {
+                  ...current.deterministic.axes,
+                  modality: {
+                    ...current.deterministic.axes.modality,
+                    personas: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                  },
+                },
+              },
+            }))}
+          />
+        </Field>
+        <Field label="Expertise personas (comma separated)">
+          <input
+            style={styles.input}
+            value={config.deterministic.axes.expertise.personas.join(', ')}
+            onChange={(event) => updateConfig((current) => ({
+              ...current,
+              deterministic: {
+                ...current.deterministic,
+                axes: {
+                  ...current.deterministic.axes,
+                  expertise: {
+                    ...current.deterministic.axes.expertise,
+                    personas: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+                  },
+                },
               },
             }))}
           />
@@ -48,30 +73,62 @@ export function CalculationsPanel({
           />
         </Field>
         <KeyValueNumberEditor
-          title="Initial persona counts"
-          value={config.deterministic.initialCounts}
+          title="Initial modality counts"
+          value={config.deterministic.axes.modality.initialCounts}
           onChange={(initialCounts) => updateConfig((current) => ({
             ...current,
-            deterministic: { ...current.deterministic, initialCounts },
+            deterministic: {
+              ...current.deterministic,
+              axes: {
+                ...current.deterministic.axes,
+                modality: { ...current.deterministic.axes.modality, initialCounts },
+              },
+            },
+          }))}
+        />
+        <KeyValueNumberEditor
+          title="Initial expertise counts"
+          value={config.deterministic.axes.expertise.initialCounts}
+          onChange={(initialCounts) => updateConfig((current) => ({
+            ...current,
+            deterministic: {
+              ...current.deterministic,
+              axes: {
+                ...current.deterministic.axes,
+                expertise: { ...current.deterministic.axes.expertise, initialCounts },
+              },
+            },
           }))}
         />
       </SectionCard>
 
       <div style={styles.stack}>
         <JsonSection
-          title="Event Weight Rules"
-          value={config.deterministic.eventRules}
+          title="Modality Event Weight Rules"
+          value={config.deterministic.axes.modality.eventRules}
           onApply={(eventRules: AdminEventWeightRule[]) => updateConfig((current) => ({
             ...current,
-            deterministic: { ...current.deterministic, eventRules },
+            deterministic: {
+              ...current.deterministic,
+              axes: {
+                ...current.deterministic.axes,
+                modality: { ...current.deterministic.axes.modality, eventRules },
+              },
+            },
           }))}
         />
         <JsonSection
-          title="Heuristic Rules"
-          value={config.deterministic.heuristics}
+          title="Expertise Heuristic Rules"
+          value={config.deterministic.axes.expertise.heuristics}
           onApply={(heuristics: AdminHeuristicRule[]) => updateConfig((current) => ({
             ...current,
-            deterministic: { ...current.deterministic, heuristics },
+            deterministic: {
+              ...current.deterministic,
+              axes: {
+                ...current.deterministic.axes,
+                expertise: { ...current.deterministic.axes.expertise, heuristics },
+              },
+            },
           }))}
         />
       </div>

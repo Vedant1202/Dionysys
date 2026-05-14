@@ -88,6 +88,7 @@ export function App() {
       mode="deterministic"
       presentationMode="production"
       decisionApplication="next-refresh"
+      persistenceMode="browser"
       sessionId="session_123"
       defaultVariant="neutral"
       pollingIntervalMs={3000}
@@ -224,6 +225,7 @@ export function App() {
       mode="mcp"
       presentationMode="production"
       decisionApplication="next-refresh"
+      persistenceMode="browser"
       sessionId="session_123"
       defaultVariant="neutral"
       minEventsBeforeLock={5}
@@ -284,6 +286,7 @@ State fields:
 | --- | --- |
 | `mode` | Current adaptive mode: `deterministic` or `mcp`. |
 | `presentationMode` | `prototype` shows diagnostics and controls; `production` should hide experiment details. |
+| `persistenceMode` | Built-in persistence lifetime: `memory`, `tab`, or `browser`. |
 | `currentVariant` | Active variant name. Deterministic mode gets this from policy; MCP mode gets it from the selected action UI state. |
 | `currentUIState` | MCP action UI state, or the optional default UI state. |
 | `currentPersonality` | Selected MCP personality id. |
@@ -371,15 +374,27 @@ export function FeedbackSlot() {
 
 ## Refresh-Safe Decisions
 
-Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys will still infer the user and store the decision at the normal threshold, but it keeps `currentVariant` and `currentUIState` unchanged until the next provider mount or browser refresh.
+Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys still infers the user at the normal threshold, but it splits persistence into two records:
 
-With `sessionId`, the package uses localStorage by default. This is the demo-friendly path and requires no extra persistence API:
+- a pending decision that represents the queued change for the next refresh
+- an applied decision that represents the currently visible adaptive UI for that session
+
+That means the first refresh applies the queued UI, and later refreshes keep that applied UI until a newer decision replaces it or the session is reset.
+
+Use `persistenceMode` to control how both the session id and built-in pending-decision persistence survive reloads:
+
+- `memory` resets on full refresh
+- `tab` persists within the same browser tab
+- `browser` persists across refreshes using `localStorage`
+
+With `sessionId`, `persistenceMode="browser"` is the demo-friendly path and requires no extra persistence API:
 
 ```tsx
 <AdaptiveProvider
   mode="mcp"
   presentationMode="production"
   decisionApplication="next-refresh"
+  persistenceMode="browser"
   sessionId="session_123"
   defaultVariant="neutral"
   resolveDecision={resolveDecision}
@@ -388,7 +403,7 @@ With `sessionId`, the package uses localStorage by default. This is the demo-fri
 </AdaptiveProvider>
 ```
 
-Apps can replace localStorage with server persistence by providing all three hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
+Apps can replace local storage with server persistence by providing both pending and applied hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
 
 ```tsx
 <AdaptiveProvider
@@ -400,6 +415,13 @@ Apps can replace localStorage with server persistence by providing all three hoo
     body: JSON.stringify(decision),
   })}
   clearPendingDecision={() => fetch('/api/pending-decision', { method: 'DELETE' })}
+  loadAppliedDecision={() => fetch('/api/applied-decision').then((res) => res.json())}
+  saveAppliedDecision={(decision) => fetch('/api/applied-decision', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(decision),
+  })}
+  clearAppliedDecision={() => fetch('/api/applied-decision', { method: 'DELETE' })}
   defaultVariant="neutral"
 />
 ```

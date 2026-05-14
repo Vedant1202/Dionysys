@@ -1,22 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
-import type { AdaptiveMode } from '@dionysys/core';
+import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
 import { AdaptiveFeedback, type AdaptiveFeedbackSubmission, useAdaptiveUI } from '@dionysys/react';
 import { DebugPanel } from './DebugPanel';
 import { eventCollector } from '../core/eventCollector';
-import { SESSION_ID } from '../core/session';
 import { DynamicToolbar } from './DynamicToolbar';
 import { resolveVariantConfig } from '../config/variantConfig';
 
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
+  persistenceMode: AdaptivePersistenceMode;
+  sessionId: string;
   onAdaptiveModeChange: (mode: AdaptiveMode) => void;
   apiBaseUrl: string;
   onOpenAdmin?: () => void;
 }
 
-export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
+export function EditorShell({
+  adaptiveMode,
+  persistenceMode,
+  sessionId,
+  onAdaptiveModeChange,
+  apiBaseUrl,
+  onOpenAdmin,
+}: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const {
     presentationMode,
@@ -32,33 +40,34 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     currentVariant,
     adaptiveMode === 'mcp' ? currentUIState : undefined,
   );
-  const keepsNativeToolbar = currentVariant === 'neutral' || currentVariant === 'power_user';
+  const keepsNativeToolbar = config?.toolbar?.mode === 'blocklist';
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
+    eventCollector.setSessionId(sessionId);
     eventCollector.onFlush = incrementEventsSent;
     return () => {
       eventCollector.onFlush = undefined;
     };
-  }, [incrementEventsSent]);
+  }, [incrementEventsSent, sessionId]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
       navigator.sendBeacon(
         `${apiBaseUrl}/api/reward/complete`,
-        new Blob([JSON.stringify({ sessionId: SESSION_ID })], { type: 'application/json' })
+        new Blob([JSON.stringify({ sessionId })], { type: 'application/json' })
       );
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, sessionId]);
 
   const handleFeedback = async (feedback: AdaptiveFeedbackSubmission) => {
     await fetch(`${apiBaseUrl}/api/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: SESSION_ID,
+        sessionId,
         events: [
           {
             eventType: 'feedback_submitted',
@@ -71,7 +80,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
   };
 
   const getUIOptions = (): any => {
-    if (!config || currentVariant === 'neutral') return undefined;
+    if (!config || keepsNativeToolbar) return undefined;
     return {
       canvasActions: config.canvasActions
     };
@@ -118,7 +127,7 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
         )}
         {isPrototype && (
         <div className="flex-none gap-2 px-4 italic text-sm opacity-60">
-           Session: {SESSION_ID}
+           Session: {sessionId} ({persistenceMode})
         </div>
         )}
         {isPrototype && hasPendingUIChange && (

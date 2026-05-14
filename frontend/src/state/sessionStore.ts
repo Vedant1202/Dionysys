@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 
-export type UiVariant = 'neutral' | 'draw_first' | 'text_first' | 'guided_novice' | 'power_user';
+export type UiVariant =
+  | 'neutral'
+  | 'neutral__novice'
+  | 'neutral__power_user'
+  | 'draw_first'
+  | 'draw_first__novice'
+  | 'draw_first__power_user'
+  | 'text_first'
+  | 'text_first__novice'
+  | 'text_first__power_user';
 
 interface SessionState {
   currentVariant: UiVariant;
@@ -18,11 +27,9 @@ export const useSessionStore = create<SessionState>((set) => ({
   currentVariant: 'neutral',
   setVariant: (variant) => set({ currentVariant: variant }),
   personaProbs: {
-    draw_heavy: 0.2,
-    text_heavy: 0.2,
-    shortcut_heavy: 0.2,
-    menu_explorer: 0.2,
-    novice_guided: 0.2,
+    neutral: 0.34,
+    draw_first: 0.33,
+    text_first: 0.33,
   },
   setPersonaProbs: (probs) => set({ personaProbs: probs }),
 

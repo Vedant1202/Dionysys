@@ -4,11 +4,17 @@ import type {
   AdaptiveDecision,
   AdaptiveDecisionApplication,
   AdaptiveMode,
+  AdaptivePersistenceMode,
   AdaptivePresentationMode,
   AdminConsoleConfig,
 } from '@dionysys/core';
 import { EditorShell } from './components/EditorShell';
-import { SESSION_ID } from './core/session';
+import {
+  clearStoredAppliedDecision,
+  clearStoredPendingDecision,
+  getOrCreateSessionId,
+  randomizeSessionId,
+} from './core/session';
 import { VARIANT_CONFIGS } from './config/variantConfig';
 import './App.css';
 
@@ -23,6 +29,8 @@ function App() {
   const [adaptiveMode, setAdaptiveMode] = useState<AdaptiveMode>('deterministic');
   const [presentationMode, setPresentationMode] = useState<AdaptivePresentationMode>('prototype');
   const [decisionApplication, setDecisionApplication] = useState<AdaptiveDecisionApplication>('next-refresh');
+  const [persistenceMode, setPersistenceMode] = useState<AdaptivePersistenceMode>('browser');
+  const [sessionId, setSessionId] = useState(() => getOrCreateSessionId('browser'));
   const [providerVersion, setProviderVersion] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isConfigBootstrapped, setIsConfigBootstrapped] = useState(!ADMIN_CONSOLE_VISIBLE);
@@ -60,6 +68,7 @@ function App() {
     setAdaptiveMode(config.mode.defaultMode);
     setPresentationMode(config.mode.presentationMode);
     setDecisionApplication(config.mode.decisionApplication);
+    setPersistenceMode(config.mode.persistenceMode);
     setProviderSettings({
       minEventsBeforeLock: config.mode.minEventsBeforeLock,
       pollingIntervalMs: config.mode.pollingIntervalMs,
@@ -68,6 +77,19 @@ function App() {
     if (remountProvider) {
       setProviderVersion((version) => version + 1);
     }
+  };
+
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId(persistenceMode));
+  }, [persistenceMode]);
+
+  const handleRandomizeSession = () => {
+    if (import.meta.env.PROD) return;
+
+    clearStoredPendingDecision(persistenceMode, sessionId);
+    clearStoredAppliedDecision(persistenceMode, sessionId);
+    randomizeSessionId(persistenceMode);
+    window.location.reload();
   };
 
   if (!isConfigBootstrapped) {
@@ -83,17 +105,18 @@ function App() {
   return (
     <div className="App" data-theme="winter">
       <AdaptiveProvider
-         key={`${adaptiveMode}-${presentationMode}-${decisionApplication}-${providerVersion}`}
+         key={`${adaptiveMode}-${presentationMode}-${decisionApplication}-${persistenceMode}-${sessionId}-${providerVersion}`}
          mode={adaptiveMode}
          presentationMode={presentationMode}
          decisionApplication={decisionApplication}
-         sessionId={SESSION_ID}
+         persistenceMode={persistenceMode}
+         sessionId={sessionId}
          defaultVariant="neutral"
          defaultUIState={{ variant: 'neutral', ...VARIANT_CONFIGS.neutral }}
          minEventsBeforeLock={providerSettings.minEventsBeforeLock}
          pollingIntervalMs={providerSettings.pollingIntervalMs}
          pollInference={adaptiveMode === 'deterministic' ? async () => {
-           const response = await fetch(`${API_BASE_URL}/api/inference/${SESSION_ID}`);
+           const response = await fetch(`${API_BASE_URL}/api/inference/${sessionId}`);
            if (response.ok) {
              const data = await response.json();
              return data.probabilities;
@@ -104,16 +127,16 @@ function App() {
            const response = await fetch(`${API_BASE_URL}/api/adaptive/decision`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ sessionId: SESSION_ID, mode: 'deterministic' })
+             body: JSON.stringify({ sessionId, mode: 'deterministic' })
            });
            const data = await response.json();
-           return data.variant ?? data.chosenVariant;
+           return data;
          } : undefined}
          resolveDecision={adaptiveMode === 'mcp' ? async () => {
            const response = await fetch(`${API_BASE_URL}/api/adaptive/decision`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ sessionId: SESSION_ID, mode: 'mcp' })
+             body: JSON.stringify({ sessionId, mode: 'mcp' })
            });
            const data = await response.json();
            return data as AdaptiveDecision;
@@ -121,6 +144,8 @@ function App() {
       >
         <EditorShell
           adaptiveMode={adaptiveMode}
+          persistenceMode={persistenceMode}
+          sessionId={sessionId}
           onAdaptiveModeChange={setAdaptiveMode}
           apiBaseUrl={API_BASE_URL}
           onOpenAdmin={ADMIN_CONSOLE_VISIBLE && presentationMode === 'prototype' ? () => setIsAdminOpen(true) : undefined}
@@ -131,7 +156,10 @@ function App() {
         <div className="admin-console-overlay" role="dialog" aria-modal="true" aria-label="Dionysys admin console">
           <AdminConsole
             apiBaseUrl={API_BASE_URL}
-            sessionId={SESSION_ID}
+            sessionId={sessionId}
+            persistenceMode={persistenceMode}
+            canRandomizeSession={!import.meta.env.PROD}
+            onRandomizeSession={handleRandomizeSession}
             onClose={() => setIsAdminOpen(false)}
             onConfigSaved={applyAdminConfig}
           />

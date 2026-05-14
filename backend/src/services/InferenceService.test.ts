@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InferenceService, PERSONAS } from '../services/InferenceService.js';
+import { InferenceService, PERSONAS } from '../services/InferenceService.ts';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
 
 // Helper to create a minimal IEvent
@@ -11,7 +11,7 @@ const makeEvent = (eventType: string, payload: any = {}, timestamp?: Date): IEve
 });
 
 describe('InferenceService.inferPersona', () => {
-  it('returns a full probability distribution over all 5 personas', () => {
+  it('returns a full probability distribution over all modality personas', () => {
     const result = InferenceService.inferPersona([]);
     expect(Object.keys(result).sort()).toEqual([...PERSONAS].sort());
   });
@@ -22,11 +22,11 @@ describe('InferenceService.inferPersona', () => {
     expect(total).toBeCloseTo(1.0, 5);
   });
 
-  it('boosts guided_novice probability when fewer than 5 events are present', () => {
+  it('stays neutral when there is only one draw event', () => {
     const events = [makeEvent('element_drawn', { type: 'rectangle' })];
     const result = InferenceService.inferPersona(events);
-    const uniform = 1 / 5;
-    expect(result.guided_novice).toBeGreaterThan(uniform);
+    expect(result.neutral).toBeGreaterThan(result.draw_first);
+    expect(result.neutral).toBeGreaterThan(result.text_first);
   });
 
   it('boosts draw_first after drawing rectangle shapes', () => {
@@ -73,5 +73,15 @@ describe('InferenceService.inferPersona', () => {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('stays neutral for mixed single draw and single text sessions', () => {
+    const result = InferenceService.inferPersona([
+      makeEvent('element_drawn', { type: 'rectangle' }),
+      makeEvent('text_added', { textValue: 'note' }),
+    ]);
+
+    expect(result.neutral).toBeGreaterThan(result.draw_first);
+    expect(result.neutral).toBeGreaterThan(result.text_first);
   });
 });

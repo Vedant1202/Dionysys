@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Maximize2, Minimize2, Move } from 'lucide-react';
 import { useAdaptiveUI } from '@dionysys/react';
-import { buildAdaptiveUIDefinitionFromVariant, type UiVariant } from '../config/variantConfig';
+import { buildAdaptiveUIDefinitionFromVariant, DEBUG_VARIANT_OPTIONS, type UiVariant } from '../config/variantConfig';
 
 type PanelPosition = {
   x: number;
@@ -72,6 +72,8 @@ export function DebugPanel() {
     mode,
     currentVariant,
     currentPersonality,
+    selectedModality,
+    selectedExpertise,
     decisionConfidence,
     lastDecision,
     personaProbs,
@@ -210,10 +212,21 @@ export function DebugPanel() {
 
           {currentPersonality && (
             <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-3 text-[10px] uppercase tracking-widest">
-              <div className="font-bold opacity-50">MCP Personality</div>
-              <div className="font-black text-primary">{currentPersonality.replace('_', ' ')}</div>
+              <div className="font-bold opacity-50">Composed Variant</div>
+              <div className="font-black text-primary">{humanizeLabel(currentPersonality)}</div>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-2 mb-6 text-[10px] uppercase tracking-widest">
+            <div className="rounded-lg bg-base-200/70 p-3">
+              <div className="font-bold opacity-50">Modality</div>
+              <div className="font-black text-primary">{selectedModality ? humanizeLabel(selectedModality) : '--'}</div>
+            </div>
+            <div className="rounded-lg bg-base-200/70 p-3">
+              <div className="font-bold opacity-50">Expertise</div>
+              <div className="font-black text-primary">{selectedExpertise ? humanizeLabel(selectedExpertise) : '--'}</div>
+            </div>
+          </div>
           
           {/* Variant Selector */}
           <div className="form-control mb-6">
@@ -226,11 +239,11 @@ export function DebugPanel() {
               onChange={handleVariantChange}
               disabled={isPolicyLocked}
             >
-              <option value="neutral">Neutral Baseline</option>
-              <option value="draw_first">Draw Focused</option>
-              <option value="text_first">Text Focused</option>
-              <option value="guided_novice">Guided Novice</option>
-              <option value="power_user">Power User</option>
+              {DEBUG_VARIANT_OPTIONS.map((variant) => (
+                <option key={variant} value={variant}>
+                  {humanizeLabel(variant)}
+                </option>
+              ))}
             </select>
             {isPolicyLocked && (
               <label className="label py-1">
@@ -242,13 +255,13 @@ export function DebugPanel() {
           {/* Persona Probabilities */}
           <div>
             <label className="label py-1">
-              <span className="label-text text-[10px] uppercase font-bold opacity-50">Persona Prediction (%)</span>
+              <span className="label-text text-[10px] uppercase font-bold opacity-50">Modality Prediction (%)</span>
             </label>
             <div className="space-y-4 mt-2">
               {Object.entries(personaProbs).map(([persona, prob]) => (
                 <div key={persona} className="space-y-1.5">
                   <div className="flex justify-between text-[10px] font-black opacity-70 uppercase tracking-[0.1em]">
-                    <span>{persona.replace('_', ' ')}</span>
+                    <span>{humanizeLabel(persona)}</span>
                     <span className="font-mono text-primary">{Math.round(prob * 100)}%</span>
                   </div>
                   <progress 
@@ -265,4 +278,8 @@ export function DebugPanel() {
       </div>
     </div>
   );
+}
+
+function humanizeLabel(value: string): string {
+  return value.replace(/__/g, ' + ').replace(/_/g, ' ');
 }

@@ -47,6 +47,11 @@ export class FetchLLMDecisionConnector implements LLMDecisionConnector {
         interactionSummary: input.interactionSummary,
         rawScores: input.rawScores,
         personaScores: input.personaScores,
+        modalityScores: input.modalityScores,
+        expertiseScores: input.expertiseScores,
+        selectedModality: input.selectedModality,
+        selectedExpertise: input.selectedExpertise,
+        composedUiVariant: input.composedUiVariant,
       }),
     });
 

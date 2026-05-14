@@ -2,14 +2,18 @@ import {
   McpModeResolver,
   type AdaptiveDecision,
   type AdaptiveMode,
+  type ExpertisePersona,
   type LLMDecisionConnector,
+  type ModalityPersona,
   type SummarizableInteractionEvent,
 } from '@dionysys/core';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
 import { createLLMDecisionConnectorFromEnv } from './LLMConnectorService.js';
 import {
+  getActiveMcpResourcesByAxis,
   getActiveMcpResources,
   getActiveMcpResolverSettings,
+  inferDeterministicAxesWithActiveConfig,
   inferPersonaWithActiveConfig,
   selectVariantWithActiveConfig,
 } from './AdminConfigService.js';
@@ -19,6 +23,11 @@ export interface DeterministicAdaptiveDecision {
   variant: string;
   chosenVariant: string;
   propensity: number;
+  modalityScores: Record<ModalityPersona, number>;
+  expertiseScores: Record<ExpertisePersona, number>;
+  selectedModality: ModalityPersona;
+  selectedExpertise: ExpertisePersona;
+  composedUiVariant: string;
   personaScores: Record<string, number>;
 }
 
@@ -30,21 +39,29 @@ export async function resolveAdaptiveDecisionForEvents(
   connector: LLMDecisionConnector = createLLMDecisionConnectorFromEnv(),
 ): Promise<AdaptiveDecisionResult> {
   if (mode === 'deterministic') {
-    const personaScores = inferPersonaWithActiveConfig(events);
-    const { chosenVariant, propensity } = selectVariantWithActiveConfig(personaScores);
+    const axisScores = inferDeterministicAxesWithActiveConfig(events);
+    const { chosenVariant, propensity, selectedModality, selectedExpertise } = selectVariantWithActiveConfig(
+      axisScores.modalityScores,
+      axisScores.expertiseScores,
+    );
 
     return {
       mode,
       variant: chosenVariant,
       chosenVariant,
       propensity,
-      personaScores,
+      modalityScores: axisScores.modalityScores,
+      expertiseScores: axisScores.expertiseScores,
+      selectedModality,
+      selectedExpertise,
+      composedUiVariant: chosenVariant,
+      personaScores: axisScores.personaScores,
     };
   }
 
   const mcpSettings = getActiveMcpResolverSettings();
   const resolver = new McpModeResolver({
-    resources: getActiveMcpResources(),
+    resourcesByAxis: getActiveMcpResourcesByAxis(),
     llmConnector: connector,
     fallbackVariant: mcpSettings.fallbackVariant,
     minConfidence: mcpSettings.minConfidence,
