@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DynamicToolbar } from './DynamicToolbar';
 
@@ -16,7 +16,7 @@ describe('DynamicToolbar', () => {
   });
 
   it('shows numbered hotkey badges for the visible personalized tools', () => {
-    render(
+    const view = render(
       <DynamicToolbar
         excalidrawAPI={null}
         config={{
@@ -28,9 +28,9 @@ describe('DynamicToolbar', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Selection tool' })).toHaveAttribute('aria-keyshortcuts', '1');
-    expect(screen.getByRole('button', { name: 'Rectangle tool' })).toHaveAttribute('aria-keyshortcuts', '2');
-    expect(screen.getByRole('button', { name: 'Rhombus tool' })).toHaveAttribute('aria-keyshortcuts', '3');
+    expect(view.getByRole('button', { name: 'Selection tool' })).toHaveAttribute('aria-keyshortcuts', '1');
+    expect(view.getByRole('button', { name: 'Rectangle tool' })).toHaveAttribute('aria-keyshortcuts', '2');
+    expect(view.getByRole('button', { name: 'Rhombus tool' })).toHaveAttribute('aria-keyshortcuts', '3');
     expect(document.querySelector('[data-hotkey-badge="1"]')).toBeTruthy();
     expect(document.querySelector('[data-hotkey-badge="2"]')).toBeTruthy();
     expect(document.querySelector('[data-hotkey-badge="3"]')).toBeTruthy();
@@ -51,7 +51,7 @@ describe('DynamicToolbar', () => {
       />,
     );
 
-    fireEvent.keyDown(window, { key: '2' });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2' }));
 
     expect(updateScene).toHaveBeenCalledWith({
       appState: {
