@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearStoredExcalidrawScene,
   clearStoredAppliedDecision,
   clearStoredPendingDecision,
   clearStoredSessionId,
   getOrCreateSessionId,
+  loadStoredExcalidrawScene,
   peekStoredSessionId,
   resetInMemorySessionForTests,
+  saveStoredExcalidrawScene,
 } from './session';
 
 describe('getOrCreateSessionId', () => {
@@ -73,5 +76,83 @@ describe('getOrCreateSessionId', () => {
 
     expect(window.localStorage.getItem(`dionysys:pending-decision:${sessionId}`)).toBeNull();
     expect(window.localStorage.getItem(`dionysys:applied-decision:${sessionId}`)).toBeNull();
+  });
+
+  it('persists Excalidraw scene data in browser mode', () => {
+    const sessionId = 'sess_scene_browser';
+    const sceneJson = JSON.stringify({
+      type: 'excalidraw',
+      version: 2,
+      source: 'test',
+      elements: [{ id: 'shape-1', type: 'rectangle' }],
+      appState: { viewBackgroundColor: '#ffffff' },
+      files: {},
+    });
+
+    saveStoredExcalidrawScene('browser', sessionId, sceneJson);
+
+    expect(loadStoredExcalidrawScene('browser', sessionId)).toEqual(JSON.parse(sceneJson));
+    expect(window.localStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBe(sceneJson);
+  });
+
+  it('uses tab-scoped storage for Excalidraw scene data in tab mode', () => {
+    const sessionId = 'sess_scene_tab';
+    const sceneJson = JSON.stringify({
+      type: 'excalidraw',
+      version: 2,
+      source: 'test',
+      elements: [{ id: 'shape-2', type: 'ellipse' }],
+      appState: { viewBackgroundColor: '#f8fafc' },
+      files: {},
+    });
+
+    saveStoredExcalidrawScene('tab', sessionId, sceneJson);
+
+    expect(loadStoredExcalidrawScene('tab', sessionId)).toEqual(JSON.parse(sceneJson));
+    expect(window.sessionStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBe(sceneJson);
+    expect(window.localStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBeNull();
+  });
+
+  it('does not persist Excalidraw scene data in memory mode', () => {
+    const sessionId = 'sess_scene_memory';
+    const sceneJson = JSON.stringify({
+      type: 'excalidraw',
+      version: 2,
+      source: 'test',
+      elements: [{ id: 'shape-3', type: 'diamond' }],
+      appState: { viewBackgroundColor: '#eef2ff' },
+      files: {},
+    });
+
+    saveStoredExcalidrawScene('memory', sessionId, sceneJson);
+
+    expect(loadStoredExcalidrawScene('memory', sessionId)).toBeUndefined();
+    expect(window.sessionStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBeNull();
+    expect(window.localStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBeNull();
+  });
+
+  it('clears invalid stored Excalidraw scene data', () => {
+    const sessionId = 'sess_scene_invalid';
+    window.localStorage.setItem(`dionysys:excalidraw-scene:${sessionId}`, '{invalid-json');
+
+    expect(loadStoredExcalidrawScene('browser', sessionId)).toBeUndefined();
+    expect(window.localStorage.getItem(`dionysys:excalidraw-scene:${sessionId}`)).toBeNull();
+  });
+
+  it('clears stored Excalidraw scene data for the selected mode', () => {
+    const sessionId = 'sess_scene_cleanup';
+    const sceneJson = JSON.stringify({
+      type: 'excalidraw',
+      version: 2,
+      source: 'test',
+      elements: [],
+      appState: {},
+      files: {},
+    });
+
+    saveStoredExcalidrawScene('browser', sessionId, sceneJson);
+    clearStoredExcalidrawScene('browser', sessionId);
+
+    expect(loadStoredExcalidrawScene('browser', sessionId)).toBeUndefined();
   });
 });

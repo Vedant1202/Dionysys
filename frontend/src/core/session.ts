@@ -1,8 +1,12 @@
 import type { AdaptivePersistenceMode } from '@dionysys/core';
+import type { ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types';
 
 const SESSION_STORAGE_KEY = 'dionysys:session-id';
 const PENDING_DECISION_STORAGE_KEY_PREFIX = 'dionysys:pending-decision:';
 const APPLIED_DECISION_STORAGE_KEY_PREFIX = 'dionysys:applied-decision:';
+const EXCALIDRAW_SCENE_STORAGE_KEY_PREFIX = 'dionysys:excalidraw-scene:';
+
+export type PersistedExcalidrawScene = ExcalidrawInitialDataState;
 
 let inMemorySessionId: string | undefined;
 
@@ -58,6 +62,37 @@ export function clearStoredAppliedDecision(mode: AdaptivePersistenceMode, sessio
   getStorageForMode(mode)?.removeItem(getAppliedDecisionStorageKey(sessionId));
 }
 
+export function loadStoredExcalidrawScene(
+  mode: AdaptivePersistenceMode,
+  sessionId: string,
+): PersistedExcalidrawScene | undefined {
+  if (!sessionId) return undefined;
+
+  const raw = getStorageForMode(mode)?.getItem(getExcalidrawSceneStorageKey(sessionId));
+  if (!raw) return undefined;
+
+  try {
+    return JSON.parse(raw) as PersistedExcalidrawScene;
+  } catch {
+    clearStoredExcalidrawScene(mode, sessionId);
+    return undefined;
+  }
+}
+
+export function saveStoredExcalidrawScene(
+  mode: AdaptivePersistenceMode,
+  sessionId: string,
+  sceneJson: string,
+): void {
+  if (!sessionId) return;
+  getStorageForMode(mode)?.setItem(getExcalidrawSceneStorageKey(sessionId), sceneJson);
+}
+
+export function clearStoredExcalidrawScene(mode: AdaptivePersistenceMode, sessionId: string): void {
+  if (!sessionId) return;
+  getStorageForMode(mode)?.removeItem(getExcalidrawSceneStorageKey(sessionId));
+}
+
 export function randomizeSessionId(mode: AdaptivePersistenceMode): string {
   clearStoredSessionId(mode);
   const nextSessionId = createSessionId();
@@ -97,4 +132,8 @@ function getPendingDecisionStorageKey(sessionId: string): string {
 
 function getAppliedDecisionStorageKey(sessionId: string): string {
   return `${APPLIED_DECISION_STORAGE_KEY_PREFIX}${sessionId}`;
+}
+
+function getExcalidrawSceneStorageKey(sessionId: string): string {
+  return `${EXCALIDRAW_SCENE_STORAGE_KEY_PREFIX}${sessionId}`;
 }

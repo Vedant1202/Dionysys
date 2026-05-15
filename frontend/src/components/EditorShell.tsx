@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
+import { Excalidraw, MainMenu, WelcomeScreen, serializeAsJSON } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
 import { AdaptiveFeedback, type AdaptiveFeedbackSubmission, useAdaptiveUI } from '@dionysys/react';
@@ -7,6 +7,7 @@ import { DebugPanel } from './DebugPanel';
 import { eventCollector } from '../core/eventCollector';
 import { DynamicToolbar } from './DynamicToolbar';
 import { resolveVariantConfig } from '../config/variantConfig';
+import { loadStoredExcalidrawScene, saveStoredExcalidrawScene } from '../core/session';
 
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
@@ -40,6 +41,7 @@ export function EditorShell({
     currentVariant,
     adaptiveMode === 'mcp' ? currentUIState : undefined,
   );
+  const initialSceneData = loadStoredExcalidrawScene(persistenceMode, sessionId);
   const keepsNativeToolbar = config?.toolbar?.mode === 'blocklist';
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
@@ -206,11 +208,18 @@ export function EditorShell({
           `}</style>
         )}
         <Excalidraw
+          key={`${persistenceMode}-${sessionId}`}
           theme="light"
+          initialData={initialSceneData}
           excalidrawAPI={(api) => setExcalidrawAPI(api)}
           UIOptions={getUIOptions()}
           onChange={(elements, appState, files) => {
             eventCollector.handleExcalidrawChange(elements, appState, files);
+            saveStoredExcalidrawScene(
+              persistenceMode,
+              sessionId,
+              serializeAsJSON(elements, appState, files, 'local'),
+            );
           }}
         >
           {config.showWelcomeScreen && (

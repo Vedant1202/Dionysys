@@ -10,6 +10,7 @@ import type {
 } from '@dionysys/core';
 import { EditorShell } from './components/EditorShell';
 import {
+  clearStoredExcalidrawScene,
   clearStoredAppliedDecision,
   clearStoredPendingDecision,
   getOrCreateSessionId,
@@ -86,6 +87,7 @@ function App() {
   const handleRandomizeSession = () => {
     if (import.meta.env.PROD) return;
 
+    clearStoredExcalidrawScene(persistenceMode, sessionId);
     clearStoredPendingDecision(persistenceMode, sessionId);
     clearStoredAppliedDecision(persistenceMode, sessionId);
     randomizeSessionId(persistenceMode);
