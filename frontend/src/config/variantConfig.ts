@@ -124,6 +124,13 @@ function applyExpertiseOverlay(
   expertise: ExpertisePersona,
 ): VariantUIConfig {
   if (expertise === 'novice') {
+    if (modality === 'neutral') {
+      return {
+        ...baseConfig,
+        showWelcomeScreen: true,
+      };
+    }
+
     return {
       showWelcomeScreen: true,
       toolbar: { mode: 'allowlist', tools: getNoviceToolbar(modality) },

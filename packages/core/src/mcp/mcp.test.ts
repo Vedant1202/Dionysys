@@ -77,6 +77,13 @@ const modalityResources: PersonalityResource[] = [
         uiState: {
           variant: 'neutral',
           toolbar: { mode: 'blocklist', tools: [] },
+          canvasActions: {
+            saveAsImage: true,
+            clearCanvas: true,
+            toggleTheme: true,
+          },
+          mainMenuItems: ['saveAsImage', 'export', 'clearCanvas', 'help', 'toggleTheme'],
+          mainMenu: { allowedItems: ['saveAsImage', 'export', 'clearCanvas', 'help', 'toggleTheme'] },
         },
       },
     ],
@@ -116,6 +123,7 @@ const expertiseResources: PersonalityResource[] = [
         isSafeFallback: true,
         uiState: {
           variant: 'novice',
+          showWelcomeScreen: true,
           mainMenuItems: ['help'],
           mainMenu: { allowedItems: ['help'] },
         },
@@ -272,5 +280,22 @@ describe('McpModeResolver', () => {
     expect(decision.isFallback).toBe(true);
     expect(decision.variant).toBe('draw_first__novice');
     expect(decision.confidence).toBeCloseTo(0.8, 5);
+  });
+
+  it('keeps the neutral workspace intact for neutral novice decisions while adding guidance', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => ({
+        personalityId: 'neutral',
+        actionId: 'show_neutral',
+        confidence: 0.82,
+      }),
+    };
+
+    const decision = await new McpModeResolver({ resourcesByAxis, llmConnector: connector }).resolve({ events: [] });
+
+    expect(decision.variant).toBe('neutral__novice');
+    expect(decision.uiState.showWelcomeScreen).toBe(true);
+    expect(decision.uiState.toolbar).toEqual({ mode: 'blocklist', tools: [] });
+    expect(decision.uiState.mainMenuItems).not.toEqual(['help']);
   });
 });

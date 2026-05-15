@@ -241,20 +241,34 @@ function composeUiState(
   composedUiVariant: string,
 ): PersonalityAction['uiState'] {
   const toolbar = expertise === 'novice'
-    ? { mode: 'allowlist' as const, tools: getNoviceToolbar(modality) }
+    ? modality === 'neutral'
+      ? overlay?.toolbar ?? base.toolbar
+      : { mode: 'allowlist' as const, tools: getNoviceToolbar(modality) }
     : overlay?.toolbar ?? base.toolbar;
+
+  const canvasActions = expertise === 'novice' && modality === 'neutral'
+    ? { ...(base.canvasActions ?? {}), ...(overlay?.canvasActions ?? {}) }
+    : {
+        ...(base.canvasActions ?? {}),
+        ...(overlay?.canvasActions ?? {}),
+      };
+
+  const mainMenuItems = expertise === 'novice' && modality === 'neutral'
+    ? base.mainMenuItems ?? overlay?.mainMenuItems
+    : overlay?.mainMenuItems ?? base.mainMenuItems;
+
+  const mainMenu = expertise === 'novice' && modality === 'neutral'
+    ? base.mainMenu ?? overlay?.mainMenu
+    : overlay?.mainMenu ?? base.mainMenu;
 
   return {
     ...base,
     ...overlay,
     variant: composedUiVariant,
     toolbar,
-    canvasActions: {
-      ...(base.canvasActions ?? {}),
-      ...(overlay?.canvasActions ?? {}),
-    },
-    mainMenuItems: overlay?.mainMenuItems ?? base.mainMenuItems,
-    mainMenu: overlay?.mainMenu ?? base.mainMenu,
+    canvasActions,
+    mainMenuItems,
+    mainMenu,
   };
 }
 
