@@ -17,6 +17,7 @@ import {
   randomizeSessionId,
 } from './core/session';
 import { VARIANT_CONFIGS } from './config/variantConfig';
+import { AnalyticsTracker } from './analytics';
 import './App.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001';
@@ -106,6 +107,7 @@ function App() {
 
   return (
     <div className="App" data-theme="winter">
+      <AnalyticsTracker />
       <AdaptiveProvider
          key={`${adaptiveMode}-${presentationMode}-${decisionApplication}-${persistenceMode}-${sessionId}-${providerVersion}`}
          mode={adaptiveMode}
