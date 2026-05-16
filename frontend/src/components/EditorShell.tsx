@@ -8,6 +8,8 @@ import { eventCollector } from '../core/eventCollector';
 import { DynamicToolbar } from './DynamicToolbar';
 import { resolveVariantConfig } from '../config/variantConfig';
 import { loadStoredExcalidrawScene, saveStoredExcalidrawScene } from '../core/session';
+import { humanizeLabel } from '../utils/formatters';
+
 
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
@@ -155,17 +157,22 @@ export function EditorShell({
         )}
         {isPrototype && hasPendingUIChange && (
           <div className="flex-none">
-            <div className="badge badge-md border-amber-200 bg-amber-50 uppercase tracking-widest text-[10px] py-1 text-amber-800">
-              Pending refresh: {pendingPersonality?.replace('_', ' ') ?? 'decision ready'}
+            <div className="badge badge-md border-amber-200/50 bg-amber-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-800 backdrop-blur-sm">
+              <span className="opacity-60 mr-1.5">Pending:</span>
+              {humanizeLabel(pendingPersonality ?? 'decision ready')}
             </div>
+
           </div>
         )}
         {isPrototype && (
         <div className="flex-none">
-          <div className="badge badge-md mr-2 border border-slate-200 bg-white/70 uppercase tracking-widest text-[10px] py-1 text-slate-700">Experiment Active</div>
-          <div className="badge badge-md border-0 bg-[linear-gradient(135deg,#635bff_0%,#7c3aed_100%)] uppercase tracking-widest text-[10px] py-1 font-bold text-white">
-            {currentVariant.replace('_', ' ')}
+          <div className="badge badge-md mr-2 border border-slate-200/60 bg-white/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 backdrop-blur-sm">
+            Live Monitoring
           </div>
+          <div className="badge badge-md border-0 bg-[linear-gradient(135deg,#635bff_0%,#7c3aed_100%)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-sm">
+            {humanizeLabel(currentVariant)}
+          </div>
+
         </div>
         )}
       </div>

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as Rea
 import { Maximize2, Minimize2, Move } from 'lucide-react';
 import { useAdaptiveUI } from '@dionysys/react';
 import { buildAdaptiveUIDefinitionFromVariant, DEBUG_VARIANT_OPTIONS, type UiVariant } from '../config/variantConfig';
+import { humanizeLabel } from '../utils/formatters';
+
 
 type PanelPosition = {
   x: number;
@@ -280,6 +282,4 @@ export function DebugPanel() {
   );
 }
 
-function humanizeLabel(value: string): string {
-  return value.replace(/__/g, ' + ').replace(/_/g, ' ');
-}
+
