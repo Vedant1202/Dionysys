@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm install --include=optional && npm install --workspace=frontend @tailwindcss/oxide-linux-x64-gnu@4.2.2 --no-save",
-  "buildCommand": "npm run build:frontend",
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist"
 }
