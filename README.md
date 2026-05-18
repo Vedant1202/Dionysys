@@ -8,8 +8,8 @@ Dionysys packages the decision logic, React runtime, telemetry backend, and refe
 
 [![Watch the 25-second Dionysys promo video](https://img.youtube.com/vi/U45lPx95GfU/hqdefault.jpg)](https://www.youtube.com/watch?v=U45lPx95GfU)
 
-### Blog 
-Notion Page - [https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1](https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1)
+### Resources
+Notion Blog Page - [https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1](https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1)
 
 Demo - [https://dionysys-frontend.vercel.app/](https://dionysys-frontend.vercel.app/)
 
