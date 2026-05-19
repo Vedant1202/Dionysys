@@ -1,0 +1,12 @@
+{
+  "mintlify": {
+    "projectId": "6a0a9b0aa4919b3d58395c52"
+  },
+  "timeWindow": "24h",
+  "integrations": {
+    "mintlify": {
+      "apiKey": "mint_CxDZHQnwUzJpAmxtLDDazf",
+      "projectId": "6a0a9b0aa4919b3d58395c52"
+    }
+  }
+}
