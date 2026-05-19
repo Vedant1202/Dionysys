@@ -1,10 +1,12 @@
 import type {
   AdaptiveDecisionApplication,
   AdaptiveMode,
+  AdaptivePersistenceMode,
   AdaptivePresentationMode,
+  AxisSelectionSummary,
   InteractionSummary,
+  MultiAxisPersonalityScoreResult,
   PersonalityResource,
-  PersonalityScoreResult,
   SanitizedInteractionEvent,
 } from '../mcp/types.js';
 
@@ -44,11 +46,18 @@ export interface AdminPolicyConfig {
   variantMapping?: Record<string, string> | undefined;
 }
 
-export interface AdminDeterministicConfig {
+export interface AdminDeterministicAxisConfig {
   personas: string[];
   initialCounts: Record<string, number>;
   eventRules: AdminEventWeightRule[];
   heuristics: AdminHeuristicRule[];
+}
+
+export interface AdminDeterministicConfig {
+  axes: {
+    modality: AdminDeterministicAxisConfig;
+    expertise: AdminDeterministicAxisConfig;
+  };
   policy: AdminPolicyConfig;
 }
 
@@ -56,12 +65,16 @@ export interface AdminModeConfig {
   defaultMode: AdaptiveMode;
   presentationMode: AdaptivePresentationMode;
   decisionApplication: AdaptiveDecisionApplication;
+  persistenceMode: AdaptivePersistenceMode;
   minEventsBeforeLock: number;
   pollingIntervalMs: number;
 }
 
 export interface AdminMcpConfig {
-  resources: PersonalityResource[];
+  axes: {
+    modalityResources: PersonalityResource[];
+    expertiseResources: PersonalityResource[];
+  };
   minConfidence: number;
   fallbackVariant: string;
 }
@@ -97,8 +110,9 @@ export interface AdminApiEndpoint {
 export interface AdminSessionOverview {
   sessionId?: string | undefined;
   eventCount: number;
+  deterministicAxisScores: AxisSelectionSummary;
   deterministicPersonaScores: Record<string, number>;
-  mcpScoreResult: PersonalityScoreResult;
+  mcpScoreResult: MultiAxisPersonalityScoreResult;
   interactionSummary: InteractionSummary;
   recentEvents: SanitizedInteractionEvent[];
 }

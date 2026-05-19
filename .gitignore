@@ -58,3 +58,5 @@ web-docs/build/
 web-docs/node_modules/
 tasks/
 blog/
+blog-current/
+.vercel
