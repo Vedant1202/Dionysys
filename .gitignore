@@ -31,6 +31,8 @@ Thumbs.db
 explanation.md
 .skills.readme.md
 .agents/
+agents/
+skills/
 planning.md
 SPEC.md
 mapping_persona.md
@@ -47,3 +49,11 @@ tasks/
 blog/
 blog-current/
 .vercel
+references/
+hooks/
+plugins/
+.claude-plugin/
+.claude/
+.gemini/
+AGENTS.md
+CLAUDE.md
