@@ -1,6 +1,5 @@
 import type { IEventPlugin, AppEvent } from './IEventPlugin';
 import { DrawingPlugin } from '../plugins/DrawingPlugin';
-import { SESSION_ID } from './session';
 
 // Throttle limit
 const THROTTLE_MS = 2000;
@@ -10,6 +9,7 @@ class EventCollector {
   private backendUrl = 'http://localhost:3001/api/events';
   private batch: AppEvent[] = [];
   private intervalId: number | null = null;
+  private sessionId: string | undefined;
   public onFlush?: (count: number) => void;
 
   constructor() {
@@ -36,8 +36,17 @@ class EventCollector {
     });
   }
 
+  setSessionId(sessionId: string) {
+    this.sessionId = sessionId;
+  }
+
+  setApiBaseUrl(apiBaseUrl: string) {
+    this.backendUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/events`;
+  }
+
   private async flush() {
     if (this.batch.length === 0) return;
+    if (!this.sessionId) return;
 
     const itemsToSend = [...this.batch];
     this.batch = [];
@@ -49,7 +58,7 @@ class EventCollector {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sessionId: SESSION_ID,
+          sessionId: this.sessionId,
           events: itemsToSend
         }),
       });

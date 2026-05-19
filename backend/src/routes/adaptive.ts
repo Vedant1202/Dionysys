@@ -2,12 +2,16 @@ import { Router, type Request, type Response } from 'express';
 import type { AdaptiveMode } from '@dionysys/core';
 import { dbAdapter } from '../db.js';
 import { resolveAdaptiveDecisionForEvents } from '../services/AdaptiveDecisionService.js';
-import { getActiveMcpResources } from '../services/AdminConfigService.js';
+import { getActiveMcpResources, getActiveMcpResourcesByAxis } from '../services/AdminConfigService.js';
 
 export const adaptiveRouter = Router();
 
 adaptiveRouter.get('/resources', (_req: Request, res: Response): void => {
-  res.json({ success: true, resources: getActiveMcpResources() });
+  res.json({
+    success: true,
+    resources: getActiveMcpResources(),
+    resourcesByAxis: getActiveMcpResourcesByAxis(),
+  });
 });
 
 adaptiveRouter.post('/decision', async (req: Request, res: Response): Promise<void> => {
@@ -32,12 +36,26 @@ adaptiveRouter.post('/decision', async (req: Request, res: Response): Promise<vo
       timestamp: new Date(),
       contextFeatures: decision.mode === 'mcp'
         ? {
+            modalityScores: decision.modalityScores,
+            expertiseScores: decision.expertiseScores,
+            selectedModality: decision.selectedModality,
+            selectedExpertise: decision.selectedExpertise,
+            composedUiVariant: decision.composedUiVariant,
             personaScores: decision.personaScores,
             rawScores: decision.rawScores,
             matchedSignals: decision.matchedSignals,
+            axisRawScores: decision.axisRawScores,
+            axisMatchedSignals: decision.axisMatchedSignals,
             interactionSummary: decision.interactionSummary,
           }
-        : decision.personaScores,
+        : {
+            modalityScores: decision.modalityScores,
+            expertiseScores: decision.expertiseScores,
+            selectedModality: decision.selectedModality,
+            selectedExpertise: decision.selectedExpertise,
+            composedUiVariant: decision.composedUiVariant,
+            personaScores: decision.personaScores,
+          },
       chosenVariant: decision.variant,
       propensity: decision.mode === 'mcp' ? decision.confidence : decision.propensity,
     });

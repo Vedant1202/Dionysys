@@ -2,6 +2,11 @@ import {
   AdminConsoleConfigSchema,
   InteractionSummarizer,
   PersonalityScorer,
+  buildLockedModalityScores,
+  composeUiVariant,
+  countModalityEvents,
+  getTopScoredKey,
+  inferDeterministicAxesFromAdminConfig,
   inferPersonaFromAdminConfig,
   selectVariantFromAdminConfig,
   type AdminApiEndpoint,
@@ -9,11 +14,12 @@ import {
   type AdminConsoleConfig,
   type AdminConsoleOverview,
   type AdminConnectorStatus,
+  type ExpertisePersona,
   type GenericEvent,
+  type ModalityPersona,
 } from '@dionysys/core';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
-import { EXCALIDRAW_PERSONALITY_RESOURCES } from './ExcalidrawMcpResources.js';
-import { PERSONAS } from './InferenceService.js';
+import { EXCALIDRAW_MCP_RESOURCES_BY_AXIS } from './ExcalidrawMcpResources.js';
 
 const SUPPORTED_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text', 'image', 'eraser'];
 const SUPPORTED_MENU_ITEMS = ['saveAsImage', 'export', 'clearCanvas', 'help', 'toggleTheme'];
@@ -29,52 +35,78 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
     defaultMode: 'deterministic',
     presentationMode: 'prototype',
     decisionApplication: 'next-refresh',
+    persistenceMode: 'browser',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   },
   deterministic: {
-    personas: [...PERSONAS],
-    initialCounts: Object.fromEntries(PERSONAS.map((persona) => [persona, 1])),
-    eventRules: [
-      {
-        id: 'drawn_shape_weight',
-        description: 'Shape-like Excalidraw elements increase draw-first probability.',
-        eventType: 'element_drawn',
-        weights: { draw_first: 2 },
-        conditions: [
+    axes: {
+      modality: {
+        personas: ['neutral', 'draw_first', 'text_first'],
+        initialCounts: {
+          neutral: 1,
+          draw_first: 1,
+          text_first: 1,
+        },
+        eventRules: [],
+        heuristics: [],
+      },
+      expertise: {
+        personas: ['novice', 'standard', 'power_user'],
+        initialCounts: {
+          novice: 1,
+          standard: 1,
+          power_user: 1,
+        },
+        eventRules: [],
+        heuristics: [
           {
-            field: 'type',
-            operator: 'in',
-            value: ['rectangle', 'ellipse', 'diamond', 'line', 'freedraw'],
+            id: 'low_event_novice',
+            description: 'Low event volume increases novice probability.',
+            metric: 'totalEvents',
+            operator: '<',
+            value: 5,
+            weights: { novice: 3 },
+            enabled: true,
+          },
+          {
+            id: 'high_event_power_user',
+            description: 'High event volume increases power-user probability.',
+            metric: 'totalEvents',
+            operator: '>=',
+            value: 8,
+            weights: { power_user: 3 },
+            enabled: true,
+          },
+          {
+            id: 'draw_event_standard',
+            description: 'Some activity preserves the standard expertise baseline.',
+            metric: 'eventCount',
+            eventType: 'element_drawn',
+            operator: '>=',
+            value: 1,
+            weights: { standard: 1 },
+            enabled: true,
+          },
+          {
+            id: 'text_event_standard',
+            description: 'Text activity preserves the standard expertise baseline.',
+            metric: 'eventCount',
+            eventType: 'text_added',
+            operator: '>=',
+            value: 1,
+            weights: { standard: 1 },
+            enabled: true,
           },
         ],
-        enabled: true,
       },
-      {
-        id: 'text_added_weight',
-        description: 'Text elements increase text-first probability.',
-        eventType: 'text_added',
-        weights: { text_first: 3 },
-        enabled: true,
-      },
-    ],
-    heuristics: [
-      {
-        id: 'low_event_guided_novice',
-        description: 'Low event volume increases guided novice probability.',
-        metric: 'totalEvents',
-        operator: '<',
-        value: 5,
-        weights: { guided_novice: 2 },
-        enabled: true,
-      },
-    ],
+    },
     policy: {
-      epsilon: 0.2,
+      epsilon: 0,
     },
   },
   mcp: {
-    resources: EXCALIDRAW_PERSONALITY_RESOURCES,
+    axes: EXCALIDRAW_MCP_RESOURCES_BY_AXIS,
     minConfidence: 0.3,
     fallbackVariant: 'neutral',
   },
@@ -139,17 +171,23 @@ export function inferPersonaWithActiveConfig(events: IEvent[]): Record<string, n
   return inferPersonaFromAdminConfig(activeConfig.deterministic, toGenericEvents(events));
 }
 
+export function inferDeterministicAxesWithActiveConfig(events: IEvent[]) {
+  return inferDeterministicAxesFromAdminConfig(activeConfig.deterministic, toGenericEvents(events));
+}
+
 export function selectVariantWithActiveConfig(
   personaScores: Record<string, number>,
-): { chosenVariant: string; propensity: number } {
-  return selectVariantFromAdminConfig(activeConfig, personaScores);
+  expertiseScores: Record<string, number> = {},
+): { chosenVariant: string; propensity: number; selectedModality: ModalityPersona; selectedExpertise: ExpertisePersona } {
+  return selectVariantFromAdminConfig(activeConfig, personaScores, expertiseScores);
 }
 
 export function buildAdminOverview(events: IEvent[] = [], sessionId?: string): AdminConsoleOverview {
   const summarizableEvents = toGenericEvents(events);
   const summaryOptions = getSummaryOptions(events);
   const interactionSummary = new InteractionSummarizer().summarize(summarizableEvents, summaryOptions);
-  const mcpScoreResult = new PersonalityScorer().score(activeConfig.mcp.resources, interactionSummary);
+  const deterministicAxisScores = inferDeterministicAxesFromAdminConfig(activeConfig.deterministic, summarizableEvents);
+  const mcpScoreResult = buildMcpAxisScoreResult(interactionSummary, summarizableEvents);
 
   return {
     enabled: isAdminConsoleEnabled(),
@@ -159,7 +197,8 @@ export function buildAdminOverview(events: IEvent[] = [], sessionId?: string): A
     session: {
       sessionId,
       eventCount: events.length,
-      deterministicPersonaScores: inferPersonaFromAdminConfig(activeConfig.deterministic, toGenericEvents(events)),
+      deterministicAxisScores,
+      deterministicPersonaScores: deterministicAxisScores.personaScores,
       mcpScoreResult,
       interactionSummary,
       recentEvents: interactionSummary.recentEvents,
@@ -168,7 +207,11 @@ export function buildAdminOverview(events: IEvent[] = [], sessionId?: string): A
 }
 
 export function getActiveMcpResources() {
-  return getAdminConfig().mcp.resources;
+  return getAdminConfig().mcp.axes.modalityResources;
+}
+
+export function getActiveMcpResourcesByAxis() {
+  return getAdminConfig().mcp.axes;
 }
 
 export function getActiveMcpResolverSettings() {
@@ -197,4 +240,38 @@ function toGenericEvents(events: IEvent[]): GenericEvent[] {
 
 function cloneConfig(config: AdminConsoleConfig): AdminConsoleConfig {
   return AdminConsoleConfigSchema.parse(JSON.parse(JSON.stringify(config)));
+}
+
+function buildMcpAxisScoreResult(
+  interactionSummary: ReturnType<InteractionSummarizer['summarize']>,
+  events: GenericEvent[],
+) {
+  const scorer = new PersonalityScorer();
+  const modality = scorer.score(activeConfig.mcp.axes.modalityResources, interactionSummary);
+  const expertise = scorer.score(activeConfig.mcp.axes.expertiseResources, interactionSummary);
+  const { drawCount, textCount } = countModalityEvents(events);
+  const modalityScores = buildLockedModalityScores(drawCount, textCount);
+  const selectedModality = getTopScoredKey<ModalityPersona>(modalityScores, 'neutral');
+  const selectedExpertise = getTopScoredKey<ExpertisePersona>(expertise.personaScores, 'standard');
+
+  return {
+    modality,
+    expertise,
+    modalityScores,
+    expertiseScores: expertise.personaScores as Record<ExpertisePersona, number>,
+    selectedModality,
+    selectedExpertise,
+    composedUiVariant: composeUiVariant(selectedModality, selectedExpertise),
+    personaScores: modalityScores,
+    rawScores: modality.rawScores,
+    matchedSignals: modality.matchedSignals,
+    axisRawScores: {
+      modality: modality.rawScores,
+      expertise: expertise.rawScores,
+    },
+    axisMatchedSignals: {
+      modality: modality.matchedSignals,
+      expertise: expertise.matchedSignals,
+    },
+  };
 }

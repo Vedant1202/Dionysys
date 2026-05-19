@@ -37,6 +37,7 @@ describe('resolveAdaptiveDecisionForEvents', () => {
 
     const decision = await resolveAdaptiveDecisionForEvents('mcp', [
       makeEvent('text_added', { type: 'text', textValue: 'do not send raw text' }, 1_000),
+      makeEvent('text_added', { type: 'text', textValue: 'second signal' }, 1_010),
     ], connector);
 
     if (decision.mode !== 'mcp') {
@@ -46,7 +47,7 @@ describe('resolveAdaptiveDecisionForEvents', () => {
     const connectorInput = capturedInput as unknown as LLMDecisionInput;
 
     expect(decision.mode).toBe('mcp');
-    expect(decision.variant).toBe('text_first');
+    expect(decision.variant).toBe('text_first__novice');
     expect(decision.confidence).toBe(0.86);
     expect(connectorInput.personaScores).toHaveProperty('text_first');
     expect(connectorInput.interactionSummary.recentEvents[0]?.payload).not.toHaveProperty('textValue');
@@ -63,6 +64,7 @@ describe('resolveAdaptiveDecisionForEvents', () => {
 
     const decision = await resolveAdaptiveDecisionForEvents('mcp', [
       makeEvent('element_drawn', { type: 'rectangle' }, 1_000),
+      makeEvent('element_drawn', { type: 'ellipse' }, 1_010),
     ], connector);
 
     if (decision.mode !== 'mcp') {
@@ -71,6 +73,8 @@ describe('resolveAdaptiveDecisionForEvents', () => {
 
     expect(decision.mode).toBe('mcp');
     expect(decision.isFallback).toBe(true);
+    expect(decision.selectedModality).toBe('draw_first');
+    expect(decision.selectedExpertise).toBe('novice');
     expect(decision.uiState.variant).toBe(decision.variant);
   });
 

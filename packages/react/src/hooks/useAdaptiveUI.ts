@@ -9,6 +9,8 @@ export interface UseAdaptiveUIResult {
   currentVariant: AdaptiveUIState['currentVariant'];
   currentUIState: AdaptiveUIState['currentUIState'];
   currentPersonality: AdaptiveUIState['currentPersonality'];
+  selectedModality: AdaptiveUIState['selectedModality'];
+  selectedExpertise: AdaptiveUIState['selectedExpertise'];
   decisionConfidence: AdaptiveUIState['decisionConfidence'];
   lastDecision: AdaptiveUIState['lastDecision'];
   pendingDecision: AdaptiveUIState['pendingDecision'];
@@ -38,6 +40,8 @@ export function useAdaptiveUI(): UseAdaptiveUIResult {
     currentVariant: useStore(store, (state) => state.currentVariant),
     currentUIState: useStore(store, (state) => state.currentUIState),
     currentPersonality: useStore(store, (state) => state.currentPersonality),
+    selectedModality: useStore(store, (state) => state.selectedModality),
+    selectedExpertise: useStore(store, (state) => state.selectedExpertise),
     decisionConfidence: useStore(store, (state) => state.decisionConfidence),
     lastDecision: useStore(store, (state) => state.lastDecision),
     pendingDecision: useStore(store, (state) => state.pendingDecision),

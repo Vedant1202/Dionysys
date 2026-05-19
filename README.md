@@ -4,6 +4,17 @@ Adaptive UI experimentation for product teams building personalized interfaces w
 
 Dionysys packages the decision logic, React runtime, telemetry backend, and reference demo needed to test adaptive experiences without hard-wiring everything into a single app. It is designed for teams that want to iterate on persona inference, variant selection, and runtime UI control while keeping the core logic reusable across products.
 
+## Promo Video
+
+[![Watch the 25-second Dionysys promo video](https://img.youtube.com/vi/U45lPx95GfU/hqdefault.jpg)](https://www.youtube.com/watch?v=U45lPx95GfU)
+
+### Resources
+Notion Blog Page - [https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1](https://mewing-tuck-66c.notion.site/Dionysys-Adaptive-User-Interface-framework-36283d3a8f1d805d8bf0d4f31e3dcaa1)
+
+Demo - [https://dionysys-frontend.vercel.app/](https://dionysys-frontend.vercel.app/)
+
+Docs - [https://personal-db95a29b.mintlify.app/](https://personal-db95a29b.mintlify.app/)
+
 ## Features
 
 - Deterministic adaptive mode powered by `InferenceEngine` and `PolicyEngine`
@@ -24,6 +35,18 @@ Dionysys packages the decision logic, React runtime, telemetry backend, and refe
 - `frontend`: Vite + React Excalidraw demo that exercises the adaptive runtime
 - `docs`: canonical markdown documentation source
 - `web-docs`: Docusaurus shell that renders the root docs as a deployable site
+
+## Docs
+
+Start with the canonical markdown docs in [`docs/`](./docs):
+
+- [Usage](./docs/usage.md)
+- [Configuration](./docs/configuration.md)
+- [Admin Console](./docs/admin-console.md)
+- [Excalidraw Configuration](./docs/excalidraw-configuration.md)
+- [Architecture](./docs/architecture.md)
+
+You can also run the web docs locally with `npm run docs`.
 
 ## Quick Start
 
@@ -153,6 +176,11 @@ Required production backend env values:
 - `PORT`: service port exposed by your host
 - `ADMIN_CONSOLE_ENABLED=false`
 
+MongoDB Atlas note:
+
+- Atlas access lists accept IPs or CIDR ranges, not domains.
+- If your backend runs on Render, allow the service's outbound IP range(s) in Atlas instead of relying on `0.0.0.0/0`.
+
 Recommended verification:
 
 - `GET /health` returns `{ status: "ok", dbConnected: true }`
@@ -182,10 +210,17 @@ The backend should remain an external Node service. Do not deploy the current Ex
 For the frontend Vercel project:
 
 - Root Directory: repository root
-- Install Command: `npm install`
+- Install Command: `npm install --include=optional && npm install --workspace=frontend @tailwindcss/oxide-linux-x64-gnu@4.2.2 --no-save`
 - Build Command: `npm run build:frontend`
 - Output Directory: `frontend/dist`
-- Environment Variable: `VITE_API_BASE_URL=https://your-backend.example.com`
+- Build Environment Variable: `VITE_API_BASE_URL=https://your-backend.example.com`
+- Optional Build Environment Variable: `VITE_ADMIN_CONSOLE_ENABLED=true`
+
+Important:
+
+- This frontend is built with Vite, so `VITE_*` values must be present at build time.
+- On Vercel, prefer build-time env configuration or commit a non-secret `frontend/.env.production` for stable production defaults.
+- The deployed frontend uses the same `VITE_API_BASE_URL` for admin requests, adaptive decisions, telemetry event flushes, and feedback submission. If this value is wrong, admin reads, admin saves, and session event persistence will all fail together.
 
 For the docs Vercel project:
 
@@ -206,6 +241,9 @@ If you deploy the docs site under a subpath instead of a root domain, set `DOCS_
 - `prototype` presentation: show scores, personalities, pending decisions, and admin/debug controls
 - `production` presentation: hide experiment internals and expose only the experience plus feedback
 - `next-refresh` decision application: store a resolved decision now and apply the UI change on the next provider mount or page refresh
+- `memory` / `tab` / `browser` persistence modes: align session-id lifetime with built-in pending-decision persistence
+
+In non-production builds, the admin console includes a session randomize tool for testing persistence behavior without exposing that reset path in production.
 
 ## Operational Notes
 
@@ -213,18 +251,6 @@ If you deploy the docs site under a subpath instead of a root domain, set `DOCS_
 - Admin APIs are intentionally environment-gated and should stay off by default in production
 - Runtime admin edits are in-memory only; they do not write back to source files or the database
 - The frontend and backend share local workspace packages, so build and deploy commands should run from the monorepo root
-
-## Docs
-
-Start with the canonical markdown docs in [`docs/`](./docs):
-
-- [Usage](./docs/usage.md)
-- [Configuration](./docs/configuration.md)
-- [Admin Console](./docs/admin-console.md)
-- [Excalidraw Configuration](./docs/excalidraw-configuration.md)
-- [Architecture](./docs/architecture.md)
-
-You can also run the web docs locally with `npm run docs`.
 
 ## Contributing
 

@@ -19,7 +19,6 @@ export class PolicyEngine {
    * Utilizes an Epsilon-Greedy contextual bandit policy for exploration.
    */
   selectVariant(personaProbs: Record<string, number>): { chosenVariant: string; propensity: number } {
-    console.log('PolicyEngine.selectVariant epsilon:', this.config.epsilon);
     const epsilon = this.config.epsilon ?? 0.1;
     const isExploration = Math.random() < epsilon;
 

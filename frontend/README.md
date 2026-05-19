@@ -49,6 +49,22 @@ The backend admin API must also be enabled:
 ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
 ```
 
+For production deployments, both frontend settings are build-time Vite values:
+
+```bash
+VITE_API_BASE_URL=https://your-backend.example.com
+VITE_ADMIN_CONSOLE_ENABLED=true
+```
+
+The demo uses the same backend base URL for:
+
+- admin console reads and saves
+- adaptive decision and inference requests
+- telemetry event flushes
+- feedback submission
+
+If the production frontend is built with the wrong `VITE_API_BASE_URL`, the app can appear to load while admin actions and event persistence fail against the wrong origin.
+
 ## More docs
 
 - [Package usage](../docs/usage.md)

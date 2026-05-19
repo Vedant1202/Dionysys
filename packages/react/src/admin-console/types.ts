@@ -1,4 +1,5 @@
 import type {
+  AdaptivePersistenceMode,
   AdminConsoleConfig,
   AdminConsoleOverview,
   PersonalityResource,
@@ -9,6 +10,9 @@ export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculat
 export interface AdminConsoleProps {
   apiBaseUrl?: string;
   sessionId?: string;
+  persistenceMode?: AdaptivePersistenceMode;
+  canRandomizeSession?: boolean;
+  onRandomizeSession?: () => void;
   onClose?: () => void;
   onConfigSaved?: (config: AdminConsoleConfig) => void;
 }
