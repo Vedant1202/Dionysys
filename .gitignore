@@ -41,6 +41,19 @@ walkthrough.md
 implementation_plan.md
 review.md
 
+# Agent Skills
+skills/
+agents/
+references/
+hooks/
+.gemini/
+.claude/
+.claude-plugin/
+.opencode/
+AGENTS.md
+CLAUDE.md
+plugins/agent-skills/
+
 # Web docs generated output
 web-docs/.docusaurus/
 web-docs/build/
