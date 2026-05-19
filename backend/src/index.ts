@@ -8,7 +8,9 @@ import { inferenceRouter } from './routes/inference.js';
 import { policyRouter } from './routes/policy.js';
 import { rewardRouter } from './routes/reward.js';
 import { adaptiveRouter } from './routes/adaptive.js';
+import { adaptiveFeedbackRouter } from './routes/adaptiveFeedback.js';
 import { adminRouter } from './routes/admin.js';
+import { isAdaptiveFeedbackBetaEnabled } from './services/FeedbackBetaService.js';
 
 dotenv.config();
 
@@ -39,6 +41,9 @@ app.use('/api/policy', policyRouter);
 app.use('/api/reward', rewardRouter);
 app.use('/api/adaptive', adaptiveRouter);
 app.use('/api/admin', adminRouter);
+if (isAdaptiveFeedbackBetaEnabled()) {
+  app.use('/api/adaptive-feedback', adaptiveFeedbackRouter);
+}
 
 async function startServer() {
   try {

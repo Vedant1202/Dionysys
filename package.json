@@ -25,5 +25,8 @@
     "docs:build": "npm --prefix web-docs run build",
     "docs:serve": "npm --prefix web-docs run serve",
     "docs:typecheck": "npm --prefix web-docs run typecheck"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.9.0"
   }
 }

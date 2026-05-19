@@ -123,6 +123,7 @@ export interface AdminConsoleOverview {
   connector: AdminConnectorStatus;
   endpoints: AdminApiEndpoint[];
   session?: AdminSessionOverview | undefined;
+  feedbackLoop?: unknown | undefined;
 }
 
 export interface AdminConfigExport {

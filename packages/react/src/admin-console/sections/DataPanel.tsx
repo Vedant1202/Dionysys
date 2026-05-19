@@ -5,6 +5,7 @@ import { formatMs } from '../utils.js';
 
 export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
   const session = overview?.session;
+  const feedbackLoop = overview?.feedbackLoop;
 
   if (!session) {
     return <EmptyState title="No session data loaded" description="Pass a sessionId to AdminConsole to inspect live interaction summaries." />;
@@ -30,6 +31,14 @@ export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
         </p>
         <JsonBlock value={session.recentEvents} />
       </SectionCard>
+      {feedbackLoop !== undefined && (
+        <SectionCard title="Beta Feedback Loop">
+          <p style={styles.helpText}>
+            Beta-only activity scoring, feedback, and graph recommendations for the current session.
+          </p>
+          <JsonBlock value={feedbackLoop} />
+        </SectionCard>
+      )}
     </div>
   );
 }

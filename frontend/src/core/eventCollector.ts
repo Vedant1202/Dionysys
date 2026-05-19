@@ -9,8 +9,7 @@ class EventCollector {
   private backendUrl = 'http://localhost:3001/api/events';
   private batch: AppEvent[] = [];
   private intervalId: number | null = null;
-  private sessionId: string | undefined;
-  public onFlush?: (count: number) => void;
+  public onFlush?: (count: number, events: AppEvent[]) => void | Promise<void>;
 
   constructor() {
     // Register plugins
@@ -26,6 +25,10 @@ class EventCollector {
       this.batch.push(event);
     });
     this.plugins.push(plugin);
+  }
+
+  recordEvent(event: AppEvent) {
+    this.batch.push(event);
   }
 
   handleExcalidrawChange(elements: readonly any[], appState: any, files: any) {
@@ -64,7 +67,7 @@ class EventCollector {
       });
       // Fire callback if set
       if (this.onFlush) {
-        this.onFlush(itemsToSend.length);
+        void this.onFlush(itemsToSend.length, itemsToSend);
       }
     } catch (e) {
       console.error('Failed to flush events', e);

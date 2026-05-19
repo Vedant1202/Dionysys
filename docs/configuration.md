@@ -176,3 +176,16 @@ The file-seeded Excalidraw demo default is `presentationMode: "prototype"` plus 
 In non-production builds, the admin console includes a session tool to randomize the current session id. It clears the active mode-scoped session id, queued pending decision, and applied adaptive state, then reloads the app so you can verify persistence behavior cleanly.
 
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.
+
+## Beta Feedback Loop
+
+The persona feedback loop is disabled by default. Enable both flags to collect post-decision metrics and end-user feedback:
+
+```bash
+ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
+VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
+```
+
+When enabled, the frontend records `adaptive_decision_applied` after a non-neutral UI/persona change is actually active. The backend uses that event as the start of the metrics window, scores subsequent productive activity, records explicit thumbs feedback, and stores a LangGraph recommendation of `keep`, `revert`, or `observe`.
+
+When the backend flag is off, beta feedback routes are not mounted and beta-only event types are dropped from event ingestion.

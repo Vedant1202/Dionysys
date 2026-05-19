@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Excalidraw, MainMenu, WelcomeScreen, serializeAsJSON } from '@excalidraw/excalidraw';
+import { useState, useEffect, useRef } from 'react';
+import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
 import { AdaptiveFeedback, type AdaptiveFeedbackSubmission, useAdaptiveUI } from '@dionysys/react';
@@ -11,6 +11,8 @@ import { loadStoredExcalidrawScene, saveStoredExcalidrawScene } from '../core/se
 import { humanizeLabel } from '../utils/formatters';
 
 
+const ADAPTIVE_FEEDBACK_BETA_ENABLED = import.meta.env.VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED === 'true';
+
 interface EditorShellProps {
   adaptiveMode: AdaptiveMode;
   persistenceMode: AdaptivePersistenceMode;
@@ -20,19 +22,29 @@ interface EditorShellProps {
   onOpenAdmin?: () => void;
 }
 
-export function EditorShell({
-  adaptiveMode,
-  persistenceMode,
-  sessionId,
-  onAdaptiveModeChange,
-  apiBaseUrl,
-  onOpenAdmin,
-}: EditorShellProps) {
+interface AppliedDecisionPayload {
+  mode: AdaptiveMode;
+  variant: string;
+  personalityId?: string;
+  actionId?: string;
+  confidence?: number;
+  decisionKey: string;
+  appliedAt: number;
+}
+
+export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
+  const [appliedDecision, setAppliedDecision] = useState<AppliedDecisionPayload | undefined>();
+  const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
+  const appliedDecisionRef = useRef<AppliedDecisionPayload | undefined>(undefined);
+  const lastAppliedDecisionKeyRef = useRef<string | undefined>(undefined);
   const {
     presentationMode,
     currentVariant,
     currentUIState,
+    currentPersonality,
+    decisionConfidence,
+    lastDecision,
     hasPendingUIChange,
     pendingPersonality,
     incrementEventsSent,
@@ -48,13 +60,57 @@ export function EditorShell({
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
-    eventCollector.setApiBaseUrl(apiBaseUrl);
-    eventCollector.setSessionId(sessionId);
-    eventCollector.onFlush = incrementEventsSent;
+    eventCollector.onFlush = (count) => {
+      incrementEventsSent(count);
+
+      if (!ADAPTIVE_FEEDBACK_BETA_ENABLED || !appliedDecisionRef.current || count === 0) return;
+
+      void fetch(`${apiBaseUrl}/api/adaptive-feedback/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: SESSION_ID }),
+      }).catch(() => {
+        // Beta feedback evaluation should never interrupt the editor.
+      });
+    };
     return () => {
       eventCollector.onFlush = undefined;
     };
-  }, [apiBaseUrl, incrementEventsSent, sessionId]);
+  }, [apiBaseUrl, incrementEventsSent]);
+
+  useEffect(() => {
+    appliedDecisionRef.current = appliedDecision;
+  }, [appliedDecision]);
+
+  useEffect(() => {
+    if (!ADAPTIVE_FEEDBACK_BETA_ENABLED) {
+      return;
+    }
+
+    if (currentVariant === 'neutral') return;
+
+    const decisionKey = buildDecisionKey(adaptiveMode, currentVariant, currentPersonality, lastDecision?.actionId);
+    if (lastAppliedDecisionKeyRef.current === decisionKey) return;
+    lastAppliedDecisionKeyRef.current = decisionKey;
+
+    const decision = compactDecision({
+      mode: adaptiveMode,
+      variant: currentVariant,
+      personalityId: currentPersonality,
+      actionId: lastDecision?.actionId,
+      confidence: decisionConfidence,
+      decisionKey,
+      appliedAt: Date.now(),
+    });
+
+    setAppliedDecision(decision);
+    eventCollector.recordEvent({
+      eventType: 'adaptive_decision_applied',
+      timestamp: Date.now(),
+      payload: { decision },
+    });
+    setShowFeedbackPrompt(window.sessionStorage.getItem(getFeedbackStorageKey(decisionKey)) !== 'true');
+  }, [adaptiveMode, currentVariant, currentPersonality, decisionConfidence, lastDecision?.actionId]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -68,19 +124,38 @@ export function EditorShell({
   }, [apiBaseUrl, sessionId]);
 
   const handleFeedback = async (feedback: AdaptiveFeedbackSubmission) => {
-    await fetch(`${apiBaseUrl}/api/events`, {
+    if (!ADAPTIVE_FEEDBACK_BETA_ENABLED || !appliedDecision) return;
+
+    const response = await fetch(`${apiBaseUrl}/api/adaptive-feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId,
-        events: [
-          {
-            eventType: 'feedback_submitted',
-            timestamp: Date.now(),
-            payload: feedback,
-          },
-        ],
+        sessionId: SESSION_ID,
+        sentiment: feedback.sentiment,
+        comment: feedback.comment,
       }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Feedback could not be saved');
+    }
+
+    window.sessionStorage.setItem(getFeedbackStorageKey(appliedDecision.decisionKey), 'true');
+    setShowFeedbackPrompt(false);
+  };
+
+  const handleToolSelected = (tool: string, wasHiddenByPersona: boolean) => {
+    if (!ADAPTIVE_FEEDBACK_BETA_ENABLED) return;
+
+    eventCollector.recordEvent({
+      eventType: 'tool_selected',
+      timestamp: Date.now(),
+      payload: {
+        tool,
+        wasHiddenByPersona,
+        variant: currentVariant,
+        personalityId: currentPersonality,
+      },
     });
   };
 
@@ -179,7 +254,11 @@ export function EditorShell({
 
       <div className="relative flex-grow border-t border-white/50">
         {usesPrioritizedToolbar && (
-          <DynamicToolbar excalidrawAPI={excalidrawAPI} config={config} />
+          <DynamicToolbar
+            excalidrawAPI={excalidrawAPI}
+            config={config}
+            onToolSelected={handleToolSelected}
+          />
         )}
         {usesPrioritizedToolbar && (
           <style>{`
@@ -261,9 +340,10 @@ export function EditorShell({
           </MainMenu>
         </Excalidraw>
         
-        {isPrototype ? (
+        {isPrototype && (
           <DebugPanel />
-        ) : (
+        )}
+        {ADAPTIVE_FEEDBACK_BETA_ENABLED && showFeedbackPrompt && (
           <div className="absolute bottom-4 right-4 z-[1000]">
             <AdaptiveFeedback onSubmit={handleFeedback} />
           </div>
@@ -271,4 +351,21 @@ export function EditorShell({
       </div>
     </div>
   );
+}
+
+function buildDecisionKey(
+  mode: AdaptiveMode,
+  variant: string,
+  personalityId: string | undefined,
+  actionId: string | undefined,
+): string {
+  return [mode, variant, personalityId ?? '', actionId ?? ''].join('::');
+}
+
+function getFeedbackStorageKey(decisionKey: string): string {
+  return `dionysys:adaptive-feedback:${SESSION_ID}:${decisionKey}`;
+}
+
+function compactDecision(decision: AppliedDecisionPayload): AppliedDecisionPayload {
+  return Object.fromEntries(Object.entries(decision).filter(([, value]) => value !== undefined)) as AppliedDecisionPayload;
 }

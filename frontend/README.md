@@ -49,21 +49,14 @@ The backend admin API must also be enabled:
 ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
 ```
 
-For production deployments, both frontend settings are build-time Vite values:
+## Beta feedback loop
+
+The persona feedback loop is disabled by default. Enable both sides for beta sessions:
 
 ```bash
-VITE_API_BASE_URL=https://your-backend.example.com
-VITE_ADMIN_CONSOLE_ENABLED=true
+ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
+VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
 ```
-
-The demo uses the same backend base URL for:
-
-- admin console reads and saves
-- adaptive decision and inference requests
-- telemetry event flushes
-- feedback submission
-
-If the production frontend is built with the wrong `VITE_API_BASE_URL`, the app can appear to load while admin actions and event persistence fail against the wrong origin.
 
 ## More docs
 

@@ -451,6 +451,20 @@ The console expects the backend admin API to be enabled with `ADMIN_CONSOLE_ENAB
 
 Internally, the package console is now split into a shell component, a state/orchestration hook, section modules, and shared primitives. Consumers still use the same `AdminConsole` export from the package root.
 
+## Beta Persona Feedback Loop
+
+Set `ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the backend and `VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the frontend to enable the MVP feedback loop. The loop is intentionally beta-only: when disabled, feedback routes are unavailable and beta-only telemetry is not stored.
+
+In beta mode, Dionysys asks for lightweight end-user feedback only after a persona/UI decision has actually been applied. The backend also records passive metrics after that applied decision:
+
+- productive actions per minute
+- creations and text additions
+- lower-weight modifications
+- negative-weight deletions
+- hidden-tool clicks from overflow toolbar selections
+
+The backend LangGraph workflow records `keep`, `revert`, or `observe` recommendations for study. The MVP does not automatically change the UI based on these recommendations.
+
 ## Event Summaries and Scoring
 
 MCP mode uses `InteractionSummarizer` before any connector call. The summary includes:

@@ -1,5 +1,12 @@
 import mongoose, { Schema } from 'mongoose';
-import type { IDatabaseAdapter, IEvent, ISession, IPersonaSnapshot, IPolicyDecision } from './IDatabaseAdapter.js';
+import type {
+  IDatabaseAdapter,
+  IEvent,
+  ISession,
+  IPersonaSnapshot,
+  IPolicyDecision,
+  IFeedbackLoopRecord,
+} from './IDatabaseAdapter.js';
 
 
 // Mongoose Schemas
@@ -36,11 +43,27 @@ const PolicyDecisionSchema = new Schema({
   propensity: { type: Number, required: true }
 });
 
+const FeedbackLoopRecordSchema = new Schema({
+  sessionId: { type: String, required: true, index: true },
+  userId: { type: String },
+  timestamp: { type: Date, required: true, default: Date.now },
+  source: { type: String, required: true, enum: ['passive', 'explicit'] },
+  appliedDecision: { type: Schema.Types.Mixed, required: true },
+  windowStart: { type: Date, required: true },
+  windowEnd: { type: Date, required: true },
+  metrics: { type: Schema.Types.Mixed, required: true },
+  graphRecommendation: { type: String, required: true, enum: ['keep', 'revert', 'observe'] },
+  graphRationale: { type: String, required: true },
+  sentiment: { type: String, enum: ['helpful', 'in_the_way'] },
+  comment: { type: String }
+});
+
 // Mongoose Models
 const EventModel = mongoose.model('Event', EventSchema);
 const SessionModel = mongoose.model('Session', SessionSchema);
 const PersonaSnapshotModel = mongoose.model('PersonaSnapshot', PersonaSnapshotSchema);
 const PolicyDecisionModel = mongoose.model('PolicyDecision', PolicyDecisionSchema);
+const FeedbackLoopRecordModel = mongoose.model('FeedbackLoopRecord', FeedbackLoopRecordSchema);
 
 
 export class MongoDbAdapter implements IDatabaseAdapter {
@@ -84,5 +107,13 @@ export class MongoDbAdapter implements IDatabaseAdapter {
 
   async savePolicyDecision(decision: IPolicyDecision): Promise<void> {
     await new PolicyDecisionModel(decision).save();
+  }
+
+  async saveFeedbackLoopRecord(record: IFeedbackLoopRecord): Promise<void> {
+    await new FeedbackLoopRecordModel(record).save();
+  }
+
+  async getFeedbackLoopRecordsBySession(sessionId: string): Promise<IFeedbackLoopRecord[]> {
+    return FeedbackLoopRecordModel.find({ sessionId }).sort({ timestamp: -1 }).lean().exec() as unknown as IFeedbackLoopRecord[];
   }
 }

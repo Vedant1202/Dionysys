@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { dbAdapter } from '../db.js';
+import { isAdaptiveFeedbackBetaEnabled, isBetaFeedbackEventType } from '../services/FeedbackBetaService.js';
 
 export const eventsRouter = Router();
 
@@ -17,17 +18,24 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Bulk-insert all events in one DB round-trip
-    const docs = events.map((evt: any) => ({
+    const betaFeedbackEnabled = isAdaptiveFeedbackBetaEnabled();
+    const acceptedEvents = betaFeedbackEnabled
+      ? events
+      : events.filter((evt: any) => !isBetaFeedbackEventType(String(evt.eventType)));
+
+    // Bulk-insert all accepted events in one DB round-trip
+    const docs = acceptedEvents.map((evt: any) => ({
       sessionId,
       eventType: evt.eventType,
       timestamp: new Date(evt.timestamp),
       payload: evt.payload
     }));
 
-    await dbAdapter.saveEvents(docs);
+    if (docs.length > 0) {
+      await dbAdapter.saveEvents(docs);
+    }
 
-    res.json({ success: true, count: docs.length });
+    res.json({ success: true, count: docs.length, dropped: events.length - docs.length });
   } catch (error) {
     console.error('Failed to log events:', error);
     res.status(500).json({ error: 'Internal Server Error' });

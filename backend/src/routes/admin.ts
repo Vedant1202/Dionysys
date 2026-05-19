@@ -9,6 +9,8 @@ import {
   resetAdminConfig,
   updateAdminConfig,
 } from '../services/AdminConfigService.js';
+import { isAdaptiveFeedbackBetaEnabled } from '../services/FeedbackBetaService.js';
+import { FeedbackLoopService } from '../services/FeedbackLoopService.js';
 
 export const adminRouter = Router();
 
@@ -48,7 +50,15 @@ adminRouter.get('/overview', async (req: Request, res: Response): Promise<void> 
   try {
     const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : undefined;
     const events = sessionId ? await dbAdapter.getEventsBySession(sessionId) : [];
-    res.json({ success: true, overview: buildAdminOverview(events, sessionId) });
+    const overview = buildAdminOverview(events, sessionId);
+    const feedbackLoop = sessionId && isAdaptiveFeedbackBetaEnabled()
+      ? await FeedbackLoopService.getOverview(sessionId)
+      : undefined;
+
+    res.json({
+      success: true,
+      overview: feedbackLoop ? { ...overview, feedbackLoop } : overview,
+    });
   } catch (error) {
     handleAdminError(error, res);
   }

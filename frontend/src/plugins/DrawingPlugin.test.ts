@@ -46,6 +46,27 @@ describe('DrawingPlugin', () => {
     expect(emitted).toHaveLength(2);
   });
 
+  it('emits element_modified when an existing non-text element version changes', () => {
+    plugin.onChange([{ id: 'el-8', type: 'rectangle', version: 1 }], {}, {});
+    plugin.onChange([{ id: 'el-8', type: 'rectangle', version: 2 }], {}, {});
+
+    expect(emitted.map((event) => event.eventType)).toEqual(['element_drawn', 'element_modified']);
+  });
+
+  it('emits text_updated when an existing text element changes text', () => {
+    plugin.onChange([{ id: 'el-9', type: 'text', text: 'hello', version: 1 }], {}, {});
+    plugin.onChange([{ id: 'el-9', type: 'text', text: 'hello world', version: 2 }], {}, {});
+
+    expect(emitted.map((event) => event.eventType)).toEqual(['text_added', 'text_updated']);
+  });
+
+  it('emits element_deleted when an existing element disappears', () => {
+    plugin.onChange([{ id: 'el-10', type: 'diamond', version: 1 }], {}, {});
+    plugin.onChange([], {}, {});
+
+    expect(emitted.map((event) => event.eventType)).toEqual(['element_drawn', 'element_deleted']);
+  });
+
   it('destroy clears known element IDs so elements are treated as new again', () => {
     const elements = [{ id: 'el-6', type: 'diamond' }];
     plugin.onChange(elements, {}, {});    // Seen once

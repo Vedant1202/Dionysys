@@ -19,6 +19,7 @@ import { DEFAULT_EXCALIDRAW_TOOLS, resolveVariantConfig, type VariantUIConfig } 
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
   config?: VariantUIConfig;
+  onToolSelected?: (tool: string, wasHiddenByPersona: boolean) => void;
 }
 
 type ToolMetadata = {
@@ -42,8 +43,7 @@ const TOOL_METADATA: Record<string, ToolMetadata> = {
 interface ToolButtonProps {
   tool: string;
   isActive: boolean;
-  onClick: (tool: string) => void;
-  hotkey?: string;
+  onClick: (tool: string, wasHiddenByPersona: boolean) => void;
   isOverflow?: boolean;
 }
 
@@ -57,10 +57,8 @@ function ToolButton({ tool, isActive, onClick, hotkey, isOverflow = false }: Too
   return (
     <button
       type="button"
-      onClick={() => onClick(tool)}
-      className={[
-        'group/tool relative z-0 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 hover:z-20 focus-visible:z-30',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+      onClick={() => onClick(tool, isOverflow)}
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-all duration-200 ${
         isActive
           ? 'z-10 border-violet-300 bg-[linear-gradient(180deg,#ffffff_0%,#eef2ff_100%)] text-violet-700 shadow-[0_14px_28px_rgba(99,102,241,0.2)]'
           : 'border-white/80 bg-white/92 text-slate-600 shadow-[0_8px_20px_rgba(148,163,184,0.16)] hover:-translate-y-0.5 hover:border-violet-200 hover:bg-white hover:text-violet-700',
@@ -111,7 +109,7 @@ function splitOverflowTools(overflowTools: string[]): { leftOverflow: string[]; 
   );
 }
 
-export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: DynamicToolbarProps) {
+export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSelected }: DynamicToolbarProps) {
   const { currentVariant, currentUIState, mode } = useAdaptiveUI();
   const [activeToolType, setActiveToolType] = useState<string>('selection');
 
@@ -128,8 +126,9 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
   const overflowTools = DEFAULT_EXCALIDRAW_TOOLS.filter((tool) => TOOL_METADATA[tool] && !primaryToolSet.has(tool));
   const { leftOverflow, rightOverflow } = splitOverflowTools(overflowTools);
 
-  const applyToolSelection = useEffectEvent((toolType: string) => {
+  const handleToolClick = (toolType: string, wasHiddenByPersona: boolean) => {
     setActiveToolType(toolType);
+    onToolSelected?.(toolType, wasHiddenByPersona);
     if (excalidrawAPI) {
       excalidrawAPI.updateScene({
         appState: {
