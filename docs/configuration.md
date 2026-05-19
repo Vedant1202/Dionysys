@@ -165,3 +165,16 @@ Use `presentationMode: "production"` for front-facing users so personalities, sc
 The file-seeded Excalidraw demo default is `presentationMode: "prototype"` plus `decisionApplication: "next-refresh"` so builders can see diagnostics while the active canvas UI still stays stable until refresh. `decisionApplication: "immediate"` remains useful for tests, demos, and backward-compatible integrations where mid-session UI changes are acceptable; prefer `next-refresh` for real active workspaces.
 
 For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.
+
+## Beta Feedback Loop
+
+The persona feedback loop is disabled by default. Enable both flags to collect post-decision metrics and end-user feedback:
+
+```bash
+ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
+VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
+```
+
+When enabled, the frontend records `adaptive_decision_applied` after a non-neutral UI/persona change is actually active. The backend uses that event as the start of the metrics window, scores subsequent productive activity, records explicit thumbs feedback, and stores a LangGraph recommendation of `keep`, `revert`, or `observe`.
+
+When the backend flag is off, beta feedback routes are not mounted and beta-only event types are dropped from event ingestion.

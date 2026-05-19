@@ -33,6 +33,48 @@ export interface IPolicyDecision {
   propensity: number;
 }
 
+export type FeedbackLoopSource = 'passive' | 'explicit';
+export type FeedbackSentiment = 'helpful' | 'in_the_way';
+export type FeedbackGraphRecommendation = 'keep' | 'revert' | 'observe';
+
+export interface IAppliedAdaptiveDecision {
+  mode?: string;
+  variant: string;
+  personalityId?: string;
+  actionId?: string;
+  confidence?: number;
+  decisionKey?: string;
+  appliedAt?: Date;
+}
+
+export interface IFeedbackLoopMetrics {
+  productiveActionsPerMinute: number;
+  creationCount: number;
+  textAdditionCount: number;
+  modificationCount: number;
+  deletionCount: number;
+  hiddenToolClicks: number;
+  hiddenToolFrictionRate: number;
+  activityScore: number;
+  windowDurationMs: number;
+  totalToolSelections: number;
+}
+
+export interface IFeedbackLoopRecord {
+  sessionId: string;
+  userId?: string;
+  timestamp: Date;
+  source: FeedbackLoopSource;
+  appliedDecision: IAppliedAdaptiveDecision;
+  windowStart: Date;
+  windowEnd: Date;
+  metrics: IFeedbackLoopMetrics;
+  graphRecommendation: FeedbackGraphRecommendation;
+  graphRationale: string;
+  sentiment?: FeedbackSentiment;
+  comment?: string;
+}
+
 export interface IDatabaseAdapter {
   connect(uri: string): Promise<void>;
   disconnect(): Promise<void>;
@@ -52,4 +94,8 @@ export interface IDatabaseAdapter {
 
   // Policy Decisions
   savePolicyDecision(decision: IPolicyDecision): Promise<void>;
+
+  // Beta feedback loop
+  saveFeedbackLoopRecord(record: IFeedbackLoopRecord): Promise<void>;
+  getFeedbackLoopRecordsBySession(sessionId: string): Promise<IFeedbackLoopRecord[]>;
 }

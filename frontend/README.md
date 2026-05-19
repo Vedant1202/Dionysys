@@ -49,6 +49,15 @@ The backend admin API must also be enabled:
 ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
 ```
 
+## Beta feedback loop
+
+The persona feedback loop is disabled by default. Enable both sides for beta sessions:
+
+```bash
+ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
+VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
+```
+
 ## More docs
 
 - [Package usage](../docs/usage.md)

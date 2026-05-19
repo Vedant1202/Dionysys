@@ -18,6 +18,7 @@ import { DEFAULT_EXCALIDRAW_TOOLS, resolveVariantConfig, type VariantUIConfig } 
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
   config?: VariantUIConfig;
+  onToolSelected?: (tool: string, wasHiddenByPersona: boolean) => void;
 }
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -36,7 +37,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
 interface ToolButtonProps {
   tool: string;
   isActive: boolean;
-  onClick: (tool: string) => void;
+  onClick: (tool: string, wasHiddenByPersona: boolean) => void;
   isOverflow?: boolean;
 }
 
@@ -47,7 +48,7 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
   return (
     <button
       type="button"
-      onClick={() => onClick(tool)}
+      onClick={() => onClick(tool, isOverflow)}
       className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-all duration-200 ${
         isActive
           ? 'bg-primary text-primary-content shadow-sm scale-105'
@@ -76,7 +77,7 @@ function splitOverflowTools(overflowTools: string[]): { leftOverflow: string[]; 
   );
 }
 
-export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: DynamicToolbarProps) {
+export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSelected }: DynamicToolbarProps) {
   const { currentVariant, currentUIState, mode } = useAdaptiveUI();
   const [activeToolType, setActiveToolType] = useState<string>('selection');
 
@@ -95,8 +96,9 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig }: Dynami
   const overflowTools = DEFAULT_EXCALIDRAW_TOOLS.filter((tool) => !primaryToolSet.has(tool));
   const { leftOverflow, rightOverflow } = splitOverflowTools(overflowTools);
 
-  const handleToolClick = (toolType: string) => {
+  const handleToolClick = (toolType: string, wasHiddenByPersona: boolean) => {
     setActiveToolType(toolType);
+    onToolSelected?.(toolType, wasHiddenByPersona);
     if (excalidrawAPI) {
       excalidrawAPI.updateScene({
         appState: {
