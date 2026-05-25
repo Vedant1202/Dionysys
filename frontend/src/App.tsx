@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AdaptiveProvider, AdminConsole } from '@dionysys/react';
 import type {
   AdaptiveDecision,
@@ -44,6 +44,7 @@ function App() {
   const [persistenceMode, setPersistenceMode] = useState<AdaptivePersistenceMode>('browser');
   const [sessionId, setSessionId] = useState(() => getOrCreateSessionId('browser'));
   const [browserId] = useState(() => getOrCreateBrowserId());
+  const priorRef = useRef<Record<string, number> | null>(null);
   const [providerVersion, setProviderVersion] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isConfigBootstrapped, setIsConfigBootstrapped] = useState(!ADMIN_CONSOLE_VISIBLE);
@@ -92,9 +93,38 @@ function App() {
     }
   };
 
+  // Fetch cross-session persona prior on mount and store for first pollInference call
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/api/inference/prior?browserId=${encodeURIComponent(browserId)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((body: { success: boolean; personaPriors: Record<string, number> }) => {
+        if (!cancelled && body.personaPriors) {
+          priorRef.current = body.personaPriors;
+        }
+      })
+      .catch(() => { /* 404 or beta off — no prior to seed */ });
+    return () => { cancelled = true; };
+  }, [browserId]);
+
   useEffect(() => {
     setSessionId(getOrCreateSessionId(persistenceMode));
   }, [persistenceMode]);
+
+  const pollInferenceFn = useCallback(async () => {
+    // On the first call, return the stored cross-session prior (if available) instead of fetching
+    if (priorRef.current) {
+      const prior = priorRef.current;
+      priorRef.current = null; // consume once
+      return prior;
+    }
+    const response = await fetch(`${API_BASE_URL}/api/inference/${sessionId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.probabilities as Record<string, number>;
+    }
+    return {};
+  }, [sessionId]);
 
   const handleRandomizeSession = () => {
     if (import.meta.env.PROD) return;
@@ -130,14 +160,7 @@ function App() {
          defaultUIState={{ variant: 'neutral', ...VARIANT_CONFIGS.neutral }}
          minEventsBeforeLock={providerSettings.minEventsBeforeLock}
          pollingIntervalMs={providerSettings.pollingIntervalMs}
-         pollInference={adaptiveMode === 'deterministic' ? async () => {
-           const response = await fetch(`${API_BASE_URL}/api/inference/${sessionId}`);
-           if (response.ok) {
-             const data = await response.json();
-             return data.probabilities;
-           }
-           return {};
-         } : undefined}
+         pollInference={adaptiveMode === 'deterministic' ? pollInferenceFn : undefined}
          evaluatePolicy={adaptiveMode === 'deterministic' ? async () => {
            const response = await fetch(`${API_BASE_URL}/api/adaptive/decision`, {
              method: 'POST',
