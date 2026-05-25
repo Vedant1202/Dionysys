@@ -11,6 +11,7 @@ import {
 } from '../services/AdminConfigService.js';
 import { isAdaptiveFeedbackBetaEnabled } from '../services/FeedbackBetaService.js';
 import { FeedbackLoopService } from '../services/FeedbackLoopService.js';
+import { CohortService } from '../services/CohortService.js';
 
 export const adminRouter = Router();
 
@@ -59,6 +60,20 @@ adminRouter.get('/overview', async (req: Request, res: Response): Promise<void> 
       success: true,
       overview: feedbackLoop ? { ...overview, feedbackLoop } : overview,
     });
+  } catch (error) {
+    handleAdminError(error, res);
+  }
+});
+
+adminRouter.get('/cohort-overview', async (_req: Request, res: Response): Promise<void> => {
+  if (!isAdaptiveFeedbackBetaEnabled()) {
+    res.status(403).json({ error: 'Feedback beta is not enabled' });
+    return;
+  }
+
+  try {
+    const overview = await CohortService.getOverview();
+    res.json({ success: true, overview });
   } catch (error) {
     handleAdminError(error, res);
   }

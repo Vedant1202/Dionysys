@@ -6,6 +6,8 @@ import type {
   IPersonaSnapshot,
   IPolicyDecision,
   IFeedbackLoopRecord,
+  IBanditParams,
+  IBrowserPrior,
 } from './IDatabaseAdapter.js';
 
 
@@ -58,12 +60,28 @@ const FeedbackLoopRecordSchema = new Schema({
   comment: { type: String }
 });
 
+const BanditParamsSchema = new Schema({
+  variant: { type: String, required: true, unique: true, index: true },
+  alpha: { type: Number, required: true, default: 1 },
+  beta: { type: Number, required: true, default: 1 },
+  lastUpdated: { type: Date, required: true, default: Date.now },
+});
+
+const BrowserPriorSchema = new Schema({
+  browserId: { type: String, required: true, unique: true, index: true },
+  personaPriors: { type: Map, of: Number, required: true },
+  sessionCount: { type: Number, required: true, default: 0 },
+  lastUpdated: { type: Date, required: true, default: Date.now },
+});
+
 // Mongoose Models
 const EventModel = mongoose.model('Event', EventSchema);
 const SessionModel = mongoose.model('Session', SessionSchema);
 const PersonaSnapshotModel = mongoose.model('PersonaSnapshot', PersonaSnapshotSchema);
 const PolicyDecisionModel = mongoose.model('PolicyDecision', PolicyDecisionSchema);
 const FeedbackLoopRecordModel = mongoose.model('FeedbackLoopRecord', FeedbackLoopRecordSchema);
+const BanditParamsModel = mongoose.model('BanditParams', BanditParamsSchema);
+const BrowserPriorModel = mongoose.model('BrowserPrior', BrowserPriorSchema);
 
 
 export class MongoDbAdapter implements IDatabaseAdapter {
@@ -115,5 +133,44 @@ export class MongoDbAdapter implements IDatabaseAdapter {
 
   async getFeedbackLoopRecordsBySession(sessionId: string): Promise<IFeedbackLoopRecord[]> {
     return FeedbackLoopRecordModel.find({ sessionId }).sort({ timestamp: -1 }).lean().exec() as unknown as IFeedbackLoopRecord[];
+  }
+
+  async getAllFeedbackLoopRecords(): Promise<IFeedbackLoopRecord[]> {
+    return FeedbackLoopRecordModel.find({}).sort({ timestamp: -1 }).lean().exec() as unknown as IFeedbackLoopRecord[];
+  }
+
+  async getBanditParams(variant: string): Promise<IBanditParams | null> {
+    return BanditParamsModel.findOne({ variant }).lean().exec() as unknown as IBanditParams | null;
+  }
+
+  async upsertBanditParams(params: IBanditParams): Promise<void> {
+    await BanditParamsModel.findOneAndUpdate(
+      { variant: params.variant },
+      { ...params, lastUpdated: new Date() },
+      { upsert: true, new: true },
+    ).exec();
+  }
+
+  async getAllBanditParams(): Promise<IBanditParams[]> {
+    return BanditParamsModel.find({}).lean().exec() as unknown as IBanditParams[];
+  }
+
+  async getBrowserPrior(browserId: string): Promise<IBrowserPrior | null> {
+    const doc = await BrowserPriorModel.findOne({ browserId }).lean().exec();
+    if (!doc) return null;
+    // Convert Mongoose Map back to plain object
+    const raw = doc as unknown as Record<string, unknown>;
+    const personaPriors = raw['personaPriors'] instanceof Map
+      ? Object.fromEntries(raw['personaPriors'] as Map<string, number>)
+      : (raw['personaPriors'] as Record<string, number>);
+    return { ...(raw as unknown as IBrowserPrior), personaPriors };
+  }
+
+  async upsertBrowserPrior(prior: IBrowserPrior): Promise<void> {
+    await BrowserPriorModel.findOneAndUpdate(
+      { browserId: prior.browserId },
+      { ...prior, lastUpdated: new Date() },
+      { upsert: true, new: true },
+    ).exec();
   }
 }

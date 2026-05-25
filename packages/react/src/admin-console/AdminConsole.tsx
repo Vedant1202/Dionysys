@@ -127,7 +127,7 @@ export function AdminConsole({
             <CalculationsPanel config={config} updateConfig={updateConfig} />
           )}
           {!isLoading && config && activeTab === 'data' && (
-            <DataPanel overview={overview} />
+            <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} />
           )}
           {!isLoading && config && activeTab === 'apis' && (
             <ApisPanel

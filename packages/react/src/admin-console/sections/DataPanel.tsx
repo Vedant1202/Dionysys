@@ -1,12 +1,35 @@
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminConsoleOverview } from '@dionysys/core';
 import { ComparisonRows, EmptyState, JsonBlock, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { formatMs } from '../utils.js';
 import { FeedbackLoopPanel } from './FeedbackLoopPanel.js';
+import { CohortPanel, type CohortOverview } from './CohortPanel.js';
 
-export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
+export function DataPanel({
+  overview,
+  apiBaseUrl,
+}: {
+  overview?: AdminConsoleOverview;
+  apiBaseUrl?: string;
+}) {
   const session = overview?.session;
   const feedbackLoop = overview?.feedbackLoop;
+
+  const [cohortOverview, setCohortOverview] = useState<CohortOverview | null>(null);
+
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+    let cancelled = false;
+    fetch(`${apiBaseUrl}/api/admin/cohort-overview`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((body: { success: boolean; overview: CohortOverview }) => {
+        if (!cancelled) setCohortOverview(body.overview);
+      })
+      .catch(() => { /* beta may be disabled — stay null */ });
+    return () => { cancelled = true; };
+  }, [apiBaseUrl]);
 
   if (!session) {
     return <EmptyState title="No session data loaded" description="Pass a sessionId to AdminConsole to inspect live interaction summaries." />;
@@ -34,6 +57,9 @@ export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
       </SectionCard>
       {feedbackLoop !== undefined && (
         <FeedbackLoopPanel data={feedbackLoop} />
+      )}
+      {cohortOverview !== null && (
+        <CohortPanel overview={cohortOverview} />
       )}
     </div>
   );

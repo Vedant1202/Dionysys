@@ -75,6 +75,20 @@ export interface IFeedbackLoopRecord {
   comment?: string;
 }
 
+export interface IBrowserPrior {
+  browserId: string;
+  personaPriors: Record<string, number>; // values sum to ~1.0
+  sessionCount: number;
+  lastUpdated: Date;
+}
+
+export interface IBanditParams {
+  variant: string;
+  alpha: number;
+  beta: number;
+  lastUpdated: Date;
+}
+
 export interface IDatabaseAdapter {
   connect(uri: string): Promise<void>;
   disconnect(): Promise<void>;
@@ -98,4 +112,14 @@ export interface IDatabaseAdapter {
   // Beta feedback loop
   saveFeedbackLoopRecord(record: IFeedbackLoopRecord): Promise<void>;
   getFeedbackLoopRecordsBySession(sessionId: string): Promise<IFeedbackLoopRecord[]>;
+  getAllFeedbackLoopRecords(): Promise<IFeedbackLoopRecord[]>;
+
+  // Thompson sampling bandit params
+  getBanditParams(variant: string): Promise<IBanditParams | null>;
+  upsertBanditParams(params: IBanditParams): Promise<void>;
+  getAllBanditParams(): Promise<IBanditParams[]>;
+
+  // Cross-session browser prior
+  getBrowserPrior(browserId: string): Promise<IBrowserPrior | null>;
+  upsertBrowserPrior(prior: IBrowserPrior): Promise<void>;
 }
