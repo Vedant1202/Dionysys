@@ -44,6 +44,7 @@ interface ToolButtonProps {
   tool: string;
   isActive: boolean;
   onClick: (tool: string, wasHiddenByPersona: boolean) => void;
+  hotkey?: string | undefined;
   isOverflow?: boolean;
 }
 
@@ -58,12 +59,12 @@ function ToolButton({ tool, isActive, onClick, hotkey, isOverflow = false }: Too
     <button
       type="button"
       onClick={() => onClick(tool, isOverflow)}
-      className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-all duration-200 ${
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-all duration-200 ${[
         isActive
           ? 'z-10 border-violet-300 bg-[linear-gradient(180deg,#ffffff_0%,#eef2ff_100%)] text-violet-700 shadow-[0_14px_28px_rgba(99,102,241,0.2)]'
           : 'border-white/80 bg-white/92 text-slate-600 shadow-[0_8px_20px_rgba(148,163,184,0.16)] hover:-translate-y-0.5 hover:border-violet-200 hover:bg-white hover:text-violet-700',
         isOverflow ? 'text-slate-500 hover:text-violet-700' : '',
-      ].join(' ')}
+      ].join(' ')}`}
       title={tooltip}
       aria-label={`${label} tool`}
       aria-keyshortcuts={hotkey}
@@ -136,6 +137,12 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSe
         },
       });
     }
+  };
+
+  // Stable event handler: always reads the latest state/props but safe to use
+  // inside effects without being included in the dependency array.
+  const applyToolSelection = useEffectEvent((toolType: string, wasHiddenByPersona = false) => {
+    handleToolClick(toolType, wasHiddenByPersona);
   });
 
   useEffect(() => {

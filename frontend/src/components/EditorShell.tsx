@@ -449,9 +449,6 @@ const calibrationNoteStyle: CSSProperties = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- keep React in scope for JSX
-import React from 'react';
-
 function buildDecisionKey(
   mode: AdaptiveMode,
   variant: string,

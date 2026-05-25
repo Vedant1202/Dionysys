@@ -9,6 +9,7 @@ class EventCollector {
   private backendUrl = 'http://localhost:3001/api/events';
   private batch: AppEvent[] = [];
   private intervalId: number | null = null;
+  private sessionId?: string;
   public onFlush?: (count: number, events: AppEvent[]) => void | Promise<void>;
 
   constructor() {
