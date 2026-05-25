@@ -1,8 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import { Excalidraw, MainMenu, WelcomeScreen } from '@excalidraw/excalidraw';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import { Excalidraw, MainMenu, WelcomeScreen, serializeAsJSON } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
-import { AdaptiveFeedback, type AdaptiveFeedbackSubmission, useAdaptiveUI } from '@dionysys/react';
+import {
+  AdaptiveFeedback,
+  useAdaptiveUI,
+  useFeedback,
+  useFeedbackTrigger,
+} from '@dionysys/react';
 import { DebugPanel } from './DebugPanel';
 import { eventCollector } from '../core/eventCollector';
 import { DynamicToolbar } from './DynamicToolbar';
@@ -32,10 +37,11 @@ interface AppliedDecisionPayload {
   appliedAt: number;
 }
 
-export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
+export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [appliedDecision, setAppliedDecision] = useState<AppliedDecisionPayload | undefined>();
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
+  const [hiddenToolClickCount, setHiddenToolClickCount] = useState(0);
   const appliedDecisionRef = useRef<AppliedDecisionPayload | undefined>(undefined);
   const lastAppliedDecisionKeyRef = useRef<string | undefined>(undefined);
   const {
@@ -48,7 +54,29 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     hasPendingUIChange,
     pendingPersonality,
     incrementEventsSent,
+    setManualOverride,
   } = useAdaptiveUI();
+
+  // ── Feedback loop hooks ────────────────────────────────────────────────────
+  const {
+    submitFeedback,
+    triggerPassiveEval,
+    pendingRevert,
+    showCalibrationNote,
+    confirmRevert,
+    dismissRevert,
+  } = useFeedback({
+    sessionId,
+    baseUrl: apiBaseUrl,
+    onRevert: () => setManualOverride({ variant: 'neutral' }),
+  });
+
+  useFeedbackTrigger({
+    triggerPassiveEval,
+    // Only activate the trigger when the beta flag is on — gates all passive evals
+    lastDecision: ADAPTIVE_FEEDBACK_BETA_ENABLED ? lastDecision : undefined,
+    hiddenToolClickCount: ADAPTIVE_FEEDBACK_BETA_ENABLED ? hiddenToolClickCount : 0,
+  });
   const isPrototype = presentationMode === 'prototype';
 
   const config = resolveVariantConfig(
@@ -60,23 +88,15 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
   useEffect(() => {
+    // Passive evaluation is now handled by useFeedbackTrigger (threshold-based).
+    // onFlush only needs to keep the event count in sync for policy decisions.
     eventCollector.onFlush = (count) => {
       incrementEventsSent(count);
-
-      if (!ADAPTIVE_FEEDBACK_BETA_ENABLED || !appliedDecisionRef.current || count === 0) return;
-
-      void fetch(`${apiBaseUrl}/api/adaptive-feedback/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: SESSION_ID }),
-      }).catch(() => {
-        // Beta feedback evaluation should never interrupt the editor.
-      });
     };
     return () => {
       eventCollector.onFlush = undefined;
     };
-  }, [apiBaseUrl, incrementEventsSent]);
+  }, [incrementEventsSent]);
 
   useEffect(() => {
     appliedDecisionRef.current = appliedDecision;
@@ -104,12 +124,14 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     });
 
     setAppliedDecision(decision);
+    // Reset friction counter for the new decision window
+    setHiddenToolClickCount(0);
     eventCollector.recordEvent({
       eventType: 'adaptive_decision_applied',
       timestamp: Date.now(),
       payload: { decision },
     });
-    setShowFeedbackPrompt(window.sessionStorage.getItem(getFeedbackStorageKey(decisionKey)) !== 'true');
+    setShowFeedbackPrompt(window.sessionStorage.getItem(getFeedbackStorageKey(sessionId, decisionKey)) !== 'true');
   }, [adaptiveMode, currentVariant, currentPersonality, decisionConfidence, lastDecision?.actionId]);
 
   useEffect(() => {
@@ -123,29 +145,19 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [apiBaseUrl, sessionId]);
 
-  const handleFeedback = async (feedback: AdaptiveFeedbackSubmission) => {
+  const handleFeedback = async (feedback: { sentiment: 'helpful' | 'in_the_way'; comment?: string }) => {
     if (!ADAPTIVE_FEEDBACK_BETA_ENABLED || !appliedDecision) return;
-
-    const response = await fetch(`${apiBaseUrl}/api/adaptive-feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: SESSION_ID,
-        sentiment: feedback.sentiment,
-        comment: feedback.comment,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Feedback could not be saved');
-    }
-
-    window.sessionStorage.setItem(getFeedbackStorageKey(appliedDecision.decisionKey), 'true');
+    await submitFeedback(feedback);
+    window.sessionStorage.setItem(getFeedbackStorageKey(sessionId, appliedDecision.decisionKey), 'true');
     setShowFeedbackPrompt(false);
   };
 
   const handleToolSelected = (tool: string, wasHiddenByPersona: boolean) => {
     if (!ADAPTIVE_FEEDBACK_BETA_ENABLED) return;
+
+    if (wasHiddenByPersona) {
+      setHiddenToolClickCount((n) => n + 1);
+    }
 
     eventCollector.recordEvent({
       eventType: 'tool_selected',
@@ -343,15 +355,102 @@ export function EditorShell({ adaptiveMode, onAdaptiveModeChange, apiBaseUrl, on
         {isPrototype && (
           <DebugPanel />
         )}
-        {ADAPTIVE_FEEDBACK_BETA_ENABLED && showFeedbackPrompt && (
+        {ADAPTIVE_FEEDBACK_BETA_ENABLED && (showFeedbackPrompt || pendingRevert) && (
           <div className="absolute bottom-4 right-4 z-[1000]">
-            <AdaptiveFeedback onSubmit={handleFeedback} />
+            {pendingRevert ? (
+              <RevertPrompt onConfirm={confirmRevert} onDismiss={dismissRevert} />
+            ) : (
+              <>
+                <AdaptiveFeedback onSubmit={handleFeedback} />
+                {showCalibrationNote && (
+                  <p style={calibrationNoteStyle}>✓ Workspace calibrated to your style</p>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// ─── Revert prompt ────────────────────────────────────────────────────────────
+
+function RevertPrompt({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss: () => void }) {
+  return (
+    <section style={revertPanelStyle} aria-label="Workspace revert prompt">
+      <p style={revertPromptTextStyle}>
+        This layout doesn't seem to be working for you. Reset to default?
+      </p>
+      <div style={revertActionsStyle}>
+        <button type="button" style={revertConfirmStyle} onClick={onConfirm}>
+          Reset layout
+        </button>
+        <button type="button" style={revertDismissStyle} onClick={onDismiss}>
+          Keep it
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const revertPanelStyle: CSSProperties = {
+  width: 280,
+  borderRadius: 8,
+  border: '1px solid rgba(190, 18, 60, 0.2)',
+  background: 'rgba(255, 241, 242, 0.97)',
+  boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)',
+  padding: 14,
+  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
+};
+
+const revertPromptTextStyle: CSSProperties = {
+  margin: '0 0 12px',
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: '#1f2933',
+};
+
+const revertActionsStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 8,
+};
+
+const revertConfirmStyle: CSSProperties = {
+  minHeight: 38,
+  border: '1px solid rgba(190, 18, 60, 0.3)',
+  borderRadius: 6,
+  background: 'rgba(255, 241, 242, 0.94)',
+  color: '#be123c',
+  fontWeight: 900,
+  cursor: 'pointer',
+};
+
+const revertDismissStyle: CSSProperties = {
+  minHeight: 38,
+  border: '1px solid #c8c0b2',
+  borderRadius: 6,
+  background: '#ffffff',
+  color: '#273444',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+
+const calibrationNoteStyle: CSSProperties = {
+  margin: '6px 0 0',
+  padding: '6px 10px',
+  borderRadius: 6,
+  background: 'rgba(209, 250, 229, 0.94)',
+  color: '#065f46',
+  fontSize: 12,
+  fontWeight: 800,
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- keep React in scope for JSX
+import React from 'react';
 
 function buildDecisionKey(
   mode: AdaptiveMode,
@@ -362,8 +461,8 @@ function buildDecisionKey(
   return [mode, variant, personalityId ?? '', actionId ?? ''].join('::');
 }
 
-function getFeedbackStorageKey(decisionKey: string): string {
-  return `dionysys:adaptive-feedback:${SESSION_ID}:${decisionKey}`;
+function getFeedbackStorageKey(sessionId: string, decisionKey: string): string {
+  return `dionysys:adaptive-feedback:${sessionId}:${decisionKey}`;
 }
 
 function compactDecision(decision: AppliedDecisionPayload): AppliedDecisionPayload {
