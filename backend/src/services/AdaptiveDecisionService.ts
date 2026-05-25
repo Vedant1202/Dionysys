@@ -17,6 +17,8 @@ import {
   inferPersonaWithActiveConfig,
   selectVariantWithActiveConfig,
 } from './AdminConfigService.js';
+import { BanditService } from './BanditService.js';
+import { isAdaptiveFeedbackBetaEnabled } from './FeedbackBetaService.js';
 
 export interface DeterministicAdaptiveDecision {
   mode: 'deterministic';
@@ -40,8 +42,14 @@ export async function resolveAdaptiveDecisionForEvents(
 ): Promise<AdaptiveDecisionResult> {
   if (mode === 'deterministic') {
     const axisScores = inferDeterministicAxesWithActiveConfig(events);
+
+    // Blend persona scores with Thompson-sampled bandit weights when the beta flag is on
+    const modalityScores = isAdaptiveFeedbackBetaEnabled()
+      ? await BanditService.blendPersonaScores(axisScores.modalityScores)
+      : axisScores.modalityScores;
+
     const { chosenVariant, propensity, selectedModality, selectedExpertise } = selectVariantWithActiveConfig(
-      axisScores.modalityScores,
+      modalityScores as Record<ModalityPersona, number>,
       axisScores.expertiseScores,
     );
 
@@ -50,12 +58,12 @@ export async function resolveAdaptiveDecisionForEvents(
       variant: chosenVariant,
       chosenVariant,
       propensity,
-      modalityScores: axisScores.modalityScores,
+      modalityScores: modalityScores as Record<ModalityPersona, number>,
       expertiseScores: axisScores.expertiseScores,
       selectedModality,
       selectedExpertise,
       composedUiVariant: chosenVariant,
-      personaScores: axisScores.personaScores,
+      personaScores: modalityScores,
     };
   }
 

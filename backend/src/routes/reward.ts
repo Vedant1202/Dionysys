@@ -1,6 +1,9 @@
 import { Router, type Request, type Response } from 'express';
 import { dbAdapter } from '../db.js';
 import { RewardService } from '../services/RewardService.js';
+import { BanditService } from '../services/BanditService.js';
+import { BrowserPriorService } from '../services/BrowserPriorService.js';
+import { isAdaptiveFeedbackBetaEnabled } from '../services/FeedbackBetaService.js';
 
 export const rewardRouter = Router();
 
@@ -11,7 +14,7 @@ export const rewardRouter = Router();
  */
 rewardRouter.post('/complete', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.body;
+    const { sessionId, browserId } = req.body;
 
     if (!sessionId) {
       res.status(400).json({ error: 'Missing sessionId' });
@@ -31,6 +34,20 @@ rewardRouter.post('/complete', async (req: Request, res: Response): Promise<void
 
     // 4. Update the session end time in DB
     await dbAdapter.updateSession(sessionId, { endTime: new Date() });
+
+    if (isAdaptiveFeedbackBetaEnabled()) {
+      // 5a. Update Thompson-sampling bandit params (fire-and-forget)
+      BanditService.updateFromSession(sessionId).catch((err) => {
+        console.error('BanditService.updateFromSession failed (non-fatal):', err);
+      });
+
+      // 5b. Update cross-session browser prior (fire-and-forget; skipped when browserId absent)
+      if (typeof browserId === 'string' && browserId) {
+        BrowserPriorService.updateFromSession(sessionId, browserId).catch((err) => {
+          console.error('BrowserPriorService.updateFromSession failed (non-fatal):', err);
+        });
+      }
+    }
 
     res.json({ success: true, ...result });
   } catch (error) {
