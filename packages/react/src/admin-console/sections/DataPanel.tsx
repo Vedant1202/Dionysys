@@ -2,6 +2,7 @@ import type { AdminConsoleOverview } from '@dionysys/core';
 import { ComparisonRows, EmptyState, JsonBlock, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { formatMs } from '../utils.js';
+import { FeedbackLoopPanel } from './FeedbackLoopPanel.js';
 
 export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
   const session = overview?.session;
@@ -32,12 +33,7 @@ export function DataPanel({ overview }: { overview?: AdminConsoleOverview }) {
         <JsonBlock value={session.recentEvents} />
       </SectionCard>
       {feedbackLoop !== undefined && (
-        <SectionCard title="Beta Feedback Loop">
-          <p style={styles.helpText}>
-            Beta-only activity scoring, feedback, and graph recommendations for the current session.
-          </p>
-          <JsonBlock value={feedbackLoop} />
-        </SectionCard>
+        <FeedbackLoopPanel data={feedbackLoop} />
       )}
     </div>
   );
