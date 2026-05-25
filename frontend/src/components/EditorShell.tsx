@@ -87,6 +87,13 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
   const keepsNativeToolbar = config?.toolbar?.mode === 'blocklist';
   const usesPrioritizedToolbar = Boolean(config?.toolbar?.mode === 'allowlist' && !keepsNativeToolbar);
 
+  // Wire the event collector to the current session and backend URL.
+  // Must run before the first flush (which starts immediately on mount).
+  useEffect(() => {
+    eventCollector.setSessionId(sessionId);
+    eventCollector.setApiBaseUrl(apiBaseUrl);
+  }, [sessionId, apiBaseUrl]);
+
   useEffect(() => {
     // Passive evaluation is now handled by useFeedbackTrigger (threshold-based).
     // onFlush only needs to keep the event count in sync for policy decisions.
