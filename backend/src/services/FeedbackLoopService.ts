@@ -8,6 +8,7 @@ import type {
 } from '../db/IDatabaseAdapter.js';
 import { dbAdapter } from '../db.js';
 import { FeedbackLoopGraphService } from './FeedbackLoopGraphService.js';
+import { getActiveFeedbackWeights } from './AdminConfigService.js';
 
 export interface FeedbackLoopEvaluationInput {
   sessionId: string;
@@ -105,6 +106,7 @@ export class FeedbackLoopService {
 }
 
 function calculateMetrics(events: IEvent[], windowStart: Date, windowEnd: Date): IFeedbackLoopMetrics {
+  const weights = getActiveFeedbackWeights();
   const creationCount = countEvents(events, 'element_drawn');
   const textAdditionCount = countEvents(events, 'text_added');
   const modificationCount = countEvents(events, 'element_modified') + countEvents(events, 'text_updated');
@@ -122,7 +124,12 @@ function calculateMetrics(events: IEvent[], windowStart: Date, windowEnd: Date):
     deletionCount,
     hiddenToolClicks,
     hiddenToolFrictionRate: toolSelections.length > 0 ? hiddenToolClicks / toolSelections.length : 0,
-    activityScore: creationCount * 3 + textAdditionCount * 3 + modificationCount - deletionCount * 2 - hiddenToolClicks * 3,
+    activityScore:
+      creationCount * weights.creationWeight +
+      textAdditionCount * weights.textAdditionWeight +
+      modificationCount * weights.modificationWeight -
+      deletionCount * weights.deletionPenalty -
+      hiddenToolClicks * weights.hiddenToolPenalty,
     windowDurationMs,
     totalToolSelections: toolSelections.length,
   };

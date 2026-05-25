@@ -14,6 +14,7 @@ import {
   type AdminConsoleConfig,
   type AdminConsoleOverview,
   type AdminConnectorStatus,
+  type FeedbackWeights,
   type ExpertisePersona,
   type GenericEvent,
   type ModalityPersona,
@@ -23,6 +24,14 @@ import { EXCALIDRAW_MCP_RESOURCES_BY_AXIS } from './ExcalidrawMcpResources.js';
 
 const SUPPORTED_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text', 'image', 'eraser'];
 const SUPPORTED_MENU_ITEMS = ['saveAsImage', 'export', 'clearCanvas', 'help', 'toggleTheme'];
+
+export const DEFAULT_FEEDBACK_WEIGHTS: FeedbackWeights = {
+  creationWeight: 3,
+  textAdditionWeight: 3,
+  modificationWeight: 1,
+  deletionPenalty: 2,
+  hiddenToolPenalty: 3,
+};
 
 export function isAdminConsoleEnabled(): boolean {
   return process.env.ADMIN_CONSOLE_ENABLED === 'true';
@@ -114,6 +123,7 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
     supportedTools: SUPPORTED_TOOLS,
     supportedMenuItems: SUPPORTED_MENU_ITEMS,
   },
+  feedbackWeights: DEFAULT_FEEDBACK_WEIGHTS,
 };
 
 let activeConfig = cloneConfig(FILE_SEEDED_ADMIN_CONFIG);
@@ -204,6 +214,10 @@ export function buildAdminOverview(events: IEvent[] = [], sessionId?: string): A
       recentEvents: interactionSummary.recentEvents,
     },
   };
+}
+
+export function getActiveFeedbackWeights(): FeedbackWeights {
+  return getAdminConfig().feedbackWeights;
 }
 
 export function getActiveMcpResources() {

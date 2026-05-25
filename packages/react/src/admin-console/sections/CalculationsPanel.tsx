@@ -1,4 +1,4 @@
-import type { AdminConsoleConfig, AdminEventWeightRule, AdminHeuristicRule } from '@dionysys/core';
+import type { AdminConsoleConfig, AdminEventWeightRule, AdminHeuristicRule, FeedbackWeights } from '@dionysys/core';
 import { Field, JsonSection, KeyValueNumberEditor, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { toBoundedNumber } from '../utils.js';
@@ -100,6 +100,38 @@ export function CalculationsPanel({
             },
           }))}
         />
+      </SectionCard>
+
+      <SectionCard title="Activity Score Weights">
+        <p style={styles.helpText}>
+          Tune how each action type contributes to the post-decision activity score used by the feedback graph.
+        </p>
+        {(
+          [
+            ['creationWeight',    'Creation weight (element_drawn)'],
+            ['textAdditionWeight','Text addition weight (text_added)'],
+            ['modificationWeight','Modification weight'],
+            ['deletionPenalty',  'Deletion penalty'],
+            ['hiddenToolPenalty','Hidden tool penalty'],
+          ] as [keyof FeedbackWeights, string][]
+        ).map(([key, label]) => (
+          <Field key={key} label={label}>
+            <input
+              style={styles.input}
+              type="number"
+              step={0.5}
+              value={config.feedbackWeights[key]}
+              onChange={(event) => {
+                const val = parseFloat(event.target.value);
+                if (!Number.isFinite(val)) return;
+                updateConfig((current) => ({
+                  ...current,
+                  feedbackWeights: { ...current.feedbackWeights, [key]: val },
+                }));
+              }}
+            />
+          </Field>
+        ))}
       </SectionCard>
 
       <div style={styles.stack}>

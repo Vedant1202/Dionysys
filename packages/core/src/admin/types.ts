@@ -84,6 +84,14 @@ export interface AdminUIConfig {
   supportedMenuItems: string[];
 }
 
+export interface FeedbackWeights {
+  creationWeight: number;
+  textAdditionWeight: number;
+  modificationWeight: number;
+  deletionPenalty: number;
+  hiddenToolPenalty: number;
+}
+
 export interface AdminConsoleConfig {
   version: 1;
   updatedAt: string;
@@ -91,6 +99,7 @@ export interface AdminConsoleConfig {
   deterministic: AdminDeterministicConfig;
   mcp: AdminMcpConfig;
   ui: AdminUIConfig;
+  feedbackWeights: FeedbackWeights;
 }
 
 export interface AdminConnectorStatus {
