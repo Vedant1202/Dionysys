@@ -27,12 +27,23 @@ type ApplyAdminConfigOptions = {
   remountProvider?: boolean;
 };
 
+const BROWSER_ID_KEY = 'dionysys_browser_id';
+
+function getOrCreateBrowserId(): string {
+  const existing = localStorage.getItem(BROWSER_ID_KEY);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem(BROWSER_ID_KEY, id);
+  return id;
+}
+
 function App() {
   const [adaptiveMode, setAdaptiveMode] = useState<AdaptiveMode>('deterministic');
   const [presentationMode, setPresentationMode] = useState<AdaptivePresentationMode>('prototype');
   const [decisionApplication, setDecisionApplication] = useState<AdaptiveDecisionApplication>('next-refresh');
   const [persistenceMode, setPersistenceMode] = useState<AdaptivePersistenceMode>('browser');
   const [sessionId, setSessionId] = useState(() => getOrCreateSessionId('browser'));
+  const [browserId] = useState(() => getOrCreateBrowserId());
   const [providerVersion, setProviderVersion] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isConfigBootstrapped, setIsConfigBootstrapped] = useState(!ADMIN_CONSOLE_VISIBLE);
@@ -150,6 +161,7 @@ function App() {
           adaptiveMode={adaptiveMode}
           persistenceMode={persistenceMode}
           sessionId={sessionId}
+          browserId={browserId}
           onAdaptiveModeChange={setAdaptiveMode}
           apiBaseUrl={API_BASE_URL}
           onOpenAdmin={ADMIN_CONSOLE_VISIBLE && presentationMode === 'prototype' ? () => setIsAdminOpen(true) : undefined}

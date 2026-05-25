@@ -24,6 +24,7 @@ interface EditorShellProps {
   sessionId: string;
   onAdaptiveModeChange: (mode: AdaptiveMode) => void;
   apiBaseUrl: string;
+  browserId?: string;
   onOpenAdmin?: () => void;
 }
 
@@ -37,7 +38,7 @@ interface AppliedDecisionPayload {
   appliedAt: number;
 }
 
-export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdaptiveModeChange, apiBaseUrl, onOpenAdmin }: EditorShellProps) {
+export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdaptiveModeChange, apiBaseUrl, browserId, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [appliedDecision, setAppliedDecision] = useState<AppliedDecisionPayload | undefined>();
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
@@ -143,14 +144,16 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
 
   useEffect(() => {
     const handleBeforeUnload = () => {
+      const body: Record<string, string> = { sessionId };
+      if (browserId) body['browserId'] = browserId;
       navigator.sendBeacon(
         `${apiBaseUrl}/api/reward/complete`,
-        new Blob([JSON.stringify({ sessionId })], { type: 'application/json' })
+        new Blob([JSON.stringify(body)], { type: 'application/json' })
       );
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [apiBaseUrl, sessionId]);
+  }, [apiBaseUrl, sessionId, browserId]);
 
   const handleFeedback = async (feedback: { sentiment: 'helpful' | 'in_the_way'; comment?: string }) => {
     if (!ADAPTIVE_FEEDBACK_BETA_ENABLED || !appliedDecision) return;
