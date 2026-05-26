@@ -21,7 +21,7 @@ The core package is where scoring, policy selection, MCP validation, and shared 
 
 - `adaptive-provider/`: `AdaptiveProvider`, Zustand store creation, pending-decision persistence helpers, and provider-facing types
 - `admin-console/`: reusable runtime control center split into shell, state hook, sections, primitives, and styles
-- `feedback/`: `AdaptiveFeedback` for front-facing production feedback
+- `feedback/`: `AdaptiveFeedback` plus the `useFeedback` and `useFeedbackTrigger` hooks that decide how feedback is submitted and when the prompt is shown
 - `hooks/`: `useAdaptiveUI()` and related React access
 
 Top-level exports remain stable. Consumers still import from `@dionysys/react`, even though the internal code is now organized by responsibility.
@@ -51,3 +51,14 @@ The provider is now intentionally split into:
 - a runtime orchestration layer (polling, decision resolution, next-refresh behavior)
 
 That split keeps package consumers on stable exports while making the implementation easier to extend. Manual layout previews should go through `setManualOverride(...)` rather than mutating the raw store directly.
+
+## Feedback and Learning Loop (beta)
+
+When the feedback beta flag is on, the framework closes the loop instead of only collecting data:
+
+1. After a decision is applied, the app records passive activity metrics and optional explicit thumbs feedback against the applied decision.
+2. A backend LangGraph workflow turns those signals into a `keep`, `revert`, or `observe` recommendation.
+3. On session end, `RewardService` triggers two updates: `BanditService` adjusts the per-variant Thompson-sampling Beta params from the recommendations, and `BrowserPriorService` EMA-blends the session's inferred persona into a cross-session browser prior.
+4. Later decisions blend the bandit's sampled weights into deterministic persona scores (`AdaptiveDecisionService`), and a returning browser's first inference is seeded from its stored prior.
+
+The loop influences the next decision rather than mutating the active UI mid-session.

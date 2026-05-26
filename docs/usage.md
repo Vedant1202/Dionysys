@@ -453,9 +453,9 @@ Internally, the package console is now split into a shell component, a state/orc
 
 ## Beta Persona Feedback Loop
 
-Set `ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the backend and `VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the frontend to enable the MVP feedback loop. The loop is intentionally beta-only: when disabled, feedback routes are unavailable and beta-only telemetry is not stored.
+Set `ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the backend and `VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true` on the frontend to enable the feedback loop. The loop is intentionally beta-only: when disabled, feedback routes are unavailable and beta-only telemetry is not stored.
 
-In beta mode, Dionysys asks for lightweight end-user feedback only after a persona/UI decision has actually been applied. The backend also records passive metrics after that applied decision:
+In beta mode, Dionysys asks for lightweight end-user feedback after a persona/UI decision has been applied and the user has had time to work with it — a time gate (default 30s) plus a minimum number of productive actions (default 3). The prompt can be dismissed and auto-dismisses if ignored. The backend also records passive metrics after that applied decision:
 
 - productive actions per minute
 - creations and text additions
@@ -463,7 +463,7 @@ In beta mode, Dionysys asks for lightweight end-user feedback only after a perso
 - negative-weight deletions
 - hidden-tool clicks from overflow toolbar selections
 
-The backend LangGraph workflow records `keep`, `revert`, or `observe` recommendations for study. The MVP does not automatically change the UI based on these recommendations.
+The backend LangGraph workflow returns a `keep`, `revert`, or `observe` recommendation for each evaluation. On session end (`POST /api/reward/complete`) these recommendations update a Thompson-sampling bandit — `keep` raises a variant's weight, `revert` lowers it — and the bandit reweights variant selection on later decisions. The loop never changes the active UI mid-session; it shapes the next decision. When a `browserId` is supplied, the session's inferred persona is also EMA-blended into a cross-session prior that warm-starts the next session's first inference.
 
 ## Event Summaries and Scoring
 

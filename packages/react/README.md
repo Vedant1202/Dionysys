@@ -19,12 +19,13 @@ import {
 - `useAdaptiveUI()`: reads adaptive state from the provider
 - `AdminConsole`: reusable runtime configuration UI
 - `AdaptiveFeedback`: front-facing feedback component for production experiences
+- `useFeedback` / `useFeedbackTrigger`: hooks that submit feedback and decide when to show the prompt (time gate plus activity gate, with dismiss and auto-dismiss)
 
 ## Package layout
 
 - `src/adaptive-provider/` - provider, store, persistence, and provider-facing types
 - `src/admin-console/` - runtime control center split into sections, primitives, styles, and state orchestration
-- `src/feedback/` - lightweight feedback component
+- `src/feedback/` - feedback component plus the `useFeedback` and `useFeedbackTrigger` hooks
 - `src/hooks/` - React hooks such as `useAdaptiveUI`
 
 Root files remain as compatibility re-exports so existing imports continue to work.

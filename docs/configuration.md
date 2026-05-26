@@ -186,6 +186,6 @@ ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
 VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
 ```
 
-When enabled, the frontend records `adaptive_decision_applied` after a non-neutral UI/persona change is actually active. The backend uses that event as the start of the metrics window, scores subsequent productive activity, records explicit thumbs feedback, and stores a LangGraph recommendation of `keep`, `revert`, or `observe`.
+When enabled, the frontend records `adaptive_decision_applied` after a non-neutral UI/persona change is actually active. The backend uses that event as the start of the metrics window, scores subsequent productive activity, records explicit thumbs feedback, and stores a LangGraph recommendation of `keep`, `revert`, or `observe`. On session end (`POST /api/reward/complete`) those recommendations update a Thompson-sampling bandit that reweights future variant selection, and — when a `browserId` is sent — the session's inferred persona is EMA-blended into a cross-session prior that warm-starts the next session.
 
 When the backend flag is off, beta feedback routes are not mounted and beta-only event types are dropped from event ingestion.
