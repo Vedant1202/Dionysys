@@ -16,6 +16,11 @@ export interface AdaptiveFeedbackSubmission {
 
 interface AdaptiveFeedbackBaseProps {
   title?: string | undefined;
+  /**
+   * Called when the user closes the prompt without submitting a rating.
+   * If provided, a dismiss (×) button is rendered in the panel header.
+   */
+  onDismiss?: (() => void) | undefined;
 }
 
 /**
@@ -74,6 +79,7 @@ export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
         title={props.title}
         onRevert={props.onRevert}
         autoRevert={props.autoRevert}
+        onDismiss={props.onDismiss}
       />
     );
   }
@@ -82,6 +88,7 @@ export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
     <AdaptiveFeedbackControlled
       onSubmit={(props as AdaptiveFeedbackControlledProps).onSubmit}
       title={props.title}
+      onDismiss={props.onDismiss}
     />
   );
 }
@@ -94,8 +101,10 @@ function AdaptiveFeedbackConnected({
   title = 'How is this workspace feeling?',
   onRevert,
   autoRevert,
+  onDismiss,
 }: Required<Pick<AdaptiveFeedbackConnectedProps, 'sessionId' | 'baseUrl'>> &
-  Pick<AdaptiveFeedbackConnectedProps, 'title' | 'onRevert' | 'autoRevert'>) {
+  Pick<AdaptiveFeedbackConnectedProps, 'title' | 'onRevert' | 'autoRevert'> &
+  Pick<AdaptiveFeedbackBaseProps, 'onDismiss'>) {
   const [comment, setComment] = React.useState('');
   const [selected, setSelected] = React.useState<FeedbackSentiment | undefined>();
 
@@ -125,7 +134,7 @@ function AdaptiveFeedbackConnected({
           <button type="button" style={styles.confirmButton} onClick={confirmRevert}>
             Reset layout
           </button>
-          <button type="button" style={styles.dismissButton} onClick={dismissRevert}>
+          <button type="button" style={styles.revertDismissButton} onClick={dismissRevert}>
             Keep it
           </button>
         </div>
@@ -135,7 +144,19 @@ function AdaptiveFeedbackConnected({
 
   return (
     <section style={styles.panel} aria-label="Workspace feedback">
-      <h2 style={styles.title}>{title}</h2>
+      <div style={styles.header}>
+        <h2 style={styles.title}>{title}</h2>
+        {onDismiss && (
+          <button
+            type="button"
+            style={styles.dismissButton}
+            onClick={onDismiss}
+            aria-label="Dismiss feedback prompt"
+          >
+            ×
+          </button>
+        )}
+      </div>
       <div style={styles.actions}>
         <button
           type="button"
@@ -179,7 +200,9 @@ function AdaptiveFeedbackConnected({
 function AdaptiveFeedbackControlled({
   onSubmit,
   title = 'How is this workspace feeling?',
-}: Pick<AdaptiveFeedbackControlledProps, 'onSubmit' | 'title'>) {
+  onDismiss,
+}: Pick<AdaptiveFeedbackControlledProps, 'onSubmit' | 'title'> &
+  Pick<AdaptiveFeedbackBaseProps, 'onDismiss'>) {
   const [comment, setComment] = React.useState('');
   const [selected, setSelected] = React.useState<FeedbackSentiment | undefined>();
   const [status, setStatus] = React.useState<string | undefined>();
@@ -199,7 +222,19 @@ function AdaptiveFeedbackControlled({
 
   return (
     <section style={styles.panel} aria-label="Workspace feedback">
-      <h2 style={styles.title}>{title}</h2>
+      <div style={styles.header}>
+        <h2 style={styles.title}>{title}</h2>
+        {onDismiss && (
+          <button
+            type="button"
+            style={styles.dismissButton}
+            onClick={onDismiss}
+            aria-label="Dismiss feedback prompt"
+          >
+            ×
+          </button>
+        )}
+      </div>
       <div style={styles.actions}>
         <button
           type="button"
@@ -244,11 +279,35 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
+  header: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 10,
+  },
   title: {
-    margin: '0 0 10px',
+    margin: 0,
     fontSize: 14,
     lineHeight: 1.3,
     letterSpacing: 0,
+    flex: 1,
+  },
+  dismissButton: {
+    flexShrink: 0,
+    width: 22,
+    height: 22,
+    padding: 0,
+    border: 'none',
+    borderRadius: 4,
+    background: 'transparent',
+    color: '#8c9aad',
+    fontSize: 18,
+    lineHeight: '22px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actions: {
     display: 'grid',
@@ -338,7 +397,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     cursor: 'pointer',
   },
-  dismissButton: {
+  revertDismissButton: {
     minHeight: 38,
     border: '1px solid #c8c0b2',
     borderRadius: 6,

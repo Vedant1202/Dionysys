@@ -41,8 +41,12 @@ interface AppliedDecisionPayload {
 export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdaptiveModeChange, apiBaseUrl, browserId, onOpenAdmin }: EditorShellProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [appliedDecision, setAppliedDecision] = useState<AppliedDecisionPayload | undefined>();
+  // True when this decision window hasn't been rated yet (persisted in sessionStorage)
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
   const [hiddenToolClickCount, setHiddenToolClickCount] = useState(0);
+  // Productive actions (creates + edits) since the last adaptive decision was applied.
+  // Used by useFeedbackTrigger to gate the prompt on demonstrated engagement.
+  const [productiveActionsSinceDecision, setProductiveActionsSinceDecision] = useState(0);
   const appliedDecisionRef = useRef<AppliedDecisionPayload | undefined>(undefined);
   const lastAppliedDecisionKeyRef = useRef<string | undefined>(undefined);
   const {
@@ -72,11 +76,14 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
     onRevert: () => setManualOverride({ variant: 'neutral' }),
   });
 
-  useFeedbackTrigger({
+  const { promptVisible, dismissPrompt } = useFeedbackTrigger({
     triggerPassiveEval,
     // Only activate the trigger when the beta flag is on — gates all passive evals
     lastDecision: ADAPTIVE_FEEDBACK_BETA_ENABLED ? lastDecision : undefined,
     hiddenToolClickCount: ADAPTIVE_FEEDBACK_BETA_ENABLED ? hiddenToolClickCount : 0,
+    productiveActionCount: ADAPTIVE_FEEDBACK_BETA_ENABLED ? productiveActionsSinceDecision : 0,
+    // Gate defaults: 30 s elapsed + 3 productive actions before prompting.
+    // autoDismissMs: 15 000 (default) — silently closes if user doesn't engage.
   });
   const isPrototype = presentationMode === 'prototype';
 
@@ -97,9 +104,22 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
 
   useEffect(() => {
     // Passive evaluation is now handled by useFeedbackTrigger (threshold-based).
-    // onFlush only needs to keep the event count in sync for policy decisions.
-    eventCollector.onFlush = (count) => {
+    // onFlush keeps the event count in sync for policy decisions AND accumulates
+    // productive actions (creates + edits) to gate the feedback prompt.
+    const PRODUCTIVE_EVENT_TYPES = new Set([
+      'element_drawn',
+      'text_added',
+      'element_modified',
+      'text_updated',
+    ]);
+
+    eventCollector.onFlush = (count, events) => {
       incrementEventsSent(count);
+      if (!ADAPTIVE_FEEDBACK_BETA_ENABLED) return;
+      const productive = events.filter((e) => PRODUCTIVE_EVENT_TYPES.has(e.eventType)).length;
+      if (productive > 0) {
+        setProductiveActionsSinceDecision((n) => n + productive);
+      }
     };
     return () => {
       eventCollector.onFlush = undefined;
@@ -132,8 +152,9 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
     });
 
     setAppliedDecision(decision);
-    // Reset friction counter for the new decision window
+    // Reset per-decision counters for the new decision window
     setHiddenToolClickCount(0);
+    setProductiveActionsSinceDecision(0);
     eventCollector.recordEvent({
       eventType: 'adaptive_decision_applied',
       timestamp: Date.now(),
@@ -365,13 +386,13 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
         {isPrototype && (
           <DebugPanel />
         )}
-        {ADAPTIVE_FEEDBACK_BETA_ENABLED && (showFeedbackPrompt || pendingRevert) && (
+        {ADAPTIVE_FEEDBACK_BETA_ENABLED && (pendingRevert || (promptVisible && showFeedbackPrompt)) && (
           <div className="absolute bottom-4 right-4 z-[1000]">
             {pendingRevert ? (
               <RevertPrompt onConfirm={confirmRevert} onDismiss={dismissRevert} />
             ) : (
               <>
-                <AdaptiveFeedback onSubmit={handleFeedback} />
+                <AdaptiveFeedback onSubmit={handleFeedback} onDismiss={dismissPrompt} />
                 {showCalibrationNote && (
                   <p style={calibrationNoteStyle}>✓ Workspace calibrated to your style</p>
                 )}
