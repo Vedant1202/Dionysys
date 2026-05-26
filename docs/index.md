@@ -17,6 +17,7 @@ The root `docs/` directory is the canonical source for the web docs, and the pac
 - [Admin Console](./admin-console.md): inspect and edit runtime adaptive configuration from a reusable package UI.
 - [Excalidraw Configuration](./excalidraw-configuration.md): edit the current demo variants, MCP resources, toolbar tools, and connector settings.
 - [Architecture](./architecture.md): understand the monorepo packages, backend, frontend demo, and data flow.
+- [Feedback Loop](./feedback-loop.md): how user feedback and passive metrics feed the Thompson-sampling bandit and cross-session warm-start.
 - [MCP Mode Spec](./specs/mcp-mode.md): read the detailed MCP-driven adaptive UI mode design.
 
 ## Modes

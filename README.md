@@ -25,6 +25,7 @@ Docs - [https://personal-db95a29b.mintlify.app/](https://personal-db95a29b.mintl
 - Session-aware telemetry capture and backend decision APIs
 - `prototype` and `production` presentation modes for internal testing vs user-facing experiences
 - `next-refresh` decision application to avoid mid-session UI churn
+- Closed feedback loop (beta): timed/activity-gated user feedback plus passive metrics feed a Thompson-sampling bandit and a cross-session warm-start prior
 - Docusaurus docs site backed by the canonical root `docs/` directory
 
 ## Repository Layout
@@ -45,6 +46,7 @@ Start with the canonical markdown docs in [`docs/`](./docs):
 - [Admin Console](./docs/admin-console.md)
 - [Excalidraw Configuration](./docs/excalidraw-configuration.md)
 - [Architecture](./docs/architecture.md)
+- [Feedback Loop (beta)](./docs/feedback-loop.md)
 
 You can also run the web docs locally with `npm run docs`.
 
@@ -242,6 +244,7 @@ If you deploy the docs site under a subpath instead of a root domain, set `DOCS_
 - `production` presentation: hide experiment internals and expose only the experience plus feedback
 - `next-refresh` decision application: store a resolved decision now and apply the UI change on the next provider mount or page refresh
 - `memory` / `tab` / `browser` persistence modes: align session-id lifetime with built-in pending-decision persistence
+- feedback loop (beta): after a decision is applied, passive activity metrics and an optional thumbs prompt produce a `keep` / `revert` / `observe` recommendation. On session end those update a Thompson-sampling bandit that reweights later variant selection, and a per-browser EMA prior warm-starts the next session. The loop shapes the next decision, never the active UI. See [Feedback Loop](./docs/feedback-loop.md) for details.
 
 In non-production builds, the admin console includes a session randomize tool for testing persistence behavior without exposing that reset path in production.
 

@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
     'admin-console',
     'excalidraw-configuration',
     'architecture',
+    'feedback-loop',
     {
       type: 'category',
       label: 'Specs',
