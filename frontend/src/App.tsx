@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { AdaptiveProvider, AdminConsole } from '@dionysys/react';
 import type {
   AdaptiveDecision,
@@ -46,7 +47,6 @@ function App() {
   const [browserId] = useState(() => getOrCreateBrowserId());
   const priorRef = useRef<Record<string, number> | null>(null);
   const [providerVersion, setProviderVersion] = useState(0);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isConfigBootstrapped, setIsConfigBootstrapped] = useState(!ADMIN_CONSOLE_VISIBLE);
   const [providerSettings, setProviderSettings] = useState({
     minEventsBeforeLock: 5,
@@ -149,7 +149,39 @@ function App() {
   return (
     <div className="App" data-theme="winter">
       <AnalyticsTracker />
-      <AdaptiveProvider
+      
+      <Routes>
+        <Route path="/admin" element={
+          <div style={{ width: '100vw', height: '100vh', display: 'flex', background: 'var(--color-base-100)' }}>
+            <AdminConsole
+              apiBaseUrl={API_BASE_URL}
+              sessionId={sessionId}
+              persistenceMode={persistenceMode}
+              canRandomizeSession={!import.meta.env.PROD}
+              onRandomizeSession={handleRandomizeSession}
+              onClose={() => { window.close(); }}
+              onConfigSaved={applyAdminConfig}
+            />
+          </div>
+        } />
+        
+        <Route path="/admin/explorer" element={
+          <div style={{ width: '100vw', height: '100vh', display: 'flex', background: 'var(--color-base-100)' }}>
+            <AdminConsole
+              apiBaseUrl={API_BASE_URL}
+              sessionId={sessionId}
+              persistenceMode={persistenceMode}
+              canRandomizeSession={!import.meta.env.PROD}
+              onRandomizeSession={handleRandomizeSession}
+              onClose={() => { window.close(); }}
+              onConfigSaved={applyAdminConfig}
+              defaultTab="explorer"
+            />
+          </div>
+        } />
+        
+        <Route path="*" element={
+          <AdaptiveProvider
          key={`${adaptiveMode}-${presentationMode}-${decisionApplication}-${persistenceMode}-${sessionId}-${providerVersion}`}
          mode={adaptiveMode}
          presentationMode={presentationMode}
@@ -187,23 +219,11 @@ function App() {
           browserId={browserId}
           onAdaptiveModeChange={setAdaptiveMode}
           apiBaseUrl={API_BASE_URL}
-          onOpenAdmin={ADMIN_CONSOLE_VISIBLE && presentationMode === 'prototype' ? () => setIsAdminOpen(true) : undefined}
+          onOpenAdmin={ADMIN_CONSOLE_VISIBLE && presentationMode === 'prototype' ? () => window.open('/admin', '_blank') : undefined}
         />
       </AdaptiveProvider>
-
-      {isAdminOpen && (
-        <div className="admin-console-overlay" role="dialog" aria-modal="true" aria-label="Dionysys admin console">
-          <AdminConsole
-            apiBaseUrl={API_BASE_URL}
-            sessionId={sessionId}
-            persistenceMode={persistenceMode}
-            canRandomizeSession={!import.meta.env.PROD}
-            onRandomizeSession={handleRandomizeSession}
-            onClose={() => setIsAdminOpen(false)}
-            onConfigSaved={applyAdminConfig}
-          />
-        </div>
-      )}
+        } />
+      </Routes>
     </div>
   );
 }
