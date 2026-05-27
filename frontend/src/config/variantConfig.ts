@@ -26,9 +26,9 @@ export interface VariantUIConfig {
   mainMenuItems: CanvasActionName[];
 }
 
-const DRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'eraser'];
+const DRAW_TOOLS = ['selection', 'rectangle', 'diamond', 'ellipse', 'arrow', 'line', 'freedraw', 'eraser'];
 const TEXT_TOOLS = ['selection', 'text', 'eraser'];
-export const DEFAULT_EXCALIDRAW_TOOLS = ['selection', 'rectangle', 'ellipse', 'diamond', 'arrow', 'line', 'freedraw', 'text', 'image', 'eraser'];
+export const DEFAULT_EXCALIDRAW_TOOLS = ['selection', 'rectangle', 'diamond', 'ellipse', 'arrow', 'line', 'freedraw', 'text', 'image', 'eraser'];
 export const DEBUG_VARIANT_OPTIONS = [
   'neutral',
   'neutral__novice',
