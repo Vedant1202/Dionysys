@@ -33,6 +33,9 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
 
     if (docs.length > 0) {
       await dbAdapter.saveEvents(docs);
+      import('./admin.js').then(({ adminEmitter }) => {
+        adminEmitter.emit('sessionUpdated', sessionId);
+      }).catch(err => console.error('Failed to emit sessionUpdated:', err));
     }
 
     res.json({ success: true, count: docs.length, dropped: events.length - docs.length });

@@ -30,10 +30,7 @@ export function useAdminConsoleState({
     setError(undefined);
 
     try {
-      const [configResponse, overviewResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/admin/config`),
-        fetch(`${baseUrl}/api/admin/overview${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`),
-      ]);
+      const configResponse = await fetch(`${baseUrl}/api/admin/config`);
 
       if (!configResponse.ok) {
         throw new Error(configResponse.status === 404
@@ -42,23 +39,43 @@ export function useAdminConsoleState({
       }
 
       const configPayload = await configResponse.json() as AdminConfigResponse;
-      const overviewPayload = overviewResponse.ok
-        ? await overviewResponse.json() as AdminOverviewResponse
-        : undefined;
 
       setConfig(configPayload.config);
-      setOverview(overviewPayload?.overview);
       setJsonDraft(formatJson(configPayload.config));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load admin console data.');
     } finally {
       setIsLoading(false);
     }
-  }, [baseUrl, sessionId]);
+  }, [baseUrl]);
 
   React.useEffect(() => {
     void loadAdminState();
   }, [loadAdminState]);
+
+  // Setup SSE connection for live overview data
+  React.useEffect(() => {
+    const url = `${baseUrl}/api/admin/overview/stream${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`;
+    const eventSource = new EventSource(url);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        setOverview(payload);
+      } catch (err) {
+        console.error('Failed to parse SSE message:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+      // EventSource automatically attempts to reconnect
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [baseUrl, sessionId]);
 
   React.useEffect(() => {
     if (!config) return;
@@ -141,6 +158,11 @@ export function useAdminConsoleState({
     setNotice('Configuration exported as JSON.');
   }, [config]);
 
+  const clearNotice = React.useCallback(() => {
+    setNotice(undefined);
+    setError(undefined);
+  }, []);
+
   const applyJsonDraft = React.useCallback(() => {
     try {
       const parsed = JSON.parse(jsonDraft) as AdminConsoleConfig;
@@ -172,6 +194,7 @@ export function useAdminConsoleState({
     resetConfig,
     exportConfig,
     applyJsonDraft,
+    clearNotice,
   };
 }
 

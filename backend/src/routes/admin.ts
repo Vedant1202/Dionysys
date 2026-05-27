@@ -47,6 +47,62 @@ adminRouter.get('/config/export', (_req: Request, res: Response): void => {
   res.json({ success: true, ...exported });
 });
 
+import { EventEmitter } from 'events';
+
+export const adminEmitter = new EventEmitter();
+
+adminRouter.get('/overview/stream', async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : undefined;
+
+  const sendOverview = async () => {
+    try {
+      const events = sessionId ? await dbAdapter.getEventsBySession(sessionId) : [];
+      const overview = buildAdminOverview(events, sessionId);
+      const feedbackLoop = sessionId && isAdaptiveFeedbackBetaEnabled()
+        ? await FeedbackLoopService.getOverview(sessionId)
+        : undefined;
+      
+      const payload = feedbackLoop ? { ...overview, feedbackLoop } : overview;
+      
+      // Strip the massive config object from the live stream to save bandwidth and memory
+      if ('config' in payload) {
+        delete (payload as any).config;
+      }
+      
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch (error) {
+      console.error('SSE sendOverview failed:', error);
+    }
+  };
+
+  // Initial send
+  void sendOverview();
+
+  const onSessionUpdated = (updatedSessionId: string) => {
+    if (sessionId && updatedSessionId !== sessionId) return;
+    void sendOverview();
+  };
+
+  adminEmitter.on('sessionUpdated', onSessionUpdated);
+
+  // Force close the connection every 60 seconds.
+  // The browser's native EventSource will automatically reconnect.
+  // This prevents the browser from buffering an infinite stream in memory (a common cause of Chrome OOMs).
+  const flushTimeout = setTimeout(() => {
+    res.end();
+  }, 60000);
+
+  req.on('close', () => {
+    clearTimeout(flushTimeout);
+    adminEmitter.off('sessionUpdated', onSessionUpdated);
+  });
+});
+
 adminRouter.get('/overview', async (req: Request, res: Response): Promise<void> => {
   try {
     const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : undefined;

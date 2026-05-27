@@ -50,4 +50,5 @@ export interface AdminConsoleState {
   resetConfig: () => Promise<void>;
   exportConfig: () => void;
   applyJsonDraft: () => void;
+  clearNotice: () => void;
 }
