@@ -6,10 +6,11 @@ interface FuzzyPersonaMapProps {
 }
 
 export function FuzzyPersonaMap({ probabilities }: FuzzyPersonaMapProps) {
+  const mapRef = React.useRef<HTMLDivElement | null>(null);
   const drawScore = probabilities['draw_first'] || 0;
   const textScore = probabilities['text_first'] || 0;
   const powerScore = probabilities['power_user'] || 0;
-  const noviceScore = probabilities['guided_novice'] || 0;
+  const noviceScore = probabilities['guided_novice'] || probabilities['novice'] || 0;
 
   // Center is 50%, 50%
   let targetX = 50;
@@ -27,12 +28,38 @@ export function FuzzyPersonaMap({ probabilities }: FuzzyPersonaMapProps) {
   targetX = Math.max(10, Math.min(90, targetX));
   targetY = Math.max(10, Math.min(90, targetY));
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (process.env.NODE_ENV === 'production') return;
+
+    const element = mapRef.current;
+    if (!element) return;
+
+    const logMapSize = () => {
+      const rect = element.getBoundingClientRect();
+      console.info('[Dionysys Explorer] persona map size', {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        targetX: Math.round(targetX),
+        targetY: Math.round(targetY),
+      });
+    };
+
+    logMapSize();
+    const observer = new ResizeObserver(logMapSize);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [targetX, targetY]);
+
   return (
-    <div className={styles.card} style={{ position: 'relative',
-      height: '300px',
+    <div ref={mapRef} className={styles.card} style={{ position: 'relative',
+      height: 300,
+      minHeight: 300,
+      flex: '0 0 300px',
+      alignSelf: 'stretch',
       overflow: 'hidden',
       background: '#0f172a',
-      marginBottom: '20px',
       padding: 0
      }}>
       <div style={{ position: 'absolute', background: '#f472b6', width: 200, height: 200, top: 10, left: 10, borderRadius: '50%', filter: 'blur(20px)', opacity: 0.3 }} />

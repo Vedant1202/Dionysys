@@ -45,29 +45,20 @@ export function AdminConsole({
     resetConfig,
     exportConfig,
     applyJsonDraft,
+    clearNotice,
   } = useAdminConsoleState({ apiBaseUrl, sessionId, onConfigSaved, defaultTab });
 
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const handleNavigation = React.useCallback((tab: typeof activeTab) => {
+    setActiveTab(tab);
+    clearNotice();
+  }, [setActiveTab, clearNotice]);
 
   return (
     <section className={styles.shell} aria-label="Dionysys admin console">
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Runtime control center</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              type="button"
-              className={styles.iconButton}
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label="Toggle sidebar"
-            >
-              ☰
-            </button>
-            <h1 className={styles.title}>Dionysys Admin Console</h1>
-          </div>
-          <p className={styles.subtitle}>
-            Inspect and edit adaptive modes, personality resources, scoring rules, session summaries, and MCP decision APIs.
-          </p>
+          <h1 className={styles.title}>Admin Console</h1>
         </div>
         <div className={styles.headerActions}>
           <button type="button" className={styles.secondaryButton} onClick={() => void loadAdminState()} disabled={isLoading}>
@@ -80,40 +71,39 @@ export function AdminConsole({
             Reset
           </button>
           <button type="button" className={styles.primaryButton} onClick={() => void saveConfig()} disabled={!config || isSaving}>
-            {isSaving ? 'Saving...' : 'Save runtime config'}
+            {isSaving ? 'Saving…' : 'Save config'}
           </button>
           {onClose && (
             <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close admin console">
-              x
+              ✕
             </button>
           )}
         </div>
       </header>
 
-      {(notice || error) && (
-        <div className={error  ? styles.errorBanner : styles.noticeBanner}>
-          {error ?? notice}
-        </div>
-      )}
+      <nav className={styles.navBar} aria-label="Admin console sections">
+        {ADMIN_CONSOLE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={activeTab === tab.id ? styles.activeNavTab : styles.navTab}
+            onClick={() => handleNavigation(tab.id)}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
       <div className={styles.layout}>
-        {isSidebarOpen && (
-          <nav className={styles.sidebar} aria-label="Admin console sections">
-            {ADMIN_CONSOLE_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={activeTab === tab.id  ? styles.activeTabButton : styles.tabButton}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        )}
-
         <main className={styles.content}>
-          {isLoading && <EmptyState title="Loading admin console" description="Reading runtime configuration from the backend." />}
+          {(notice || error) && (
+            <div className={error ? styles.errorBanner : styles.noticeBanner}>
+              {error ?? notice}
+            </div>
+          )}
+
+          {isLoading && <EmptyState title="Loading" description="Reading runtime configuration from the backend." />}
           {!isLoading && !config && !error && (
             <EmptyState title="No configuration loaded" description="The admin endpoint did not return a configuration payload." />
           )}
