@@ -57,7 +57,22 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
           draw_first: 1,
           text_first: 1,
         },
-        eventRules: [],
+        eventRules: [
+          {
+            id: 'draw_event_rule',
+            description: 'Drawing strongly implies draw-first modality.',
+            eventType: 'element_drawn',
+            weights: { draw_first: 2 },
+            enabled: true,
+          },
+          {
+            id: 'text_event_rule',
+            description: 'Typing text implies text-first modality.',
+            eventType: 'text_added',
+            weights: { text_first: 2 },
+            enabled: true,
+          }
+        ],
         heuristics: [],
       },
       expertise: {
@@ -67,7 +82,15 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
           standard: 1,
           power_user: 1,
         },
-        eventRules: [],
+        eventRules: [
+          {
+            id: 'shortcut_rule',
+            description: 'Using shortcuts implies power user.',
+            eventType: 'keyboard_shortcut_used',
+            weights: { power_user: 1 },
+            enabled: true,
+          }
+        ],
         heuristics: [
           {
             id: 'low_event_novice',
