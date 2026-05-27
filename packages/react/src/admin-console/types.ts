@@ -5,7 +5,7 @@ import type {
   PersonalityResource,
 } from '@dionysys/core';
 
-export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'data' | 'apis' | 'export';
+export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'data' | 'apis' | 'export' | 'explorer';
 
 export interface AdminConsoleProps {
   apiBaseUrl?: string;
@@ -15,6 +15,7 @@ export interface AdminConsoleProps {
   onRandomizeSession?: () => void;
   onClose?: () => void;
   onConfigSaved?: (config: AdminConsoleConfig) => void;
+  defaultTab?: AdminConsoleTab;
 }
 
 export interface AdminConfigResponse {

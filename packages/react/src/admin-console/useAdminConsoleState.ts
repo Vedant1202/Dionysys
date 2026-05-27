@@ -12,8 +12,9 @@ export function useAdminConsoleState({
   apiBaseUrl = 'http://localhost:3001',
   sessionId,
   onConfigSaved,
-}: Pick<AdminConsoleProps, 'apiBaseUrl' | 'sessionId' | 'onConfigSaved'>): AdminConsoleState {
-  const [activeTab, setActiveTab] = React.useState<AdminConsoleState['activeTab']>('overview');
+  defaultTab = 'overview',
+}: Pick<AdminConsoleProps, 'apiBaseUrl' | 'sessionId' | 'onConfigSaved' | 'defaultTab'>): AdminConsoleState {
+  const [activeTab, setActiveTab] = React.useState<AdminConsoleState['activeTab']>(defaultTab);
   const [config, setConfig] = React.useState<AdminConsoleConfig | undefined>();
   const [overview, setOverview] = React.useState<AdminConsoleState['overview']>(undefined);
   const [selectedResourceIndex, setSelectedResourceIndex] = React.useState(0);
