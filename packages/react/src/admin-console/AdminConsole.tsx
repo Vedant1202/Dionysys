@@ -8,6 +8,7 @@ import { CalculationsPanel } from './sections/CalculationsPanel.js';
 import { DataPanel } from './sections/DataPanel.js';
 import { ApisPanel } from './sections/ApisPanel.js';
 import { ExportPanel } from './sections/ExportPanel.js';
+import { ExplorerPanel } from './sections/ExplorerPanel.js';
 import { adminConsoleStyles as styles } from './styles.js';
 import { useAdminConsoleState } from './useAdminConsoleState.js';
 import type { AdminConsoleProps } from './types.js';
@@ -22,6 +23,7 @@ export function AdminConsole({
   onRandomizeSession,
   onClose,
   onConfigSaved,
+  defaultTab = 'overview',
 }: AdminConsoleProps) {
   const {
     activeTab,
@@ -43,33 +45,45 @@ export function AdminConsole({
     resetConfig,
     exportConfig,
     applyJsonDraft,
-  } = useAdminConsoleState({ apiBaseUrl, sessionId, onConfigSaved });
+  } = useAdminConsoleState({ apiBaseUrl, sessionId, onConfigSaved, defaultTab });
+
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   return (
-    <section style={styles.shell} aria-label="Dionysys admin console">
-      <header style={styles.header}>
+    <section className={styles.shell} aria-label="Dionysys admin console">
+      <header className={styles.header}>
         <div>
-          <p style={styles.eyebrow}>Runtime control center</p>
-          <h1 style={styles.title}>Dionysys Admin Console</h1>
-          <p style={styles.subtitle}>
+          <p className={styles.eyebrow}>Runtime control center</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label="Toggle sidebar"
+            >
+              ☰
+            </button>
+            <h1 className={styles.title}>Dionysys Admin Console</h1>
+          </div>
+          <p className={styles.subtitle}>
             Inspect and edit adaptive modes, personality resources, scoring rules, session summaries, and MCP decision APIs.
           </p>
         </div>
-        <div style={styles.headerActions}>
-          <button type="button" style={styles.secondaryButton} onClick={() => void loadAdminState()} disabled={isLoading}>
+        <div className={styles.headerActions}>
+          <button type="button" className={styles.secondaryButton} onClick={() => void loadAdminState()} disabled={isLoading}>
             Refresh
           </button>
-          <button type="button" style={styles.secondaryButton} onClick={exportConfig} disabled={!config}>
+          <button type="button" className={styles.secondaryButton} onClick={exportConfig} disabled={!config}>
             Export
           </button>
-          <button type="button" style={styles.dangerButton} onClick={() => void resetConfig()} disabled={isSaving}>
+          <button type="button" className={styles.dangerButton} onClick={() => void resetConfig()} disabled={isSaving}>
             Reset
           </button>
-          <button type="button" style={styles.primaryButton} onClick={() => void saveConfig()} disabled={!config || isSaving}>
+          <button type="button" className={styles.primaryButton} onClick={() => void saveConfig()} disabled={!config || isSaving}>
             {isSaving ? 'Saving...' : 'Save runtime config'}
           </button>
           {onClose && (
-            <button type="button" style={styles.iconButton} onClick={onClose} aria-label="Close admin console">
+            <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close admin console">
               x
             </button>
           )}
@@ -77,26 +91,28 @@ export function AdminConsole({
       </header>
 
       {(notice || error) && (
-        <div style={error ? styles.errorBanner : styles.noticeBanner}>
+        <div className={error  ? styles.errorBanner : styles.noticeBanner}>
           {error ?? notice}
         </div>
       )}
 
-      <div style={styles.layout}>
-        <nav style={styles.sidebar} aria-label="Admin console sections">
-          {ADMIN_CONSOLE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              style={activeTab === tab.id ? styles.activeTabButton : styles.tabButton}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      <div className={styles.layout}>
+        {isSidebarOpen && (
+          <nav className={styles.sidebar} aria-label="Admin console sections">
+            {ADMIN_CONSOLE_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={activeTab === tab.id  ? styles.activeTabButton : styles.tabButton}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
-        <main style={styles.content}>
+        <main className={styles.content}>
           {isLoading && <EmptyState title="Loading admin console" description="Reading runtime configuration from the backend." />}
           {!isLoading && !config && !error && (
             <EmptyState title="No configuration loaded" description="The admin endpoint did not return a configuration payload." />
@@ -143,6 +159,9 @@ export function AdminConsole({
               applyJsonDraft={applyJsonDraft}
               exportConfig={exportConfig}
             />
+          )}
+          {!isLoading && config && activeTab === 'explorer' && (
+            <ExplorerPanel config={config} updateConfig={updateConfig} overview={overview} />
           )}
         </main>
       </div>

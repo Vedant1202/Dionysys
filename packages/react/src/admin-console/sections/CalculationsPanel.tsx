@@ -12,11 +12,11 @@ export function CalculationsPanel({
   updateConfig: AdminConfigUpdater;
 }) {
   return (
-    <div style={styles.twoColumn}>
+    <div className={styles.twoColumn}>
       <SectionCard title="Deterministic Policy">
         <Field label="Modality personas (comma separated)">
           <input
-            style={styles.input}
+            className={styles.input}
             value={config.deterministic.axes.modality.personas.join(', ')}
             onChange={(event) => updateConfig((current) => ({
               ...current,
@@ -35,7 +35,7 @@ export function CalculationsPanel({
         </Field>
         <Field label="Expertise personas (comma separated)">
           <input
-            style={styles.input}
+            className={styles.input}
             value={config.deterministic.axes.expertise.personas.join(', ')}
             onChange={(event) => updateConfig((current) => ({
               ...current,
@@ -54,7 +54,7 @@ export function CalculationsPanel({
         </Field>
         <Field label="Epsilon">
           <input
-            style={styles.input}
+            className={styles.input}
             type="number"
             min={0}
             max={1}
@@ -103,7 +103,7 @@ export function CalculationsPanel({
       </SectionCard>
 
       <SectionCard title="Activity Score Weights">
-        <p style={styles.helpText}>
+        <p className={styles.helpText}>
           Tune how each action type contributes to the post-decision activity score used by the feedback graph.
         </p>
         {(
@@ -117,7 +117,7 @@ export function CalculationsPanel({
         ).map(([key, label]) => (
           <Field key={key} label={label}>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               step={0.5}
               value={config.feedbackWeights[key]}
@@ -134,7 +134,7 @@ export function CalculationsPanel({
         ))}
       </SectionCard>
 
-      <div style={styles.stack}>
+      <div className={styles.stack}>
         <JsonSection
           title="Modality Event Weight Rules"
           value={config.deterministic.axes.modality.eventRules}

@@ -136,7 +136,7 @@ export function FeedbackLoopPanel({ data }: { data: unknown }) {
 
   return (
     <SectionCard title="Beta Feedback Loop">
-      <p style={styles.helpText}>
+      <p className={styles.helpText}>
         Activity scoring, explicit feedback, and graph recommendations for the current session.
       </p>
 

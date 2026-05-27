@@ -70,7 +70,7 @@ export function CohortPanel({ overview }: { overview: CohortOverview }) {
       />
 
       <div style={{ marginTop: 14 }}>
-        <p style={styles.helpText}>Per-variant performance</p>
+        <p className={styles.helpText}>Per-variant performance</p>
         {Object.entries(overview.byVariant).map(([variant, stats]) => (
           <div key={variant} style={{ marginBottom: 12 }}>
             <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 12 }}>{variant}</p>

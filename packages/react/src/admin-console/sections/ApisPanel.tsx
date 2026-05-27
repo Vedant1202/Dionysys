@@ -12,7 +12,7 @@ export function ApisPanel({
   expertiseResources: PersonalityResource[];
 }) {
   return (
-    <div style={styles.stack}>
+    <div className={styles.stack}>
       <SectionCard title="Runtime API Surface">
         <EndpointTable endpoints={overview?.endpoints ?? []} />
       </SectionCard>

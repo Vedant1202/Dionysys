@@ -14,20 +14,20 @@ export function ExportPanel({
 }) {
   return (
     <SectionCard title="Full Configuration JSON">
-      <p style={styles.helpText}>
+      <p className={styles.helpText}>
         This editor exposes every runtime field. Apply updates locally, save runtime config to activate, or export JSON for future use.
       </p>
       <textarea
-        style={styles.jsonTextarea}
+        className={styles.jsonTextarea}
         value={jsonDraft}
         onChange={(event) => setJsonDraft(event.target.value)}
         spellCheck={false}
       />
-      <div style={styles.rowActions}>
-        <button type="button" style={styles.secondaryButton} onClick={applyJsonDraft}>
+      <div className={styles.rowActions}>
+        <button type="button" className={styles.secondaryButton} onClick={applyJsonDraft}>
           Apply JSON locally
         </button>
-        <button type="button" style={styles.primaryButton} onClick={exportConfig}>
+        <button type="button" className={styles.primaryButton} onClick={exportConfig}>
           Export JSON
         </button>
       </div>

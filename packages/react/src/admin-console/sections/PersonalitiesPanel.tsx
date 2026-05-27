@@ -50,36 +50,36 @@ export function PersonalitiesPanel({
   }
 
   return (
-    <div style={styles.resourceLayout}>
-      <aside style={styles.resourceList}>
+    <div className={styles.resourceLayout}>
+      <aside className={styles.resourceList}>
         {resources.map((resource, index) => (
           <button
             key={resource.id}
             type="button"
-            style={index === selectedResourceIndex ? styles.activeResourceButton : styles.resourceButton}
+            className={index === selectedResourceIndex  ? styles.activeResourceButton : styles.resourceButton}
             onClick={() => setSelectedResourceIndex(index)}
           >
-            <span style={styles.resourceName}>{resource.name}</span>
-            <span style={styles.resourceId}>
+            <span className={styles.resourceName}>{resource.name}</span>
+            <span className={styles.resourceId}>
               {index < modalityResources.length ? 'modality' : 'expertise'}: {resource.id}
             </span>
           </button>
         ))}
       </aside>
 
-      <div style={styles.resourceEditor}>
+      <div className={styles.resourceEditor}>
         <SectionCard title="Personality Resource">
-          <div style={styles.twoColumn}>
+          <div className={styles.twoColumn}>
             <Field label="Name">
               <input
-                style={styles.input}
+                className={styles.input}
                 value={selectedResource.name}
                 onChange={(event) => updateSelectedResource((resource) => ({ ...resource, name: event.target.value }))}
               />
             </Field>
             <Field label="ID">
               <input
-                style={styles.input}
+                className={styles.input}
                 value={selectedResource.id}
                 onChange={(event) => updateSelectedResource((resource) => ({ ...resource, id: event.target.value }))}
               />
@@ -87,14 +87,14 @@ export function PersonalitiesPanel({
           </div>
           <Field label="Description">
             <textarea
-              style={styles.textarea}
+              className={styles.textarea}
               value={selectedResource.description}
               onChange={(event) => updateSelectedResource((resource) => ({ ...resource, description: event.target.value }))}
             />
           </Field>
           <Field label="Decision hints (one per line)">
             <textarea
-              style={styles.textarea}
+              className={styles.textarea}
               value={(selectedResource.decisionHints ?? []).join('\n')}
               onChange={(event) => updateSelectedResource((resource) => ({
                 ...resource,
@@ -104,7 +104,7 @@ export function PersonalitiesPanel({
           </Field>
           <Field label="Base score weight">
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               step={0.1}
               value={selectedResource.scoring.baseWeight ?? 1}

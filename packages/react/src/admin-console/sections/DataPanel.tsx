@@ -36,7 +36,7 @@ export function DataPanel({
   }
 
   return (
-    <div style={styles.twoColumn}>
+    <div className={styles.twoColumn}>
       <SectionCard title="Interaction Summary">
         <ComparisonRows
           rows={[
@@ -50,7 +50,7 @@ export function DataPanel({
         <JsonBlock value={session.interactionSummary} />
       </SectionCard>
       <SectionCard title="Sanitized Recent Events">
-        <p style={styles.helpText}>
+        <p className={styles.helpText}>
           Raw payloads stay capped and sanitized before they reach MCP decisions or external LLM connectors.
         </p>
         <JsonBlock value={session.recentEvents} />

@@ -25,11 +25,11 @@ export function ModesPanel({
   }));
 
   return (
-    <div style={styles.twoColumn}>
+    <div className={styles.twoColumn}>
       <SectionCard title="Adaptive Mode">
         <Field label="Default mode">
           <select
-            style={styles.input}
+            className={styles.input}
             value={config.mode.defaultMode}
             onChange={(event) => updateMode({ defaultMode: event.target.value as AdminModeConfig['defaultMode'] })}
           >
@@ -39,7 +39,7 @@ export function ModesPanel({
         </Field>
         <Field label="Presentation mode">
           <select
-            style={styles.input}
+            className={styles.input}
             value={config.mode.presentationMode}
             onChange={(event) => updateMode({ presentationMode: event.target.value as AdminModeConfig['presentationMode'] })}
           >
@@ -49,7 +49,7 @@ export function ModesPanel({
         </Field>
         <Field label="Decision application">
           <select
-            style={styles.input}
+            className={styles.input}
             value={config.mode.decisionApplication}
             onChange={(event) => updateMode({ decisionApplication: event.target.value as AdminModeConfig['decisionApplication'] })}
           >
@@ -59,7 +59,7 @@ export function ModesPanel({
         </Field>
         <Field label="Persistence mode">
           <select
-            style={styles.input}
+            className={styles.input}
             value={config.mode.persistenceMode}
             onChange={(event) => updateMode({ persistenceMode: event.target.value as AdminModeConfig['persistenceMode'] })}
           >
@@ -70,7 +70,7 @@ export function ModesPanel({
         </Field>
         <Field label="Events before lock">
           <input
-            style={styles.input}
+            className={styles.input}
             type="number"
             min={1}
             value={config.mode.minEventsBeforeLock}
@@ -79,7 +79,7 @@ export function ModesPanel({
         </Field>
         <Field label="Polling interval (ms)">
           <input
-            style={styles.input}
+            className={styles.input}
             type="number"
             min={250}
             value={config.mode.pollingIntervalMs}
@@ -88,7 +88,7 @@ export function ModesPanel({
         </Field>
       </SectionCard>
 
-      <div style={styles.stack}>
+      <div className={styles.stack}>
         <SectionCard title="Session Tools">
           <ComparisonRows
             rows={[
@@ -96,12 +96,12 @@ export function ModesPanel({
               ['Active persistence', persistenceMode ?? config.mode.persistenceMode],
             ]}
           />
-          <p style={styles.helpText}>
+          <p className={styles.helpText}>
             Randomize the current session only in non-production builds. This clears the active mode-scoped session id and queued adaptive decision, then reloads the app.
           </p>
           {canRandomizeSession && onRandomizeSession && (
-            <div style={styles.rowActions}>
-              <button type="button" style={styles.secondaryButton} onClick={onRandomizeSession}>
+            <div className={styles.rowActions}>
+              <button type="button" className={styles.secondaryButton} onClick={onRandomizeSession}>
                 Randomize session
               </button>
             </div>
@@ -111,7 +111,7 @@ export function ModesPanel({
         <SectionCard title="MCP Resolver Settings">
           <Field label="Minimum LLM confidence">
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               min={0}
               max={1}
@@ -125,7 +125,7 @@ export function ModesPanel({
           </Field>
           <Field label="Fallback variant">
             <input
-              style={styles.input}
+              className={styles.input}
               value={config.mcp.fallbackVariant}
               onChange={(event) => updateConfig((current) => ({
                 ...current,
@@ -133,11 +133,11 @@ export function ModesPanel({
               }))}
             />
           </Field>
-          <p style={styles.helpText}>
+          <p className={styles.helpText}>
             Changes apply after Save. The frontend can remount the provider from this runtime config without mutating source files.
           </p>
           {config.mode.presentationMode === 'production' && (
-            <p style={styles.noticeText}>
+            <p className={styles.noticeText}>
               Production mode hides personality, scores, variants, debug details, and admin controls from front-facing users.
             </p>
           )}
