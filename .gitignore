@@ -70,3 +70,5 @@ plugins/
 .gemini/
 AGENTS.md
 CLAUDE.md
+
+.antigravitycli/
