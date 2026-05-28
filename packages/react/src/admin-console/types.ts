@@ -5,7 +5,7 @@ import type {
   PersonalityResource,
 } from '@dionysys/core';
 
-export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'data' | 'apis' | 'export' | 'explorer';
+export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'components' | 'data' | 'apis' | 'export' | 'explorer';
 
 export interface AdminConsoleProps {
   apiBaseUrl?: string;

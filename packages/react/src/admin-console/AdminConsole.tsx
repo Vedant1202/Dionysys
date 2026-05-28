@@ -9,6 +9,7 @@ import { DataPanel } from './sections/DataPanel.js';
 import { ApisPanel } from './sections/ApisPanel.js';
 import { ExportPanel } from './sections/ExportPanel.js';
 import { ExplorerPanel } from './sections/ExplorerPanel.js';
+import { ComponentsPanel } from './sections/ComponentsPanel.js';
 import { adminConsoleStyles as styles } from './styles.js';
 import { useAdminConsoleState } from './useAdminConsoleState.js';
 import type { AdminConsoleProps } from './types.js';
@@ -131,6 +132,9 @@ export function AdminConsole({
           )}
           {!isLoading && config && activeTab === 'calculations' && (
             <CalculationsPanel config={config} updateConfig={updateConfig} />
+          )}
+          {!isLoading && config && activeTab === 'components' && (
+            <ComponentsPanel config={config} updateConfig={updateConfig} />
           )}
           {!isLoading && config && activeTab === 'data' && (
             <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} />

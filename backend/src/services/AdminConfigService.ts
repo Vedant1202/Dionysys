@@ -147,6 +147,14 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
     supportedMenuItems: SUPPORTED_MENU_ITEMS,
   },
   feedbackWeights: DEFAULT_FEEDBACK_WEIGHTS,
+  componentEmbeddings: {
+    action_welcomeScreen: { coordinate: { novice: 1.0 } },
+    action_help: { coordinate: { novice: 1.0, standard: 0.5 } },
+    action_saveAsImage: { coordinate: { standard: 1.0, power_user: 1.0 } },
+    action_export: { coordinate: { power_user: 1.0 } },
+    action_clearCanvas: { coordinate: { draw_first: 1.0, power_user: 1.0 } },
+    action_toggleTheme: { coordinate: { standard: 1.0, power_user: 1.0 } },
+  },
 };
 
 let activeConfig = cloneConfig(FILE_SEEDED_ADMIN_CONFIG);
