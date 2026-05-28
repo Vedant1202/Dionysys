@@ -16,6 +16,7 @@ export class InteractionPlugin implements IEventPlugin {
   }
 
   private isToolbarElement(el: HTMLElement): boolean {
+    if (!el || typeof el.closest !== 'function') return false;
     return el.tagName === 'BUTTON' || el.closest('button') !== null;
   }
 
@@ -48,12 +49,14 @@ export class InteractionPlugin implements IEventPlugin {
       this.hoverTimers.delete(target);
     }
     
-    const parentButton = target.closest('button');
-    if (parentButton) {
-      const parentTimerId = this.hoverTimers.get(parentButton);
-      if (parentTimerId) {
-        clearTimeout(parentTimerId);
-        this.hoverTimers.delete(parentButton);
+    if (typeof target.closest === 'function') {
+      const parentButton = target.closest('button');
+      if (parentButton) {
+        const parentTimerId = this.hoverTimers.get(parentButton);
+        if (parentTimerId) {
+          clearTimeout(parentTimerId);
+          this.hoverTimers.delete(parentButton);
+        }
       }
     }
   }
@@ -62,8 +65,8 @@ export class InteractionPlugin implements IEventPlugin {
     if (!this.emitEvent) return;
 
     // Use ARIA label, title, or text content for identifiable name
-    let name = target.getAttribute('aria-label') || target.title;
-    if (!name) {
+    let name = target.getAttribute ? (target.getAttribute('aria-label') || target.title) : null;
+    if (!name && typeof target.closest === 'function') {
       const parent = target.closest('button');
       if (parent) {
         name = parent.getAttribute('aria-label') || parent.title;

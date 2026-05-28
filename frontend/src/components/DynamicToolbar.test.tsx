@@ -28,9 +28,9 @@ describe('DynamicToolbar', () => {
       />,
     );
 
-    expect(view.getByRole('button', { name: 'Selection tool' })).toHaveAttribute('aria-keyshortcuts', '1');
-    expect(view.getByRole('button', { name: 'Rectangle tool' })).toHaveAttribute('aria-keyshortcuts', '2');
-    expect(view.getByRole('button', { name: 'Rhombus tool' })).toHaveAttribute('aria-keyshortcuts', '3');
+    expect(view.getByRole('button', { name: 'Selection — V or 1' })).toHaveAttribute('aria-keyshortcuts', '1');
+    expect(view.getByRole('button', { name: 'Rectangle — R or 2' })).toHaveAttribute('aria-keyshortcuts', '2');
+    expect(view.getByRole('button', { name: 'Diamond — D or 3' })).toHaveAttribute('aria-keyshortcuts', '3');
     expect(document.querySelector('[data-hotkey-badge="1"]')).toBeTruthy();
     expect(document.querySelector('[data-hotkey-badge="2"]')).toBeTruthy();
     expect(document.querySelector('[data-hotkey-badge="3"]')).toBeTruthy();

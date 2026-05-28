@@ -35,6 +35,10 @@ class EventCollector {
     this.plugins.push(plugin);
   }
 
+  getPlugin<T extends IEventPlugin>(id: string): T | undefined {
+    return this.plugins.find(p => p.id === id) as T | undefined;
+  }
+
   recordEvent(event: AppEvent) {
     this.pushToBuffer(event);
   }

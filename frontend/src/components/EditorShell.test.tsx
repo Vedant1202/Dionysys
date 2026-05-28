@@ -19,6 +19,29 @@ vi.mock('@dionysys/react', () => ({
     pendingPersonality: undefined,
     incrementEventsSent: vi.fn(),
   }),
+  useFeedback: () => ({
+    submitFeedback: vi.fn(),
+    triggerPassiveEval: vi.fn(),
+    pendingRevert: false,
+    showCalibrationNote: false,
+    confirmRevert: vi.fn(),
+    dismissRevert: vi.fn(),
+  }),
+  useFeedbackTrigger: () => ({
+    promptVisible: false,
+    dismissPrompt: vi.fn(),
+  }),
+}));
+
+vi.mock('../hooks/useAdaptationEngine', () => ({
+  useAdaptationEngine: () => ({
+    presentationMode: 'prototype',
+    currentVariant: 'neutral',
+    currentUIState: undefined,
+    hasPendingUIChange: false,
+    pendingPersonality: undefined,
+    incrementEventsSent: vi.fn(),
+  }),
 }));
 
 vi.mock('./DebugPanel', () => ({

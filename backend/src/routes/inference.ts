@@ -25,7 +25,7 @@ inferenceRouter.get('/prior', async (req: Request, res: Response): Promise<void>
   try {
     const prior = await BrowserPriorService.getPrior(browserId);
     if (!prior) {
-      res.status(404).json({ error: 'No prior found for this browser' });
+      res.json({ success: true, personaPriors: null });
       return;
     }
     res.json({ success: true, personaPriors: prior.personaPriors, sessionCount: prior.sessionCount });

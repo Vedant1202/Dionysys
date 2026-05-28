@@ -134,6 +134,7 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
         {shortcut && (
           <span
             aria-hidden="true"
+            data-hotkey-badge={shortcut}
             style={{
               position: 'absolute',
               bottom: 4,

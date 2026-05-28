@@ -4,10 +4,10 @@ import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
 import {
   AdaptiveFeedback,
-  useAdaptiveUI,
   useFeedback,
   useFeedbackTrigger,
 } from '@dionysys/react';
+import { useAdaptationEngine as useAdaptiveUI } from '../hooks/useAdaptationEngine';
 import { DebugPanel } from './DebugPanel';
 import { DynamicToolbar } from './DynamicToolbar';
 import { eventCollector } from '../core/eventCollector';
