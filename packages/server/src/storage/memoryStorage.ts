@@ -40,6 +40,9 @@ export function createMemoryStorage(): DionysysStorage {
     async saveEvents(newEvents) {
       events.push(...newEvents);
     },
+    async getEventsBySession(sessionId) {
+      return events.filter(e => e.sessionId === sessionId);
+    },
     async saveDecision(decision) {
       decisions.set(decision.id, decision);
     },
