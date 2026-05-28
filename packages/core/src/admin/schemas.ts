@@ -89,6 +89,11 @@ export const FeedbackWeightsSchema = z.object({
   hiddenToolPenalty: z.number().nonnegative(),
 });
 
+export const ComponentEmbeddingSchema = z.object({
+  coordinate: z.record(z.number()),
+  threshold: z.number().optional(),
+});
+
 export const AdminConsoleConfigSchema = z.object({
   version: z.literal(1),
   updatedAt: z.string().min(1),
@@ -97,4 +102,5 @@ export const AdminConsoleConfigSchema = z.object({
   mcp: AdminMcpConfigSchema,
   ui: AdminUIConfigSchema,
   feedbackWeights: FeedbackWeightsSchema,
+  componentEmbeddings: z.record(ComponentEmbeddingSchema).optional(),
 });

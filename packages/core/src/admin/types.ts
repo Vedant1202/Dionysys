@@ -92,6 +92,11 @@ export interface FeedbackWeights {
   hiddenToolPenalty: number;
 }
 
+export interface ComponentEmbedding {
+  coordinate: Record<string, number>;
+  threshold?: number | undefined;
+}
+
 export interface AdminConsoleConfig {
   version: 1;
   updatedAt: string;
@@ -100,6 +105,7 @@ export interface AdminConsoleConfig {
   mcp: AdminMcpConfig;
   ui: AdminUIConfig;
   feedbackWeights: FeedbackWeights;
+  componentEmbeddings?: Record<string, ComponentEmbedding> | undefined;
 }
 
 export interface AdminConnectorStatus {

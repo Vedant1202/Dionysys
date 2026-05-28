@@ -88,6 +88,7 @@ export function AdaptiveProvider({
   sessionId,
   defaultVariant,
   defaultUIState,
+  componentEmbeddings = {},
   pollInference,
   evaluatePolicy,
   resolveDecision,

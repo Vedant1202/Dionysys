@@ -19,6 +19,7 @@ export interface UseAdaptiveUIResult {
   personaProbs: AdaptiveUIState['personaProbs'];
   eventsSentCount: AdaptiveUIState['eventsSentCount'];
   isPolicyLocked: AdaptiveUIState['isPolicyLocked'];
+  componentEmbeddings: AdaptiveUIState['componentEmbeddings'];
   incrementEventsSent: AdaptiveUIState['incrementEventsSent'];
   setManualOverride: AdaptiveUIState['setManualOverride'];
   /**
@@ -50,6 +51,7 @@ export function useAdaptiveUI(): UseAdaptiveUIResult {
     personaProbs: useStore(store, (state) => state.personaProbs),
     eventsSentCount: useStore(store, (state) => state.eventsSentCount),
     isPolicyLocked: useStore(store, (state) => state.isPolicyLocked),
+    componentEmbeddings: useStore(store, (state) => state.componentEmbeddings),
     incrementEventsSent: useStore(store, (state) => state.incrementEventsSent),
     setManualOverride: useStore(store, (state) => state.setManualOverride),
     _store: store,

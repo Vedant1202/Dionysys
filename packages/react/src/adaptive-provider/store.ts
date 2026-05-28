@@ -10,6 +10,7 @@ export interface CreateAdaptiveUIStoreArgs {
   defaultVariant: string;
   defaultUIState?: AdaptiveUIDefinition | undefined;
   initialPendingDecision?: PendingAdaptiveDecision | undefined;
+  componentEmbeddings?: Record<string, import('@dionysys/core').ComponentEmbedding>;
 }
 
 export const AdaptiveUIContext = React.createContext<StoreApi<AdaptiveUIState> | null>(null);
@@ -20,6 +21,7 @@ export function createAdaptiveUIStore({
   defaultVariant,
   defaultUIState,
   initialPendingDecision,
+  componentEmbeddings = {},
 }: CreateAdaptiveUIStoreArgs): StoreApi<AdaptiveUIState> {
   const initialVariant = initialPendingDecision?.variant ?? defaultVariant;
   const initialAxisSelection = splitComposedUiVariant(initialPendingDecision?.composedUiVariant ?? initialVariant);
@@ -40,6 +42,7 @@ export function createAdaptiveUIStore({
     personaProbs: initialPendingDecision?.modalityScores ?? initialPendingDecision?.personaScores ?? {},
     eventsSentCount: 0,
     isPolicyLocked: false,
+    componentEmbeddings,
     setPersonaProbs: (probs) => set({ personaProbs: probs }),
     incrementEventsSent: (count = 1) => set((state) => ({ eventsSentCount: state.eventsSentCount + count })),
     lockPolicy: (selection) => set(() => applyDeterministicSelection(selection)),

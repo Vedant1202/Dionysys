@@ -6,6 +6,7 @@ import type {
   AdaptivePersistenceMode,
   AdaptivePresentationMode,
   AdaptiveUIDefinition,
+  ComponentEmbedding,
   ExpertisePersona,
   ModalityPersona,
   PendingAdaptiveDecision,
@@ -60,6 +61,7 @@ export interface AdaptiveUIState {
   personaProbs: Record<string, number>;
   eventsSentCount: number;
   isPolicyLocked: boolean;
+  componentEmbeddings: Record<string, ComponentEmbedding>;
   setPersonaProbs: (probs: Record<string, number>) => void;
   incrementEventsSent: (count?: number) => void;
   lockPolicy: (selection: string | DeterministicAdaptiveSelection) => void;
@@ -79,6 +81,7 @@ export interface AdaptiveProviderProps {
   sessionId?: string;
   defaultVariant: string;
   defaultUIState?: AdaptiveUIDefinition;
+  componentEmbeddings?: Record<string, ComponentEmbedding>;
   pollInference?: () => Promise<Record<string, number>>;
   evaluatePolicy?: () => Promise<string | DeterministicAdaptiveSelection>;
   resolveDecision?: () => Promise<AdaptiveDecision>;
