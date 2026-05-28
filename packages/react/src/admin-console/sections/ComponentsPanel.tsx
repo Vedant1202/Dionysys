@@ -2,7 +2,26 @@ import * as React from 'react';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { Component2DMap } from './Component2DMap.js';
 import type { AdminConfigUpdater } from '../types.js';
-import type { AdminConsoleConfig, ComponentEmbedding } from '@dionysys/core';
+import type { AdminConsoleConfig } from '@dionysys/core';
+
+/**
+ * Convert a raw component ID like `action_saveAsImage` into a
+ * human-readable label like "Save As Image".
+ */
+function toHumanLabel(id: string): string {
+  const stripped = id.replace(
+    /^(action|tool|panel|widget|btn|button|ui|component|menu|modal|dialog|overlay|popup)_?/i,
+    '',
+  );
+  return (
+    stripped
+      .replace(/([a-z])([A-Z])/g, '$1 $2')   // camelCase → words
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')                 // snake_case → words
+      .replace(/\b\w/g, (c) => c.toUpperCase()) // Title Case
+      .trim() || id
+  );
+}
 
 interface ComponentsPanelProps {
   config: AdminConsoleConfig;
@@ -13,10 +32,8 @@ export function ComponentsPanel({ config, updateConfig }: ComponentsPanelProps) 
   // Grab current component embeddings from config or default to empty
   const componentEmbeddings = config.componentEmbeddings || {};
 
-  // Extract all personas from the deterministic config to act as slider labels
   const modalityPersonas = config.deterministic.axes.modality.personas;
   const expertisePersonas = config.deterministic.axes.expertise.personas;
-  const allPersonas = [...modalityPersonas, ...expertisePersonas];
 
   const handleAddComponent = () => {
     const componentId = prompt('Enter a new component ID (e.g., tool_text):');
@@ -64,75 +81,87 @@ export function ComponentsPanel({ config, updateConfig }: ComponentsPanelProps) 
     });
   };
 
+  const componentEntries = Object.entries(componentEmbeddings);
+
   return (
-    <div className={styles.content}>
-      <header style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h2 className={styles.subtitle}>Spatial Component Map</h2>
+    <div className={styles.componentPanel}>
+      <header className={styles.sectionHeader}>
+        <div className={styles.sectionHeaderBody}>
+          <h2 className={styles.sectionTitle}>Spatial Component Map</h2>
           <p className={styles.helpText}>
-            Configure the vector coordinates for individual UI components.
-            These values override frontend fallback coordinates, allowing you to manipulate the UI's layout remotely.
+            Each component lives at a point in the 2-D modality / expertise space.
+            Drag the dot to position it — the runtime uses these coordinates to decide
+            whether a component is shown, hidden, or moved to overflow based on the active
+            user persona. Values closer to <strong>1.0</strong> on an axis mean the component
+            is most relevant for that persona pole. Use the <em>Relevance Threshold</em> slider
+            to set the minimum score below which the component is suppressed.
           </p>
         </div>
         <button className={styles.secondaryButton} onClick={handleAddComponent}>
-          Add Component ID
+          + Add Component
         </button>
       </header>
 
-      {Object.keys(componentEmbeddings).length === 0 ? (
+      {componentEntries.length === 0 ? (
         <div className={styles.emptyState}>
-          <p className={styles.helpText}>No components configured. Add an ID like <code>tool_rectangle</code> to map it to the embedding space.</p>
+          <p className={styles.helpText}>
+            No components configured yet. Click <strong>+ Add Component</strong> and enter an ID
+            like <code>tool_rectangle</code> to place it in the embedding space.
+          </p>
         </div>
       ) : (
-        <div className={styles.panelGrid}>
-          {Object.entries(componentEmbeddings).map(([id, embedding]) => (
-            <div key={id} className={styles.card}>
-              <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 className={styles.cardTitle} style={{ margin: 0, fontSize: '1.1rem' }}>{id}</h3>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveComponent(id)}
-                  className={styles.dangerButton}
-                  style={{ padding: '4px 8px', fontSize: '12px', minHeight: 'auto' }}
-                >
-                  Remove
-                </button>
-              </header>
+        <div className={styles.componentGrid}>
+          {componentEntries.map(([id, embedding]) => {
+            const thresholdInputId = `component-threshold-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+            const threshold = embedding.threshold ?? 0.3;
 
-              <div style={{ marginBottom: '16px' }}>
-                <label className={styles.label}>
-                  <span style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    Relevance Threshold <span>{embedding.threshold ?? 0.3}</span>
-                  </span>
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            return (
+              <section key={id} className={styles.componentCard}>
+                <header className={styles.componentCardHeader}>
+                  <div>
+                    <h3 className={styles.componentCardTitle}>{toHumanLabel(id)}</h3>
+                    <code className={styles.componentCardId}>{id}</code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveComponent(id)}
+                    className={styles.compactDangerButton}
+                  >
+                    Remove
+                  </button>
+                </header>
+
+                <div className={styles.componentControlGroup}>
+                  <label className={styles.componentControlLabel} htmlFor={thresholdInputId}>
+                    <span>Relevance Threshold</span>
+                    <strong>{threshold}</strong>
+                  </label>
                   <input
+                    id={thresholdInputId}
+                    className={styles.rangeInput}
                     type="range"
                     min="0"
                     max="1"
                     step="0.05"
-                    value={embedding.threshold ?? 0.3}
-                    onChange={(e) => handleThresholdChange(id, parseFloat(e.target.value))}
-                    style={{ flex: 1, accentColor: 'var(--dionysys-primary)' }}
+                    value={threshold}
+                    onChange={(event) => handleThresholdChange(id, parseFloat(event.target.value))}
                   />
+                  <p className={styles.componentHelpText}>
+                    Below this relevance, the component disappears or moves to overflow.
+                  </p>
                 </div>
-                <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '4px' }}>
-                  Below this relevance, the component disappears or moves to overflow.
-                </p>
-              </div>
 
-              <hr className={styles.divider} style={{ border: 'none', borderTop: '1px solid var(--dionysys-border)', margin: '16px 0' }} />
-              
-              <h4 className={styles.cardTitle} style={{ fontSize: '13px', marginBottom: '12px' }}>Spatial Location</h4>
-              
-              <Component2DMap
-                coordinate={embedding.coordinate}
-                onChange={(newCoord) => handleMapChange(id, newCoord)}
-                xLabels={[modalityPersonas[1] || 'structural', modalityPersonas[0] || 'visual']}
-                yLabels={[expertisePersonas[0] || 'novice', expertisePersonas[1] || 'expert']}
-              />
-            </div>
-          ))}
+                <div className={styles.componentDivider} />
+
+                <Component2DMap
+                  coordinate={embedding.coordinate}
+                  onChange={(newCoord) => handleMapChange(id, newCoord)}
+                  xLabels={[modalityPersonas[1] || 'structural', modalityPersonas[0] || 'visual']}
+                  yLabels={[expertisePersonas[0] || 'novice', expertisePersonas[1] || 'expert']}
+                />
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
