@@ -29,6 +29,12 @@ interface AdaptiveFeedbackBaseProps {
  */
 interface AdaptiveFeedbackControlledProps extends AdaptiveFeedbackBaseProps {
   onSubmit: (feedback: AdaptiveFeedbackSubmission) => void | Promise<void>;
+  pendingRevert?: boolean;
+  onKeep?: () => void;
+  onRevertClick?: () => void;
+  showCalibrationNote?: boolean;
+  isSubmitting?: boolean;
+  error?: string;
   sessionId?: never;
   baseUrl?: never;
   onRevert?: never;
@@ -59,17 +65,6 @@ interface AdaptiveFeedbackConnectedProps extends AdaptiveFeedbackBaseProps {
 
 export type AdaptiveFeedbackProps = AdaptiveFeedbackControlledProps | AdaptiveFeedbackConnectedProps;
 
-// ─── Root component (mode dispatch) ──────────────────────────────────────────
-
-/**
- * A feedback widget that captures whether a persona/UI adaptation is helping.
- *
- * **Connected mode** (recommended): pass `sessionId` + `baseUrl`. The component
- * wires itself to the backend, handles the `revert` confirmation prompt, and
- * shows a brief ambient note on `keep`.
- *
- * **Controlled mode**: pass `onSubmit` to handle submissions yourself.
- */
 export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
   if (props.sessionId != null && props.baseUrl != null) {
     return (
@@ -89,6 +84,12 @@ export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
       onSubmit={(props as AdaptiveFeedbackControlledProps).onSubmit}
       title={props.title}
       onDismiss={props.onDismiss}
+      pendingRevert={(props as AdaptiveFeedbackControlledProps).pendingRevert}
+      onKeep={(props as AdaptiveFeedbackControlledProps).onKeep}
+      onRevertClick={(props as AdaptiveFeedbackControlledProps).onRevertClick}
+      showCalibrationNote={(props as AdaptiveFeedbackControlledProps).showCalibrationNote}
+      isSubmitting={(props as AdaptiveFeedbackControlledProps).isSubmitting}
+      error={(props as AdaptiveFeedbackControlledProps).error}
     />
   );
 }
@@ -98,15 +99,14 @@ export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
 function AdaptiveFeedbackConnected({
   sessionId,
   baseUrl,
-  title = 'How is this workspace feeling?',
+  title = 'Dionysys simplified the toolbar for Focus.',
   onRevert,
   autoRevert,
   onDismiss,
 }: Required<Pick<AdaptiveFeedbackConnectedProps, 'sessionId' | 'baseUrl'>> &
   Pick<AdaptiveFeedbackConnectedProps, 'title' | 'onRevert' | 'autoRevert'> &
   Pick<AdaptiveFeedbackBaseProps, 'onDismiss'>) {
-  const [comment, setComment] = React.useState('');
-  const [selected, setSelected] = React.useState<FeedbackSentiment | undefined>();
+  const [showSurvey, setShowSurvey] = React.useState(false);
 
   const {
     submitFeedback,
@@ -118,292 +118,320 @@ function AdaptiveFeedbackConnected({
     dismissRevert,
   } = useFeedback({ sessionId, baseUrl, onRevert, autoRevert });
 
-  const handleSentiment = async (sentiment: FeedbackSentiment) => {
-    setSelected(sentiment);
-    await submitFeedback({ sentiment, comment: comment.trim() || undefined });
-    setComment('');
+  const handleKeep = async () => {
+    dismissRevert();
+    await submitFeedback({ sentiment: 'helpful' });
   };
+
+  const handleRevertClick = () => {
+    confirmRevert();
+    setShowSurvey(true);
+  };
+
+  const submitDetailedFeedback = async (reason: string) => {
+    await submitFeedback({ sentiment: 'in_the_way', comment: reason });
+    setShowSurvey(false);
+  };
+
+  if (showSurvey) {
+    return (
+      <section style={styles.surveyPanel} aria-label="Feedback survey">
+        <div style={styles.surveyHeader}>
+          <h3 style={styles.surveyTitle}>
+            <svg style={styles.icon} viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Layout Reverted
+          </h3>
+          <p style={styles.surveySubtitle}>Help Dionysys learn. What went wrong?</p>
+        </div>
+        <div style={styles.surveyOptions}>
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Needed a hidden tool')} disabled={isSubmitting}>
+            I needed a hidden tool
+          </button>
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Layout was distracting')} disabled={isSubmitting}>
+            The layout was distracting
+          </button>
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Other reason')} disabled={isSubmitting}>
+            Other reason
+          </button>
+        </div>
+        {error && <p style={styles.errorStatus}>{error}</p>}
+      </section>
+    );
+  }
 
   if (pendingRevert) {
     return (
-      <section style={styles.panel} aria-label="Workspace revert prompt">
-        <p style={styles.revertPrompt}>
-          This layout doesn&apos;t seem to be working for you. Reset to default?
-        </p>
-        <div style={styles.revertActions}>
-          <button type="button" style={styles.confirmButton} onClick={confirmRevert}>
-            Reset layout
-          </button>
-          <button type="button" style={styles.revertDismissButton} onClick={dismissRevert}>
-            Keep it
-          </button>
+      <section style={styles.toastPanel} aria-label="Workspace revert prompt">
+        <div style={styles.toastContent}>
+          <span style={styles.toastPulseRing}></span>
+          <span style={styles.toastText}>{title}</span>
+        </div>
+        <div style={styles.toastDivider}></div>
+        <div style={styles.toastActions}>
+          <button type="button" style={styles.toastKeepBtn} onClick={() => void handleKeep()} disabled={isSubmitting}>Keep</button>
+          <button type="button" style={styles.toastRevertBtn} onClick={handleRevertClick} disabled={isSubmitting}>Revert</button>
         </div>
       </section>
     );
   }
 
-  return (
-    <section style={styles.panel} aria-label="Workspace feedback">
-      <div style={styles.header}>
-        <h2 style={styles.title}>{title}</h2>
-        {onDismiss && (
-          <button
-            type="button"
-            style={styles.dismissButton}
-            onClick={onDismiss}
-            aria-label="Dismiss feedback prompt"
-          >
-            ×
-          </button>
-        )}
+  if (showCalibrationNote && !error) {
+    return (
+      <div style={styles.successToast}>
+        <svg style={{...styles.icon, stroke: '#065f46'}} viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Thanks! Your feedback helps us improve.
       </div>
-      <div style={styles.actions}>
-        <button
-          type="button"
-          style={selected === 'helpful' ? styles.activeButton : styles.button}
-          onClick={() => void handleSentiment('helpful')}
-          disabled={isSubmitting}
-        >
-          This helped
-        </button>
-        <button
-          type="button"
-          style={selected === 'in_the_way' ? styles.activeButton : styles.button}
-          onClick={() => void handleSentiment('in_the_way')}
-          disabled={isSubmitting}
-        >
-          Got in my way
-        </button>
-      </div>
-      <label style={styles.commentLabel}>
-        <span style={styles.commentText}>Optional note</span>
-        <textarea
-          style={styles.textarea}
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          rows={3}
-        />
-      </label>
-      {error && <p style={styles.errorStatus}>{error}</p>}
-      {showCalibrationNote && !error && (
-        <p style={styles.calibrationNote}>Workspace calibrated to your style.</p>
-      )}
-      {isSubmitting && !error && !showCalibrationNote && (
-        <p style={styles.pendingStatus}>Sending…</p>
-      )}
-    </section>
-  );
+    );
+  }
+
+  return null;
 }
 
 // ─── Controlled implementation (original behaviour) ───────────────────────────
 
 function AdaptiveFeedbackControlled({
   onSubmit,
-  title = 'How is this workspace feeling?',
+  title = 'Dionysys simplified the toolbar for Focus.',
   onDismiss,
-}: Pick<AdaptiveFeedbackControlledProps, 'onSubmit' | 'title'> &
+  pendingRevert,
+  onKeep,
+  onRevertClick,
+  showCalibrationNote,
+  isSubmitting,
+  error,
+}: Pick<AdaptiveFeedbackControlledProps, 'onSubmit' | 'title' | 'pendingRevert' | 'onKeep' | 'onRevertClick' | 'showCalibrationNote' | 'isSubmitting' | 'error'> &
   Pick<AdaptiveFeedbackBaseProps, 'onDismiss'>) {
-  const [comment, setComment] = React.useState('');
-  const [selected, setSelected] = React.useState<FeedbackSentiment | undefined>();
-  const [status, setStatus] = React.useState<string | undefined>();
+  const [showSurvey, setShowSurvey] = React.useState(false);
 
-  const submitFeedback = async (sentiment: FeedbackSentiment) => {
-    setSelected(sentiment);
-    setStatus(undefined);
-
-    try {
-      await onSubmit?.({ sentiment, comment: comment.trim() || undefined });
-      setStatus('Thanks for the feedback.');
-      setComment('');
-    } catch {
-      setStatus('Feedback could not be sent.');
-    }
+  const handleKeepClick = async () => {
+    onKeep?.();
+    await onSubmit({ sentiment: 'helpful' });
   };
 
-  return (
-    <section style={styles.panel} aria-label="Workspace feedback">
-      <div style={styles.header}>
-        <h2 style={styles.title}>{title}</h2>
-        {onDismiss && (
-          <button
-            type="button"
-            style={styles.dismissButton}
-            onClick={onDismiss}
-            aria-label="Dismiss feedback prompt"
-          >
-            ×
+  const handleRevertAction = () => {
+    onRevertClick?.();
+    setShowSurvey(true);
+  };
+
+  const submitDetailedFeedback = async (reason: string) => {
+    await onSubmit({ sentiment: 'in_the_way', comment: reason });
+    setShowSurvey(false);
+  };
+
+  if (showSurvey) {
+    return (
+      <section style={styles.surveyPanel} aria-label="Feedback survey">
+        <div style={styles.surveyHeader}>
+          <h3 style={styles.surveyTitle}>
+            <svg style={styles.icon} viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Layout Reverted
+          </h3>
+          <p style={styles.surveySubtitle}>Help Dionysys learn. What went wrong?</p>
+        </div>
+        <div style={styles.surveyOptions}>
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Needed a hidden tool')} disabled={isSubmitting}>
+            I needed a hidden tool
           </button>
-        )}
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Layout was distracting')} disabled={isSubmitting}>
+            The layout was distracting
+          </button>
+          <button type="button" style={styles.surveyOptionBtn} onClick={() => void submitDetailedFeedback('Other reason')} disabled={isSubmitting}>
+            Other reason
+          </button>
+        </div>
+        {error && <p style={styles.errorStatus}>{error}</p>}
+      </section>
+    );
+  }
+
+  if (pendingRevert) {
+    return (
+      <section style={styles.toastPanel} aria-label="Workspace revert prompt">
+        <div style={styles.toastContent}>
+          <span style={styles.toastPulseRing}></span>
+          <span style={styles.toastText}>{title}</span>
+        </div>
+        <div style={styles.toastDivider}></div>
+        <div style={styles.toastActions}>
+          <button type="button" style={styles.toastKeepBtn} onClick={() => void handleKeepClick()} disabled={isSubmitting}>Keep</button>
+          <button type="button" style={styles.toastRevertBtn} onClick={handleRevertAction} disabled={isSubmitting}>Revert</button>
+        </div>
+      </section>
+    );
+  }
+
+  if (showCalibrationNote && !error) {
+    return (
+      <div style={styles.successToast}>
+        <svg style={{...styles.icon, stroke: '#065f46'}} viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Thanks! Your feedback helps us improve.
       </div>
-      <div style={styles.actions}>
-        <button
-          type="button"
-          style={selected === 'helpful' ? styles.activeButton : styles.button}
-          onClick={() => void submitFeedback('helpful')}
-        >
-          This helped
-        </button>
-        <button
-          type="button"
-          style={selected === 'in_the_way' ? styles.activeButton : styles.button}
-          onClick={() => void submitFeedback('in_the_way')}
-        >
-          Got in my way
-        </button>
-      </div>
-      <label style={styles.commentLabel}>
-        <span style={styles.commentText}>Optional note</span>
-        <textarea
-          style={styles.textarea}
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          rows={3}
-        />
-      </label>
-      {status && <p style={styles.status}>{status}</p>}
-    </section>
-  );
+    );
+  }
+
+  return null;
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
-  panel: {
-    width: 280,
-    borderRadius: 8,
-    border: '1px solid rgba(15, 118, 110, 0.22)',
-    background: 'rgba(255, 255, 255, 0.94)',
-    boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)',
-    padding: 14,
-    color: '#1f2933',
-    fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  // ── Controlled Form Fallback (Unchanged for compatibility) ─────────────
+  panel: { width: 280, borderRadius: 8, border: '1px solid rgba(15, 118, 110, 0.22)', background: 'rgba(255, 255, 255, 0.94)', boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)', padding: 14, color: '#1f2933', fontFamily: 'Inter, sans-serif' },
+  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, marginBottom: 10 },
+  title: { margin: 0, fontSize: 14, lineHeight: 1.3, flex: 1 },
+  dismissButton: { width: 22, height: 22, border: 'none', background: 'transparent', color: '#8c9aad', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  actions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
+  button: { minHeight: 38, border: '1px solid #c8c0b2', borderRadius: 6, background: '#ffffff', color: '#273444', fontWeight: 800, cursor: 'pointer' },
+  activeButton: { minHeight: 38, border: '1px solid #0f766e', borderRadius: 6, background: '#0f766e', color: '#ffffff', fontWeight: 900, cursor: 'pointer' },
+  commentLabel: { display: 'flex', flexDirection: 'column', gap: 5, marginTop: 10 },
+  commentText: { color: '#596579', fontSize: 12, fontWeight: 800 },
+  textarea: { width: '100%', boxSizing: 'border-box', border: '1px solid #c8c0b2', borderRadius: 6, padding: 8, color: '#1f2933', resize: 'vertical' },
+  status: { margin: '8px 0 0', color: '#0f766e', fontSize: 12, fontWeight: 800 },
+  pendingStatus: { margin: '8px 0 0', color: '#596579', fontSize: 12, fontWeight: 700 },
+  errorStatus: { margin: '8px 0 0', color: '#be123c', fontSize: 12, fontWeight: 800 },
+  calibrationNote: { margin: '8px 0 0', color: '#0f766e', fontSize: 12, fontWeight: 800 },
+  
+  // ── Connected Flow Styles (Placements A & C) ──────────────────────────
+  surveyPanel: {
+    width: 320,
+    borderRadius: 16,
+    border: '1px solid rgba(255, 255, 255, 0.9)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(16px)',
+    boxShadow: '0 24px 50px -12px rgba(99, 102, 241, 0.15)',
+    padding: 20,
+    fontFamily: 'Inter, sans-serif',
+    position: 'fixed',
+    bottom: 32,
+    right: 32,
+    zIndex: 9999,
   },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 6,
-    marginBottom: 10,
+  surveyHeader: {
+    marginBottom: 16,
   },
-  title: {
+  surveyTitle: {
     margin: 0,
     fontSize: 14,
-    lineHeight: 1.3,
-    letterSpacing: 0,
-    flex: 1,
-  },
-  dismissButton: {
-    flexShrink: 0,
-    width: 22,
-    height: 22,
-    padding: 0,
-    border: 'none',
-    borderRadius: 4,
-    background: 'transparent',
-    color: '#8c9aad',
-    fontSize: 18,
-    lineHeight: '22px',
-    cursor: 'pointer',
+    fontWeight: 'bold',
+    color: '#1e293b',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
   },
-  actions: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 8,
+  icon: {
+    width: 18,
+    height: 18,
+    fill: 'none',
+    stroke: '#6366f1',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
   },
-  button: {
-    minHeight: 38,
-    border: '1px solid #c8c0b2',
-    borderRadius: 6,
-    background: '#ffffff',
-    color: '#273444',
-    fontWeight: 800,
-    cursor: 'pointer',
+  surveySubtitle: {
+    margin: '4px 0 0',
+    fontSize: 12,
+    color: '#64748b',
   },
-  activeButton: {
-    minHeight: 38,
-    border: '1px solid #0f766e',
-    borderRadius: 6,
-    background: '#0f766e',
-    color: '#ffffff',
-    fontWeight: 900,
-    cursor: 'pointer',
-  },
-  commentLabel: {
+  surveyOptions: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 5,
-    marginTop: 10,
+    gap: 8,
+    borderTop: '1px solid #f1f5f9',
+    paddingTop: 12,
   },
-  commentText: {
-    color: '#596579',
+  surveyOptionBtn: {
+    textAlign: 'left',
     fontSize: 12,
-    fontWeight: 800,
+    fontWeight: 500,
+    color: '#334155',
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    padding: '10px 12px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
-  textarea: {
-    width: '100%',
-    boxSizing: 'border-box',
-    border: '1px solid #c8c0b2',
-    borderRadius: 6,
-    padding: 8,
-    color: '#1f2933',
-    resize: 'vertical',
+  toastPanel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 9999,
+    border: '1px solid rgba(255, 255, 255, 0.9)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(16px)',
+    boxShadow: '0 4px 6px -2px rgba(99, 102, 241, 0.05)',
+    padding: '8px 16px',
+    fontFamily: 'Inter, sans-serif',
+    position: 'absolute',
+    top: '115%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 9999,
+    whiteSpace: 'nowrap',
   },
-  status: {
-    margin: '8px 0 0',
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: 800,
-  },
-  pendingStatus: {
-    margin: '8px 0 0',
-    color: '#596579',
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  errorStatus: {
-    margin: '8px 0 0',
-    color: '#be123c',
-    fontSize: 12,
-    fontWeight: 800,
-  },
-  calibrationNote: {
-    margin: '8px 0 0',
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: 800,
-  },
-  // ── Revert prompt styles ───────────────────────────────────────────────────
-  revertPrompt: {
-    margin: '0 0 12px',
-    fontSize: 13,
-    lineHeight: 1.5,
-    color: '#1f2933',
-  },
-  revertActions: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+  toastContent: {
+    display: 'flex',
+    alignItems: 'center',
     gap: 8,
   },
-  confirmButton: {
-    minHeight: 38,
-    border: '1px solid rgba(190, 18, 60, 0.3)',
-    borderRadius: 6,
-    background: 'rgba(255, 241, 242, 0.94)',
-    color: '#be123c',
-    fontWeight: 900,
-    cursor: 'pointer',
+  toastText: {
+    fontSize: 12,
+    fontWeight: 500,
+    color: '#334155',
   },
-  revertDismissButton: {
-    minHeight: 38,
-    border: '1px solid #c8c0b2',
-    borderRadius: 6,
-    background: '#ffffff',
-    color: '#273444',
-    fontWeight: 800,
-    cursor: 'pointer',
+  toastPulseRing: {
+    display: 'inline-block',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: '#6366f1',
+    boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)',
   },
+  toastDivider: {
+    width: 1,
+    height: 12,
+    background: '#cbd5e1',
+  },
+  toastActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  toastKeepBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: 4,
+  },
+  toastRevertBtn: {
+    background: 'rgba(255, 241, 242, 0.5)',
+    border: '1px solid #fecdd3',
+    color: '#e11d48',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: 4,
+  },
+  successToast: {
+    position: 'fixed',
+    bottom: 32,
+    right: 32,
+    zIndex: 9999,
+    background: '#ecfdf5',
+    border: '1px solid #a7f3d0',
+    color: '#065f46',
+    padding: '8px 16px',
+    borderRadius: 9999,
+    fontSize: 14,
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+  }
 };
