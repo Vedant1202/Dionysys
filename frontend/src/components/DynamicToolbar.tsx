@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useState, useRef } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { useAdaptiveComponent } from '@dionysys/react';
 import type { Vector } from '@dionysys/react';
@@ -46,14 +46,42 @@ const TOOL_COORDINATES: Record<string, Vector> = {
   line: { draw_first: 0.5, power_user: 1.0 },
 };
 
-const ISLAND_SHADOW = 'rgba(0,0,0,0.17) 0 0 0.93px, rgba(0,0,0,0.08) 0 0 3.13px, rgba(0,0,0,0.05) 0 7px 14px';
+// ─── Native Excalidraw 0.18.0 design tokens (light theme) ──────────────────────
+// Pulled verbatim from @excalidraw/excalidraw/dist/prod/index.css so the toolbar
+// is visually indistinguishable from the one Excalidraw renders itself.
+const EXCALIDRAW_TOKENS = {
+  islandBg: '#ffffff',                  // --island-bg-color
+  islandShadow:                          // --shadow-island
+    '0px 0px 0.9310142993927002px 0px rgba(0, 0, 0, 0.17), ' +
+    '0px 0px 3.1270833015441895px 0px rgba(0, 0, 0, 0.08), ' +
+    '0px 7px 14px 0px rgba(0, 0, 0, 0.05)',
+  radius: 8,                             // --border-radius-lg (0.5rem)
+  buttonSize: 36,                        // --default-button-size (2.25rem)
+  contentPadding: 8,                     // .App-toolbar-content padding
+  hoverBg: '#f1f0ff',                    // --color-surface-high
+  activeBg: '#e0dfff',                   // --color-surface-primary-container
+  activeColor: '#030064',                // --color-on-primary-container
+  iconColor: '#1b1b1f',                  // default icon color
+  keybindingColor: '#b8b8b8',            // --color-gray-40
+};
+
+// Smooth, slightly bouncy but mature. ~10% overshoot, no jitter.
+const SPRING_EASE = 'cubic-bezier(0.34, 1.4, 0.64, 1)';
+const WIDTH_DURATION = '380ms';
+const OPACITY_DURATION = '260ms';
+const COLOR_DURATION = '120ms';
+
 const ISLAND_STYLE: React.CSSProperties = {
   display: 'flex',
-  padding: 4,
-  background: '#ffffff',
-  borderRadius: 8,
-  boxShadow: ISLAND_SHADOW,
+  padding: EXCALIDRAW_TOKENS.contentPadding,
+  background: EXCALIDRAW_TOKENS.islandBg,
+  borderRadius: EXCALIDRAW_TOKENS.radius,
+  boxShadow: EXCALIDRAW_TOKENS.islandShadow,
   gap: 0,
+  // ensure the island uses Excalidraw's UI font stack so the keybinding
+  // subscript looks identical
+  fontFamily:
+    'Assistant, "Helvetica Neue", Helvetica, Arial, "Segoe UI", system-ui, sans-serif',
 };
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -61,59 +89,62 @@ const ISLAND_STYLE: React.CSSProperties = {
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
   onToolSelected?: (tool: string, wasHiddenByPersona: boolean) => void;
+  productiveActionCount?: number;
 }
 
-function AdaptiveToolButton({ 
-  tool, 
-  isActive, 
-  onClick, 
-  isOverflow = false 
-}: { tool: string; isActive: boolean; onClick: (tool: string, wasHiddenByPersona: boolean) => void; isOverflow?: boolean }) {
+function AdaptiveToolButton({
+  tool,
+  isActive,
+  isPromoted = false,
+  onClick,
+  isOverflow = false,
+}: {
+  tool: string;
+  isActive: boolean;
+  isPromoted: boolean;
+  onClick: (tool: string, wasHiddenByPersona: boolean) => void;
+  isOverflow?: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
   const svgHTML = TOOL_SVG[tool];
   const shortcut = TOOL_SHORTCUT[tool];
   const label = TOOL_LABEL[tool] ?? tool;
 
   // Evaluate the tool's vector coordinate against the user's current behavioral embedding
-  const { relevance, isRelevant } = useAdaptiveComponent({ 
+  const { isRelevant } = useAdaptiveComponent({
     id: `tool_${tool}`,
-    defaultCoordinate: TOOL_COORDINATES[tool], 
-    defaultThreshold: 0.3 
+    defaultCoordinate: TOOL_COORDINATES[tool],
+    defaultThreshold: 0.3,
   });
 
   if (!svgHTML) return null;
 
-  // Handle baseline tools (empty coordinates = 1.0 relevance)
-  const actualRelevance = Object.keys(TOOL_COORDINATES[tool]).length === 0 ? 1.0 : relevance;
-  const actuallyRelevant = Object.keys(TOOL_COORDINATES[tool]).length === 0 ? true : isRelevant;
+  // Baseline tools (empty coordinates) or promoted tools are always relevant.
+  const actuallyRelevant =
+    Object.keys(TOOL_COORDINATES[tool]).length === 0 || isPromoted ? true : isRelevant;
 
-  // Logic: 
-  // Primary Island Button: Takes up width based on relevance math, goes to 0 if under threshold.
-  // Overflow Menu Button: Takes up 36px if UNDER threshold, 0 if OVER threshold.
-  
-  let targetWidth = 0;
-  let targetOpacity = 0;
-  let targetPointerEvents: any = 'none';
-
-  if (isOverflow) {
-    if (!actuallyRelevant) {
-      targetWidth = 36;
-      targetOpacity = 1;
-      targetPointerEvents = 'auto';
-    }
-  } else {
-    if (actuallyRelevant) {
-      targetWidth = actualRelevance * 36;
-      targetOpacity = actualRelevance;
-      targetPointerEvents = actualRelevance > 0.1 ? 'auto' : 'none';
-    }
-  }
+  // Each tool exists in BOTH the main island AND its overflow island.
+  // The two render in opposite phase so the tool always lives somewhere.
+  //   - main island:  full 36px when relevant, collapses to 0 when hidden
+  //   - overflow:     full 36px when hidden, collapses to 0 when shown
+  // Binary (not fractional) width matches Excalidraw's native toolbar.
+  const showInThisIsland = isOverflow ? !actuallyRelevant : actuallyRelevant;
+  const targetWidth = showInThisIsland ? EXCALIDRAW_TOKENS.buttonSize : 0;
+  const targetOpacity = showInThisIsland ? 1 : 0;
+  const targetPointerEvents: React.CSSProperties['pointerEvents'] = showInThisIsland
+    ? 'auto'
+    : 'none';
 
   const iconBg = isActive
-    ? 'rgb(224, 223, 255)'
+    ? EXCALIDRAW_TOKENS.activeBg
     : hovered
-      ? 'rgb(241, 243, 245)'
+      ? EXCALIDRAW_TOKENS.hoverBg
       : 'transparent';
+
+  const iconColor = isActive ? EXCALIDRAW_TOKENS.activeColor : EXCALIDRAW_TOKENS.iconColor;
+  const keybindingColor = isActive
+    ? EXCALIDRAW_TOKENS.activeColor
+    : EXCALIDRAW_TOKENS.keybindingColor;
 
   return (
     <button
@@ -126,47 +157,110 @@ function AdaptiveToolButton({
         width: targetWidth,
         opacity: targetOpacity,
         pointerEvents: targetPointerEvents,
-        height: 36,
+        height: EXCALIDRAW_TOKENS.buttonSize,
         padding: 0,
         border: 'none',
-        borderRadius: 8,
+        borderRadius: EXCALIDRAW_TOKENS.radius,
         background: 'transparent',
         cursor: 'pointer',
-        color: isOverflow && !hovered ? 'rgba(27,27,31,0.45)' : 'rgb(27,27,31)',
+        color: iconColor,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: `width ${WIDTH_DURATION} ${SPRING_EASE}, opacity ${OPACITY_DURATION} ${SPRING_EASE}`,
+        // strip ambient browser button look
+        WebkitTapHighlightColor: 'transparent',
+        outline: 'none',
       }}
       title={label}
       aria-label={label}
       aria-keyshortcuts={shortcut}
       aria-pressed={isActive}
     >
+      {/* Inner pill — fixed 36×36 so the icon never squishes while the
+          outer button width animates. Mirrors Excalidraw's `.ToolIcon__icon`. */}
       <div
         style={{
-          width: 36, // Inner icon stays stable
-          height: 36,
-          borderRadius: 8,
+          position: 'relative',
+          width: EXCALIDRAW_TOKENS.buttonSize,
+          height: EXCALIDRAW_TOKENS.buttonSize,
+          borderRadius: EXCALIDRAW_TOKENS.radius,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative',
           background: iconBg,
-          transition: 'background-color 0.08s',
+          transition: `background-color ${COLOR_DURATION} ease, color ${COLOR_DURATION} ease`,
           flexShrink: 0,
+          boxSizing: 'border-box',
         }}
       >
-        <div dangerouslySetInnerHTML={{ __html: svgHTML }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', minWidth: 20 }} />
+        <div
+          dangerouslySetInnerHTML={{ __html: svgHTML }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            minWidth: 20,
+            color: iconColor,
+            transition: `color ${COLOR_DURATION} ease`,
+          }}
+        />
+
+        {/* Shortcut subscript — exact replica of Excalidraw's `.ToolIcon__keybinding`:
+            position absolute; bottom 2px; right 3px; font-size 0.625rem; gray-40. */}
+        {shortcut && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              bottom: 2,
+              right: 3,
+              fontSize: '0.625rem',         // 10px, matches Excalidraw exactly
+              lineHeight: 1,
+              color: keybindingColor,
+              userSelect: 'none',
+              pointerEvents: 'none',
+              fontFamily: 'inherit',
+              fontWeight: 400,
+              transition: `color ${COLOR_DURATION} ease`,
+            }}
+          >
+            {shortcut}
+          </span>
+        )}
       </div>
     </button>
   );
 }
 
-export function DynamicToolbar({ excalidrawAPI, onToolSelected }: DynamicToolbarProps) {
+export function DynamicToolbar({ excalidrawAPI, onToolSelected, productiveActionCount }: DynamicToolbarProps) {
   const [activeToolType, setActiveToolType] = useState<string>('selection');
+  const [promotedTools, setPromotedTools] = useState<Record<string, number>>({});
+
+  const lastActionCountRef = useRef(productiveActionCount ?? 0);
+
+  useEffect(() => {
+    if (productiveActionCount === undefined) return;
+    const delta = productiveActionCount - lastActionCountRef.current;
+    if (delta > 0) {
+      lastActionCountRef.current = productiveActionCount;
+      setPromotedTools((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const tool of Object.keys(next)) {
+          next[tool] -= delta;
+          if (next[tool] <= 0) {
+            delete next[tool];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
+  }, [productiveActionCount]);
 
   const allTools = Object.keys(TOOL_COORDINATES);
   const leftOverflow = allTools.filter((_, i) => i % 2 === 0).reverse();
@@ -174,6 +268,11 @@ export function DynamicToolbar({ excalidrawAPI, onToolSelected }: DynamicToolbar
 
   const applyToolSelection = useEffectEvent((toolType: string, wasHiddenByPersona = false) => {
     setActiveToolType(toolType);
+    
+    if (wasHiddenByPersona || promotedTools[toolType] !== undefined) {
+      setPromotedTools((prev) => ({ ...prev, [toolType]: 10 }));
+    }
+
     onToolSelected?.(toolType, wasHiddenByPersona);
     if (excalidrawAPI) {
       excalidrawAPI.updateScene({ appState: { activeTool: { type: toolType, customType: null } } });
@@ -196,71 +295,102 @@ export function DynamicToolbar({ excalidrawAPI, onToolSelected }: DynamicToolbar
     return () => window.removeEventListener('keydown', handler);
   }, [applyToolSelection]);
 
-  const OverflowDots = () => (
+  // ── "More tools" trigger — mirrors Excalidraw's `.App-toolbar__extra-tools-trigger`
+  //    (transparent ghost button with the three-dots glyph). It's a discovery
+  //    affordance only; the actual click target is the whole toolbar group.
+  const OverflowDots = ({ side }: { side: 'left' | 'right' }) => (
     <div
       aria-hidden="true"
       style={{
-        width: 28,
-        height: 36,
+        width: EXCALIDRAW_TOKENS.buttonSize,
+        height: EXCALIDRAW_TOKENS.buttonSize,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'rgba(27,27,31,0.3)',
+        color: EXCALIDRAW_TOKENS.keybindingColor,
         flexShrink: 0,
-        transition: 'opacity 0.2s, transform 0.2s',
+        borderRadius: EXCALIDRAW_TOKENS.radius,
+        background: 'transparent',
+        transition: `opacity 220ms ${SPRING_EASE}, transform 220ms ${SPRING_EASE}`,
+        // gently fade & nudge towards the overflow island when it opens
+        transform: side === 'left'
+          ? 'translateX(0)'
+          : 'translateX(0)',
       }}
       title="More tools"
-      className="group-hover:opacity-0 group-hover:scale-95 group-focus-within:opacity-0 group-focus-within:scale-95"
+      className="group-hover:opacity-0 group-focus-within:opacity-0"
     >
-      <MoreHorizontal size={13} />
+      <MoreHorizontal size={16} strokeWidth={2} />
     </div>
   );
+
+  // Overflow islands fly out with the same spring as the buttons themselves,
+  // so the motion reads as one continuous gesture rather than two stacked
+  // animations.
+  const overflowIslandTransition =
+    `opacity 260ms ${SPRING_EASE}, transform ${WIDTH_DURATION} ${SPRING_EASE}`;
 
   return (
     <div className="absolute left-1/2 top-4 z-[110] -translate-x-1/2">
       <div className="group relative flex items-center justify-center">
 
-        {/* Soft ambient glow */}
+        {/* Soft ambient glow — kept subtle so it reads as an Excalidraw island,
+            not a glassmorphism widget */}
         <div
           aria-hidden="true"
           className="absolute inset-x-8 -top-1 h-10 rounded-full blur-xl pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.14) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.10) 0%, transparent 70%)' }}
         />
 
-        {/* Left overflow */}
+        {/* ── Left overflow ─────────────────────────────────────────── */}
         <div className="absolute right-full top-0 mr-1 flex items-center h-full">
           <div
-            className="pointer-events-none opacity-0 translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
-            style={ISLAND_STYLE}
+            className="pointer-events-none opacity-0 -translate-x-1 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
+            style={{ ...ISLAND_STYLE, transition: overflowIslandTransition }}
           >
             {leftOverflow.map((tool) => (
-              <AdaptiveToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
+              <AdaptiveToolButton
+                key={tool}
+                tool={tool}
+                isActive={activeToolType === tool}
+                isPromoted={promotedTools[tool] !== undefined}
+                onClick={applyToolSelection}
+                isOverflow
+              />
             ))}
           </div>
-          <OverflowDots />
+          <OverflowDots side="left" />
         </div>
 
-        {/* Primary tools */}
+        {/* ── Primary tools ─────────────────────────────────────────── */}
         <div style={ISLAND_STYLE} className="relative z-10">
           {allTools.map((tool) => (
             <AdaptiveToolButton
               key={tool}
               tool={tool}
               isActive={activeToolType === tool}
+              isPromoted={promotedTools[tool] !== undefined}
               onClick={applyToolSelection}
             />
           ))}
         </div>
 
-        {/* Right overflow */}
+        {/* ── Right overflow ────────────────────────────────────────── */}
         <div className="absolute left-full top-0 ml-1 flex items-center h-full">
-          <OverflowDots />
+          <OverflowDots side="right" />
           <div
-            className="pointer-events-none opacity-0 -translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
-            style={ISLAND_STYLE}
+            className="pointer-events-none opacity-0 translate-x-1 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
+            style={{ ...ISLAND_STYLE, transition: overflowIslandTransition }}
           >
             {rightOverflow.map((tool) => (
-              <AdaptiveToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
+              <AdaptiveToolButton
+                key={tool}
+                tool={tool}
+                isActive={activeToolType === tool}
+                isPromoted={promotedTools[tool] !== undefined}
+                onClick={applyToolSelection}
+                isOverflow
+              />
             ))}
           </div>
         </div>

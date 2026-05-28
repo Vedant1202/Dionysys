@@ -39,7 +39,7 @@ export function createAdaptiveUIStore({
     pendingDecision: undefined,
     pendingPersonality: undefined,
     hasPendingUIChange: false,
-    personaProbs: initialPendingDecision?.modalityScores ?? initialPendingDecision?.personaScores ?? {},
+    personaProbs: initialPendingDecision?.modalityScores ?? initialPendingDecision?.personaScores ?? { [initialVariant]: 1.0 },
     eventsSentCount: 0,
     isPolicyLocked: false,
     componentEmbeddings,
@@ -96,7 +96,7 @@ export function createAdaptiveUIStore({
       selectedExpertise: selection.selectedExpertise ?? splitComposedUiVariant(selection.variant).expertise,
       decisionConfidence: selection.confidence ?? state.decisionConfidence,
       lastDecision: selection.decision ?? state.lastDecision,
-      personaProbs: selection.personaScores ?? state.personaProbs,
+      personaProbs: selection.personaScores ?? { [selection.variant]: 1.0 },
     })),
   }));
 }
@@ -116,6 +116,6 @@ function applyDeterministicSelection(selection: string | DeterministicAdaptiveSe
     pendingDecision: undefined,
     pendingPersonality: undefined,
     hasPendingUIChange: false,
-    personaProbs: typeof selection === 'string' ? {} : selection.modalityScores,
+    personaProbs: typeof selection === 'string' ? { [selection]: 1.0 } : (selection.modalityScores ?? { [variant]: 1.0 }),
   };
 }

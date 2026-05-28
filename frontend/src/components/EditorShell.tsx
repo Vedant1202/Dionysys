@@ -46,6 +46,7 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
   const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
   const [hiddenToolClickCount, setHiddenToolClickCount] = useState(0);
   const [productiveActionsSinceDecision, setProductiveActionsSinceDecision] = useState(0);
+  const [globalProductiveActions, setGlobalProductiveActions] = useState(0);
   const appliedDecisionRef = useRef<AppliedDecisionPayload | undefined>(undefined);
   const lastAppliedDecisionKeyRef = useRef<string | undefined>(undefined);
   const {
@@ -116,6 +117,7 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
       const productive = events.filter((e) => PRODUCTIVE_EVENT_TYPES.has(e.eventType)).length;
       if (productive > 0) {
         setProductiveActionsSinceDecision((n) => n + productive);
+        setGlobalProductiveActions((n) => n + productive);
       }
     };
     return () => {
@@ -302,6 +304,7 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
           <DynamicToolbar
             excalidrawAPI={excalidrawAPI}
             onToolSelected={handleToolSelected}
+            productiveActionCount={globalProductiveActions}
           />
         )}
 

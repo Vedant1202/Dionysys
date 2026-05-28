@@ -113,9 +113,9 @@ describe('AdminConsoleConfigSchema', () => {
   it('validates serializable runtime admin configuration', () => {
     const parsed = AdminConsoleConfigSchema.parse(config);
 
-    expect(parsed.mode.defaultMode).toBe('deterministic');
+    expect(parsed.mode.defaultMode).toBe('mcp');
     expect(parsed.mode.presentationMode).toBe('prototype');
-    expect(parsed.mode.decisionApplication).toBe('next-refresh');
+    expect(parsed.mode.decisionApplication).toBe('immediate');
     expect(parsed.mode.persistenceMode).toBe('browser');
     expect(parsed.deterministic.axes.modality.personas[1]).toBe('draw_first');
     expect(parsed.mcp.axes.modalityResources[0]?.actions[0]?.uiState.variant).toBe('neutral');

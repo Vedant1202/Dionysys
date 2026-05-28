@@ -47,9 +47,9 @@ describe('AdminConfigService', () => {
     expect(exportAdminConfig().config.mode.defaultMode).toBe('mcp');
 
     const reset = resetAdminConfig();
-    expect(reset.mode.defaultMode).toBe('deterministic');
+    expect(reset.mode.defaultMode).toBe('mcp');
     expect(reset.mode.presentationMode).toBe('prototype');
-    expect(reset.mode.decisionApplication).toBe('next-refresh');
+    expect(reset.mode.decisionApplication).toBe('immediate');
     expect(reset.mode.persistenceMode).toBe('browser');
     expect(reset.mode.minEventsBeforeLock).toBe(5);
     expect(reset.mcp.minConfidence).toBe(0.3);
