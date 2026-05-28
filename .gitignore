@@ -45,7 +45,7 @@ review.md
 skills/
 agents/
 references/
-hooks/
+/hooks/
 .gemini/
 .claude/
 .claude-plugin/
@@ -63,7 +63,7 @@ blog/
 blog-current/
 .vercel
 references/
-hooks/
+/hooks/
 plugins/
 .claude-plugin/
 .claude/
