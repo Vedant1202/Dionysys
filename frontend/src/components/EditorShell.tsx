@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Excalidraw, MainMenu, WelcomeScreen, serializeAsJSON } from '@excalidraw/excalidraw';
 import "@excalidraw/excalidraw/index.css";
 import type { AdaptiveMode, AdaptivePersistenceMode } from '@dionysys/core';
@@ -359,18 +359,21 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
 
         {isPrototype && <DebugPanel />}
 
-        {ADAPTIVE_FEEDBACK_BETA_ENABLED && (pendingRevert || (promptVisible && showFeedbackPrompt)) && (
-          <div className="absolute bottom-4 right-4 z-[1000]">
-            {pendingRevert ? (
-              <RevertPrompt onConfirm={confirmRevert} onDismiss={dismissRevert} />
-            ) : (
-              <>
-                <AdaptiveFeedback onSubmit={handleFeedback} onDismiss={dismissPrompt} />
-                {showCalibrationNote && (
-                  <p style={calibrationNoteStyle}>✓ Workspace calibrated to your style</p>
-                )}
-              </>
-            )}
+        {ADAPTIVE_FEEDBACK_BETA_ENABLED && (pendingRevert || (promptVisible && showFeedbackPrompt) || showCalibrationNote) && (
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-[1000]">
+            <div className="pointer-events-auto w-full h-full relative">
+              <AdaptiveFeedback 
+                onSubmit={handleFeedback} 
+                onDismiss={dismissPrompt} 
+                pendingRevert={pendingRevert}
+                onKeep={() => {
+                  dismissRevert();
+                  void handleFeedback({ sentiment: 'helpful' });
+                }}
+                onRevertClick={confirmRevert}
+                showCalibrationNote={showCalibrationNote}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -389,49 +392,7 @@ function modeButtonClass(isActive: boolean) {
   ].join(' ');
 }
 
-// ─── Revert prompt ────────────────────────────────────────────────────────────
-
-function RevertPrompt({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss: () => void }) {
-  return (
-    <section style={revertPanelStyle} aria-label="Workspace revert prompt">
-      <p style={revertPromptTextStyle}>
-        This layout doesn't seem to be working for you. Reset to default?
-      </p>
-      <div style={revertActionsStyle}>
-        <button type="button" style={revertConfirmStyle} onClick={onConfirm}>Reset layout</button>
-        <button type="button" style={revertDismissStyle} onClick={onDismiss}>Keep it</button>
-      </div>
-    </section>
-  );
-}
-
-const revertPanelStyle: CSSProperties = {
-  width: 280,
-  borderRadius: 8,
-  border: '1px solid rgba(190, 18, 60, 0.2)',
-  background: 'rgba(255, 241, 242, 0.97)',
-  boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)',
-  padding: 14,
-  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif',
-};
-
-const revertPromptTextStyle: CSSProperties = { margin: '0 0 12px', fontSize: 13, lineHeight: 1.5, color: '#1f2933' };
-const revertActionsStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 };
-
-const revertConfirmStyle: CSSProperties = {
-  minHeight: 38, border: '1px solid rgba(190, 18, 60, 0.3)', borderRadius: 6,
-  background: 'rgba(255, 241, 242, 0.94)', color: '#be123c', fontWeight: 900, cursor: 'pointer',
-};
-
-const revertDismissStyle: CSSProperties = {
-  minHeight: 38, border: '1px solid #c8c0b2', borderRadius: 6,
-  background: '#ffffff', color: '#273444', fontWeight: 800, cursor: 'pointer',
-};
-
-const calibrationNoteStyle: CSSProperties = {
-  margin: '6px 0 0', padding: '6px 10px', borderRadius: 6,
-  background: 'rgba(209, 250, 229, 0.94)', color: '#065f46', fontSize: 12, fontWeight: 800,
-};
+// Custom revert prompt removed in favor of AdaptiveFeedback
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
