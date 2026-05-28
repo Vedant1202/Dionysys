@@ -154,6 +154,16 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
     action_export: { coordinate: { power_user: 1.0 } },
     action_clearCanvas: { coordinate: { draw_first: 1.0, power_user: 1.0 } },
     action_toggleTheme: { coordinate: { standard: 1.0, power_user: 1.0 } },
+    tool_selection: { coordinate: {} },
+    tool_eraser: { coordinate: {} },
+    tool_rectangle: { coordinate: { draw_first: 1.0 }, threshold: 0.3 },
+    tool_diamond: { coordinate: { draw_first: 1.0 }, threshold: 0.3 },
+    tool_ellipse: { coordinate: { draw_first: 1.0 }, threshold: 0.3 },
+    tool_freedraw: { coordinate: { draw_first: 1.0 }, threshold: 0.3 },
+    tool_text: { coordinate: { text_first: 1.0 }, threshold: 0.3 },
+    tool_image: { coordinate: { text_first: 1.0, power_user: 1.0 }, threshold: 0.3 },
+    tool_arrow: { coordinate: { draw_first: 0.5, power_user: 1.0 }, threshold: 0.3 },
+    tool_line: { coordinate: { draw_first: 0.5, power_user: 1.0 }, threshold: 0.3 },
   },
 };
 
