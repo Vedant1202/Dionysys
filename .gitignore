@@ -72,3 +72,6 @@ AGENTS.md
 CLAUDE.md
 
 .antigravitycli/
+
+# Testing & Coverage
+coverage/
