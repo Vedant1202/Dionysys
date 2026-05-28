@@ -1,5 +1,7 @@
 import type { IEventPlugin, AppEvent } from './IEventPlugin';
 import { DrawingPlugin } from '../plugins/DrawingPlugin';
+import { PointerTelemetryPlugin } from '../plugins/PointerTelemetryPlugin';
+import { InteractionPlugin } from '../plugins/InteractionPlugin';
 
 // Throttle limit
 const THROTTLE_MS = 5000;
@@ -18,6 +20,8 @@ class EventCollector {
   constructor() {
     // Register plugins
     this.registerPlugin(new DrawingPlugin());
+    this.registerPlugin(new PointerTelemetryPlugin());
+    this.registerPlugin(new InteractionPlugin());
 
     this.intervalId = window.setInterval(() => {
       this.flush();
