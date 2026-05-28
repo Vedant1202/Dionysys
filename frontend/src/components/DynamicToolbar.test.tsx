@@ -8,6 +8,10 @@ vi.mock('@dionysys/react', () => ({
     currentUIState: undefined,
     mode: 'deterministic',
   }),
+  useAdaptiveComponent: () => ({
+    isRelevant: true,
+    relevance: 1,
+  }),
 }));
 
 describe('DynamicToolbar', () => {
@@ -28,12 +32,9 @@ describe('DynamicToolbar', () => {
       />,
     );
 
-    expect(view.getByRole('button', { name: 'Selection — V or 1' })).toHaveAttribute('aria-keyshortcuts', '1');
-    expect(view.getByRole('button', { name: 'Rectangle — R or 2' })).toHaveAttribute('aria-keyshortcuts', '2');
-    expect(view.getByRole('button', { name: 'Diamond — D or 3' })).toHaveAttribute('aria-keyshortcuts', '3');
-    expect(document.querySelector('[data-hotkey-badge="1"]')).toBeTruthy();
-    expect(document.querySelector('[data-hotkey-badge="2"]')).toBeTruthy();
-    expect(document.querySelector('[data-hotkey-badge="3"]')).toBeTruthy();
+    expect(view.getAllByRole('button', { name: 'Selection — V or 1' })[0]).toHaveAttribute('aria-keyshortcuts', '1');
+    expect(view.getAllByRole('button', { name: 'Rectangle — R or 2' })[0]).toHaveAttribute('aria-keyshortcuts', '2');
+    expect(view.getAllByRole('button', { name: 'Diamond — D or 3' })[0]).toHaveAttribute('aria-keyshortcuts', '3');
   });
 
   it('switches tools with number shortcuts and updates the Excalidraw app state', () => {

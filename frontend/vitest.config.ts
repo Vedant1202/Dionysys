@@ -11,4 +11,7 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
     },
   },
+  resolve: {
+    dedupe: ['react', 'react-dom']
+  }
 });

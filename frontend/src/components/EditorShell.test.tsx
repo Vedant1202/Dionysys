@@ -31,6 +31,10 @@ vi.mock('@dionysys/react', () => ({
     promptVisible: false,
     dismissPrompt: vi.fn(),
   }),
+  useAdaptiveComponent: () => ({
+    isRelevant: true,
+    relevance: 1,
+  }),
 }));
 
 vi.mock('../hooks/useAdaptationEngine', () => ({
