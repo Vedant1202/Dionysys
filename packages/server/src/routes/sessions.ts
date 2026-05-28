@@ -1,6 +1,7 @@
 import express from 'express';
 import { DionysysSessionCreateSchema, DionysysSessionUpdateSchema } from '@dionysys/core';
 import type { SessionService } from '../services/SessionService.js';
+import { validationError, notFoundError, internalError } from '../http/errors.js';
 
 export function createSessionsRouter(sessionService: SessionService) {
   const router = express.Router();
@@ -9,12 +10,12 @@ export function createSessionsRouter(sessionService: SessionService) {
     try {
       const parsed = DionysysSessionCreateSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: { code: 'validation_error', message: 'Invalid body' } });
+        return res.status(400).json(validationError('Invalid body'));
       }
       const session = await sessionService.createSession(parsed.data.id, parsed.data.metadata);
       res.json(session);
     } catch (e) {
-      res.status(500).json({ error: { code: 'internal_error', message: 'Failed to create session' } });
+      res.status(500).json(internalError('Failed to create session'));
     }
   });
 
@@ -22,11 +23,11 @@ export function createSessionsRouter(sessionService: SessionService) {
     try {
       const session = await sessionService.getSession(req.params.sessionId);
       if (!session) {
-        return res.status(404).json({ error: { code: 'not_found', message: 'Session not found' } });
+        return res.status(404).json(notFoundError('Session not found'));
       }
       res.json(session);
     } catch (e) {
-      res.status(500).json({ error: { code: 'internal_error', message: 'Failed to get session' } });
+      res.status(500).json(internalError('Failed to get session'));
     }
   });
 
@@ -34,16 +35,16 @@ export function createSessionsRouter(sessionService: SessionService) {
     try {
       const parsed = DionysysSessionUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: { code: 'validation_error', message: 'Invalid body' } });
+        return res.status(400).json(validationError('Invalid body'));
       }
       const session = await sessionService.getSession(req.params.sessionId);
       if (!session) {
-        return res.status(404).json({ error: { code: 'not_found', message: 'Session not found' } });
+        return res.status(404).json(notFoundError('Session not found'));
       }
       const updated = await sessionService.updateSession(req.params.sessionId, parsed.data.metadata || {});
       res.json(updated);
     } catch (e) {
-      res.status(500).json({ error: { code: 'internal_error', message: 'Failed to update session' } });
+      res.status(500).json(internalError('Failed to update session'));
     }
   });
 
@@ -51,12 +52,12 @@ export function createSessionsRouter(sessionService: SessionService) {
     try {
       const session = await sessionService.getSession(req.params.sessionId);
       if (!session) {
-        return res.status(404).json({ error: { code: 'not_found', message: 'Session not found' } });
+        return res.status(404).json(notFoundError('Session not found'));
       }
       const ended = await sessionService.endSession(req.params.sessionId);
       res.json(ended);
     } catch (e) {
-      res.status(500).json({ error: { code: 'internal_error', message: 'Failed to end session' } });
+      res.status(500).json(internalError('Failed to end session'));
     }
   });
 
@@ -65,7 +66,7 @@ export function createSessionsRouter(sessionService: SessionService) {
       await sessionService.deleteSession(req.params.sessionId);
       res.status(204).send();
     } catch (e) {
-      res.status(500).json({ error: { code: 'internal_error', message: 'Failed to delete session' } });
+      res.status(500).json(internalError('Failed to delete session'));
     }
   });
 
