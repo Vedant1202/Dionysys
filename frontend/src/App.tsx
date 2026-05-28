@@ -52,6 +52,7 @@ function App() {
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
   });
+  const [componentEmbeddings, setComponentEmbeddings] = useState<Record<string, import('@dionysys/core').ComponentEmbedding>>({});
 
   useEffect(() => {
     if (!ADMIN_CONSOLE_VISIBLE) return;
@@ -87,6 +88,7 @@ function App() {
       minEventsBeforeLock: config.mode.minEventsBeforeLock,
       pollingIntervalMs: config.mode.pollingIntervalMs,
     });
+    setComponentEmbeddings(config.componentEmbeddings ?? {});
 
     if (remountProvider) {
       setProviderVersion((version) => version + 1);
@@ -190,6 +192,7 @@ function App() {
          sessionId={sessionId}
          defaultVariant="neutral"
          defaultUIState={{ variant: 'neutral', ...VARIANT_CONFIGS.neutral }}
+         componentEmbeddings={componentEmbeddings}
          minEventsBeforeLock={providerSettings.minEventsBeforeLock}
          pollingIntervalMs={providerSettings.pollingIntervalMs}
          pollInference={adaptiveMode === 'deterministic' ? pollInferenceFn : undefined}

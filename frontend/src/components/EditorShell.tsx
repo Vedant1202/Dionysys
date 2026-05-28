@@ -6,6 +6,7 @@ import {
   AdaptiveFeedback,
   useFeedback,
   useFeedbackTrigger,
+  useAdaptiveComponent,
 } from '@dionysys/react';
 import { useAdaptationEngine as useAdaptiveUI } from '../hooks/useAdaptationEngine';
 import { DebugPanel } from './DebugPanel';
@@ -85,6 +86,14 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
     currentVariant,
     adaptiveMode === 'mcp' ? currentUIState : undefined,
   );
+  
+  const { isRelevant: showWelcomeScreen } = useAdaptiveComponent({ id: 'action_welcomeScreen', defaultCoordinate: { novice: 1.0 } });
+  const { isRelevant: showHelp } = useAdaptiveComponent({ id: 'action_help', defaultCoordinate: { novice: 1.0, standard: 0.5 } });
+  const { isRelevant: showSaveAsImage } = useAdaptiveComponent({ id: 'action_saveAsImage', defaultCoordinate: { standard: 1.0, power_user: 1.0 } });
+  const { isRelevant: showExport } = useAdaptiveComponent({ id: 'action_export', defaultCoordinate: { power_user: 1.0 } });
+  const { isRelevant: showClearCanvas } = useAdaptiveComponent({ id: 'action_clearCanvas', defaultCoordinate: { draw_first: 1.0, power_user: 1.0 } });
+  const { isRelevant: showToggleTheme } = useAdaptiveComponent({ id: 'action_toggleTheme', defaultCoordinate: { standard: 1.0, power_user: 1.0 } });
+
   const initialSceneData = loadStoredExcalidrawScene(persistenceMode, sessionId);
   const usesPrioritizedToolbar = config?.toolbar?.mode === 'allowlist';
 
@@ -292,7 +301,6 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
         {usesPrioritizedToolbar && (
           <DynamicToolbar
             excalidrawAPI={excalidrawAPI}
-            config={config}
             onToolSelected={handleToolSelected}
           />
         )}
@@ -302,7 +310,15 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
           theme="light"
           initialData={initialSceneData}
           excalidrawAPI={(api) => setExcalidrawAPI(api)}
-          UIOptions={config ? { canvasActions: config.canvasActions } : undefined}
+          UIOptions={{
+            canvasActions: {
+              saveAsImage: showSaveAsImage,
+              saveToActiveFile: showSaveAsImage,
+              export: { saveFileToDisk: showExport },
+              clearCanvas: showClearCanvas,
+              toggleTheme: showToggleTheme,
+            }
+          }}
           onChange={(elements, appState, files) => {
             eventCollector.handleExcalidrawChange(elements, appState, files);
             saveStoredExcalidrawScene(
@@ -312,7 +328,7 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
             );
           }}
         >
-          {config.showWelcomeScreen && (
+          {showWelcomeScreen && (
             <WelcomeScreen>
               <WelcomeScreen.Hints.MenuHint />
               <WelcomeScreen.Hints.ToolbarHint />
@@ -333,14 +349,11 @@ export function EditorShell({ adaptiveMode, persistenceMode, sessionId, onAdapti
           )}
 
           <MainMenu>
-            {config.mainMenuItems.map(item => {
-              if (item === 'saveAsImage') return <MainMenu.DefaultItems.SaveAsImage key={item} />;
-              if (item === 'export') return <MainMenu.DefaultItems.Export key={item} />;
-              if (item === 'clearCanvas') return <MainMenu.DefaultItems.ClearCanvas key={item} />;
-              if (item === 'help') return <MainMenu.DefaultItems.Help key={item} />;
-              if (item === 'toggleTheme') return <MainMenu.DefaultItems.ToggleTheme key={item} />;
-              return null;
-            })}
+            {showSaveAsImage && <MainMenu.DefaultItems.SaveAsImage key="saveAsImage" />}
+            {showExport && <MainMenu.DefaultItems.Export key="export" />}
+            {showClearCanvas && <MainMenu.DefaultItems.ClearCanvas key="clearCanvas" />}
+            {showHelp && <MainMenu.DefaultItems.Help key="help" />}
+            {showToggleTheme && <MainMenu.DefaultItems.ToggleTheme key="toggleTheme" />}
           </MainMenu>
         </Excalidraw>
 

@@ -1,11 +1,9 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
-import { useAdaptiveUI } from '@dionysys/react';
-import { DEFAULT_EXCALIDRAW_TOOLS, resolveVariantConfig, type VariantUIConfig } from '../config/variantConfig';
+import { useAdaptiveComponent } from '@dionysys/react';
+import type { Vector } from '@dionysys/react';
 
 // ─── Exact SVG icons scraped from Excalidraw's live native toolbar ────────────
-// These are the exact same paths Excalidraw renders so the icons match perfectly.
-
 const TOOL_SVG: Record<string, string> = {
   selection: `<svg viewBox="0 0 22 22" fill="none" stroke-width="1.25" style="width:20px;height:20px"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 6l4.153 11.793a0.365 .365 0 0 0 .331 .207a0.366 .366 0 0 0 .332 -.207l2.184 -4.793l4.787 -1.994a0.355 .355 0 0 0 .213 -.323a0.355 .355 0 0 0 -.213 -.323l-11.787 -4.36z"/><path d="M13.5 13.5l4.5 4.5"/></g></svg>`,
   rectangle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
@@ -19,40 +17,35 @@ const TOOL_SVG: Record<string, string> = {
   eraser:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 20h-10.5l-4.21 -4.3a1 1 0 0 1 0 -1.41l10 -10a1 1 0 0 1 1.41 0l5 5a1 1 0 0 1 0 1.41l-9.2 9.3"/><path d="M18 13.3l-6.3 -6.3"/></svg>`,
 };
 
-// Actual Excalidraw number shortcut for each tool (matches native toolbar keybindings)
 const TOOL_SHORTCUT: Record<string, string> = {
-  selection: '1',
-  rectangle: '2',
-  diamond:   '3',
-  ellipse:   '4',
-  arrow:     '5',
-  line:      '6',
-  freedraw:  '7',
-  text:      '8',
-  image:     '9',
-  eraser:    '0',
+  selection: '1', rectangle: '2', diamond: '3', ellipse: '4', arrow: '5',
+  line: '6', freedraw: '7', text: '8', image: '9', eraser: '0',
 };
 
-// Reverse map used by the keyboard handler
 const SHORTCUT_TO_TOOL: Record<string, string> = Object.fromEntries(
   Object.entries(TOOL_SHORTCUT).map(([tool, key]) => [key, tool]),
 );
 
-// Tooltip labels matching native Excalidraw format exactly
 const TOOL_LABEL: Record<string, string> = {
-  selection: 'Selection — V or 1',
-  rectangle: 'Rectangle — R or 2',
-  diamond:   'Diamond — D or 3',
-  ellipse:   'Ellipse — O or 4',
-  arrow:     'Arrow — A or 5',
-  line:      'Line — L or 6',
-  freedraw:  'Draw — P or 7',
-  text:      'Text — T or 8',
-  image:     'Insert image — 9',
-  eraser:    'Eraser — E or 0',
+  selection: 'Selection — V or 1', rectangle: 'Rectangle — R or 2', diamond: 'Diamond — D or 3',
+  ellipse: 'Ellipse — O or 4', arrow: 'Arrow — A or 5', line: 'Line — L or 6',
+  freedraw: 'Draw — P or 7', text: 'Text — T or 8', image: 'Insert image — 9', eraser: 'Eraser — E or 0',
 };
 
-// Native Excalidraw island shadow (exact value extracted from DOM)
+// Phase 5 Vector Coordinates for Tools
+const TOOL_COORDINATES: Record<string, Vector> = {
+  selection: {}, // Empty means ALWAYS globally relevant (1.0)
+  eraser: {},
+  rectangle: { draw_first: 1.0 },
+  diamond: { draw_first: 1.0 },
+  ellipse: { draw_first: 1.0 },
+  freedraw: { draw_first: 1.0 },
+  text: { text_first: 1.0 },
+  image: { text_first: 1.0, power_user: 1.0 },
+  arrow: { draw_first: 0.5, power_user: 1.0 },
+  line: { draw_first: 0.5, power_user: 1.0 },
+};
+
 const ISLAND_SHADOW = 'rgba(0,0,0,0.17) 0 0 0.93px, rgba(0,0,0,0.08) 0 0 3.13px, rgba(0,0,0,0.05) 0 7px 14px';
 const ISLAND_STYLE: React.CSSProperties = {
   display: 'flex',
@@ -63,29 +56,58 @@ const ISLAND_STYLE: React.CSSProperties = {
   gap: 0,
 };
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Component ──────────────────────────────────────────────────────────────
 
 interface DynamicToolbarProps {
   excalidrawAPI: any | null;
-  config?: VariantUIConfig;
   onToolSelected?: (tool: string, wasHiddenByPersona: boolean) => void;
 }
 
-// ─── ToolButton ───────────────────────────────────────────────────────────────
-
-interface ToolButtonProps {
-  tool: string;
-  isActive: boolean;
-  onClick: (tool: string, wasHiddenByPersona: boolean) => void;
-  isOverflow?: boolean;
-}
-
-function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonProps) {
+function AdaptiveToolButton({ 
+  tool, 
+  isActive, 
+  onClick, 
+  isOverflow = false 
+}: { tool: string; isActive: boolean; onClick: (tool: string, wasHiddenByPersona: boolean) => void; isOverflow?: boolean }) {
   const [hovered, setHovered] = useState(false);
   const svgHTML = TOOL_SVG[tool];
   const shortcut = TOOL_SHORTCUT[tool];
   const label = TOOL_LABEL[tool] ?? tool;
+
+  // Evaluate the tool's vector coordinate against the user's current behavioral embedding
+  const { relevance, isRelevant } = useAdaptiveComponent({ 
+    id: `tool_${tool}`,
+    defaultCoordinate: TOOL_COORDINATES[tool], 
+    defaultThreshold: 0.3 
+  });
+
   if (!svgHTML) return null;
+
+  // Handle baseline tools (empty coordinates = 1.0 relevance)
+  const actualRelevance = Object.keys(TOOL_COORDINATES[tool]).length === 0 ? 1.0 : relevance;
+  const actuallyRelevant = Object.keys(TOOL_COORDINATES[tool]).length === 0 ? true : isRelevant;
+
+  // Logic: 
+  // Primary Island Button: Takes up width based on relevance math, goes to 0 if under threshold.
+  // Overflow Menu Button: Takes up 36px if UNDER threshold, 0 if OVER threshold.
+  
+  let targetWidth = 0;
+  let targetOpacity = 0;
+  let targetPointerEvents: any = 'none';
+
+  if (isOverflow) {
+    if (!actuallyRelevant) {
+      targetWidth = 36;
+      targetOpacity = 1;
+      targetPointerEvents = 'auto';
+    }
+  } else {
+    if (actuallyRelevant) {
+      targetWidth = actualRelevance * 36;
+      targetOpacity = actualRelevance;
+      targetPointerEvents = actualRelevance > 0.1 ? 'auto' : 'none';
+    }
+  }
 
   const iconBg = isActive
     ? 'rgb(224, 223, 255)'
@@ -101,7 +123,9 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
       onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative',
-        width: 36,
+        width: targetWidth,
+        opacity: targetOpacity,
+        pointerEvents: targetPointerEvents,
         height: 36,
         padding: 0,
         border: 'none',
@@ -110,16 +134,20 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
         cursor: 'pointer',
         color: isOverflow && !hovered ? 'rgba(27,27,31,0.45)' : 'rgb(27,27,31)',
         flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
       title={label}
       aria-label={label}
       aria-keyshortcuts={shortcut}
       aria-pressed={isActive}
     >
-      {/* Icon container — receives the highlight background */}
       <div
         style={{
-          width: 36,
+          width: 36, // Inner icon stays stable
           height: 36,
           borderRadius: 8,
           display: 'flex',
@@ -128,87 +156,31 @@ function ToolButton({ tool, isActive, onClick, isOverflow = false }: ToolButtonP
           position: 'relative',
           background: iconBg,
           transition: 'background-color 0.08s',
+          flexShrink: 0,
         }}
       >
-        <div dangerouslySetInnerHTML={{ __html: svgHTML }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }} />
-        {shortcut && (
-          <span
-            aria-hidden="true"
-            data-hotkey-badge={shortcut}
-            style={{
-              position: 'absolute',
-              bottom: 4,
-              right: 4,
-              fontSize: 10,
-              lineHeight: 1,
-              color: 'rgb(3, 0, 100)',
-              fontWeight: 400,
-              fontFamily: 'inherit',
-              pointerEvents: 'none',
-            }}
-          >
-            {shortcut}
-          </span>
-        )}
+        <div dangerouslySetInnerHTML={{ __html: svgHTML }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', minWidth: 20 }} />
       </div>
     </button>
   );
 }
 
-// ─── Overflow split ───────────────────────────────────────────────────────────
-
-function splitOverflowTools(overflowTools: string[]): { leftOverflow: string[]; rightOverflow: string[] } {
-  return overflowTools.reduce<{ leftOverflow: string[]; rightOverflow: string[] }>(
-    (groups, tool, index) => {
-      if (index % 2 === 0) groups.leftOverflow.push(tool);
-      else groups.rightOverflow.push(tool);
-      return groups;
-    },
-    { leftOverflow: [], rightOverflow: [] },
-  );
-}
-
-// ─── DynamicToolbar ───────────────────────────────────────────────────────────
-
-export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSelected }: DynamicToolbarProps) {
-  const { currentVariant, currentUIState, mode } = useAdaptiveUI();
+export function DynamicToolbar({ excalidrawAPI, onToolSelected }: DynamicToolbarProps) {
   const [activeToolType, setActiveToolType] = useState<string>('selection');
 
-  const config = providedConfig ?? resolveVariantConfig(
-    currentVariant,
-    mode === 'mcp' ? currentUIState : undefined,
-  );
-  const allowedTools = config?.toolbar?.mode === 'allowlist'
-    ? (config.toolbar.tools ?? []).filter((t) => Boolean(TOOL_SVG[t]))
-    : [];
+  const allTools = Object.keys(TOOL_COORDINATES);
+  const leftOverflow = allTools.filter((_, i) => i % 2 === 0).reverse();
+  const rightOverflow = allTools.filter((_, i) => i % 2 !== 0);
 
-  const allowedToolsKey = allowedTools.join('|');
-  const primaryToolSet = new Set(allowedTools);
-  const overflowTools = DEFAULT_EXCALIDRAW_TOOLS.filter((t) => TOOL_SVG[t] && !primaryToolSet.has(t));
-  const overflowSet = new Set(overflowTools);
-  const { leftOverflow, rightOverflow } = splitOverflowTools(overflowTools);
-
-  const handleToolClick = (toolType: string, wasHiddenByPersona: boolean) => {
+  const applyToolSelection = useEffectEvent((toolType: string, wasHiddenByPersona = false) => {
     setActiveToolType(toolType);
     onToolSelected?.(toolType, wasHiddenByPersona);
     if (excalidrawAPI) {
       excalidrawAPI.updateScene({ appState: { activeTool: { type: toolType, customType: null } } });
     }
-  };
-
-  const applyToolSelection = useEffectEvent((toolType: string, wasHiddenByPersona = false) => {
-    handleToolClick(toolType, wasHiddenByPersona);
   });
 
-  // Reset active tool when allowlist changes and the active tool is no longer allowed
   useEffect(() => {
-    if (!allowedTools.length || allowedTools.includes(activeToolType)) return;
-    applyToolSelection(allowedTools[0]);
-  }, [activeToolType, allowedTools, applyToolSelection]);
-
-  // Keyboard handler: maps Excalidraw's actual number shortcuts (1–9, 0) to tools
-  useEffect(() => {
-    if (!allowedTools.length) return;
     const handler = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target as HTMLElement | null;
@@ -216,17 +188,13 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSe
 
       const tool = SHORTCUT_TO_TOOL[event.key];
       if (!tool) return;
-      // Handle if the tool is in either primary or overflow set
-      if (!primaryToolSet.has(tool) && !overflowSet.has(tool)) return;
 
       event.preventDefault();
-      applyToolSelection(tool, !primaryToolSet.has(tool));
+      applyToolSelection(tool, false);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [allowedToolsKey, primaryToolSet, overflowSet, applyToolSelection]);
-
-  if (!config || config.toolbar?.mode !== 'allowlist' || allowedTools.length === 0) return null;
+  }, [applyToolSelection]);
 
   const OverflowDots = () => (
     <div
@@ -255,29 +223,27 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSe
         {/* Soft ambient glow */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-8 -top-1 h-10 rounded-full blur-xl"
+          className="absolute inset-x-8 -top-1 h-10 rounded-full blur-xl pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.14) 0%, transparent 70%)' }}
         />
 
         {/* Left overflow */}
-        {leftOverflow.length > 0 && (
-          <div className="absolute right-full top-0 mr-1 flex items-center">
-            <div
-              className="pointer-events-none opacity-0 translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
-              style={ISLAND_STYLE}
-            >
-              {[...leftOverflow].reverse().map((tool) => (
-                <ToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
-              ))}
-            </div>
-            <OverflowDots />
+        <div className="absolute right-full top-0 mr-1 flex items-center h-full">
+          <div
+            className="pointer-events-none opacity-0 translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
+            style={ISLAND_STYLE}
+          >
+            {leftOverflow.map((tool) => (
+              <AdaptiveToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
+            ))}
           </div>
-        )}
+          <OverflowDots />
+        </div>
 
         {/* Primary tools */}
-        <div style={ISLAND_STYLE}>
-          {allowedTools.map((tool) => (
-            <ToolButton
+        <div style={ISLAND_STYLE} className="relative z-10">
+          {allTools.map((tool) => (
+            <AdaptiveToolButton
               key={tool}
               tool={tool}
               isActive={activeToolType === tool}
@@ -287,19 +253,17 @@ export function DynamicToolbar({ excalidrawAPI, config: providedConfig, onToolSe
         </div>
 
         {/* Right overflow */}
-        {rightOverflow.length > 0 && (
-          <div className="absolute left-full top-0 ml-1 flex items-center">
-            <OverflowDots />
-            <div
-              className="pointer-events-none opacity-0 -translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
-              style={ISLAND_STYLE}
-            >
-              {rightOverflow.map((tool) => (
-                <ToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
-              ))}
-            </div>
+        <div className="absolute left-full top-0 ml-1 flex items-center h-full">
+          <OverflowDots />
+          <div
+            className="pointer-events-none opacity-0 -translate-x-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
+            style={ISLAND_STYLE}
+          >
+            {rightOverflow.map((tool) => (
+              <AdaptiveToolButton key={tool} tool={tool} isActive={activeToolType === tool} onClick={applyToolSelection} isOverflow />
+            ))}
           </div>
-        )}
+        </div>
 
       </div>
     </div>
