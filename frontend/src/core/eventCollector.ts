@@ -2,7 +2,8 @@ import type { IEventPlugin, AppEvent } from './IEventPlugin';
 import { DrawingPlugin } from '../plugins/DrawingPlugin';
 
 // Throttle limit
-const THROTTLE_MS = 2000;
+const THROTTLE_MS = 5000;
+const MAX_BUFFER_SIZE = 1000;
 
 class EventCollector {
   private plugins: IEventPlugin[] = [];
@@ -10,6 +11,8 @@ class EventCollector {
   private batch: AppEvent[] = [];
   private intervalId: number | null = null;
   private sessionId?: string;
+  private tabId: string = crypto.randomUUID();
+  private nextSequenceId: number = 1;
   public onFlush?: (count: number, events: AppEvent[]) => void | Promise<void>;
 
   constructor() {
@@ -23,13 +26,21 @@ class EventCollector {
 
   registerPlugin(plugin: IEventPlugin) {
     plugin.init((event) => {
-      this.batch.push(event);
+      this.pushToBuffer(event);
     });
     this.plugins.push(plugin);
   }
 
   recordEvent(event: AppEvent) {
+    this.pushToBuffer(event);
+  }
+
+  private pushToBuffer(event: AppEvent) {
+    event.sequenceId = this.nextSequenceId++;
     this.batch.push(event);
+    if (this.batch.length > MAX_BUFFER_SIZE) {
+      this.batch.shift(); // Drop the oldest item
+    }
   }
 
   handleExcalidrawChange(elements: readonly any[], appState: any, files: any) {
@@ -63,6 +74,7 @@ class EventCollector {
         },
         body: JSON.stringify({
           sessionId: this.sessionId,
+          tabId: this.tabId,
           events: itemsToSend
         }),
       });
@@ -72,8 +84,8 @@ class EventCollector {
       }
     } catch (e) {
       console.error('Failed to flush events', e);
-      // Restore items so they're retried on the next flush cycle
-      this.batch = [...itemsToSend, ...this.batch];
+      // Restore items so they're retried on the next flush cycle, maintaining buffer limit
+      this.batch = [...itemsToSend, ...this.batch].slice(-MAX_BUFFER_SIZE);
     }
   }
 

@@ -2,6 +2,7 @@ export interface AppEvent {
   eventType: string;
   payload: any;
   timestamp: number;
+  sequenceId?: number;
 }
 
 export interface IEventPlugin {
