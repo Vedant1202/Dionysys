@@ -43,9 +43,11 @@ export async function resolveAdaptiveDecisionForEvents(
   if (mode === 'deterministic') {
     const axisScores = inferDeterministicAxesWithActiveConfig(events);
 
+    const dominantExpertise = Object.entries(axisScores.expertiseScores).sort((a, b) => b[1] - a[1])[0]![0];
+
     // Blend persona scores with Thompson-sampled bandit weights when the beta flag is on
     const modalityScores = isAdaptiveFeedbackBetaEnabled()
-      ? await BanditService.blendPersonaScores(axisScores.modalityScores)
+      ? await BanditService.blendPersonaScores(dominantExpertise, axisScores.modalityScores)
       : axisScores.modalityScores;
 
     const { chosenVariant, propensity, selectedModality, selectedExpertise } = selectVariantWithActiveConfig(

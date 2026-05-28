@@ -61,11 +61,13 @@ const FeedbackLoopRecordSchema = new Schema({
 });
 
 const BanditParamsSchema = new Schema({
-  variant: { type: String, required: true, unique: true, index: true },
+  stateId: { type: String, required: true, index: true },
+  variant: { type: String, required: true, index: true },
   alpha: { type: Number, required: true, default: 1 },
   beta: { type: Number, required: true, default: 1 },
   lastUpdated: { type: Date, required: true, default: Date.now },
 });
+BanditParamsSchema.index({ stateId: 1, variant: 1 }, { unique: true });
 
 const BrowserPriorSchema = new Schema({
   browserId: { type: String, required: true, unique: true, index: true },
@@ -139,14 +141,25 @@ export class MongoDbAdapter implements IDatabaseAdapter {
     return FeedbackLoopRecordModel.find({}).sort({ timestamp: -1 }).lean().exec() as unknown as IFeedbackLoopRecord[];
   }
 
-  async getBanditParams(variant: string): Promise<IBanditParams | null> {
-    return BanditParamsModel.findOne({ variant }).lean().exec() as unknown as IBanditParams | null;
+  async getBanditParams(stateId: string, variant: string): Promise<IBanditParams | null> {
+    return BanditParamsModel.findOne({ stateId, variant }).lean().exec() as unknown as IBanditParams | null;
   }
 
   async upsertBanditParams(params: IBanditParams): Promise<void> {
     await BanditParamsModel.findOneAndUpdate(
-      { variant: params.variant },
+      { stateId: params.stateId, variant: params.variant },
       { ...params, lastUpdated: new Date() },
+      { upsert: true, new: true },
+    ).exec();
+  }
+
+  async incrementBanditParams(stateId: string, variant: string, alphaInc: number, betaInc: number): Promise<void> {
+    await BanditParamsModel.findOneAndUpdate(
+      { stateId, variant },
+      { 
+        $inc: { alpha: alphaInc, beta: betaInc },
+        $set: { lastUpdated: new Date() }
+      },
       { upsert: true, new: true },
     ).exec();
   }

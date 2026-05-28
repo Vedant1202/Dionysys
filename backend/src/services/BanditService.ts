@@ -22,24 +22,20 @@ export class BanditService {
     for (const record of records) {
       if (record.graphRecommendation === 'observe') continue;
       const variant = record.appliedDecision.variant ?? 'unknown';
-      if (!deltas[variant]) deltas[variant] = { alpha: 0, beta: 0 };
+      const stateId = record.appliedDecision.personalityId ?? 'unknown';
+      const key = `${stateId}::${variant}`;
+      if (!deltas[key]) deltas[key] = { alpha: 0, beta: 0 };
       if (record.graphRecommendation === 'keep') {
-        deltas[variant]!.alpha++;
+        deltas[key]!.alpha++;
       } else if (record.graphRecommendation === 'revert') {
-        deltas[variant]!.beta++;
+        deltas[key]!.beta++;
       }
     }
 
     await Promise.all(
-      Object.entries(deltas).map(async ([variant, delta]) => {
-        const existing = await dbAdapter.getBanditParams(variant);
-        const params: IBanditParams = {
-          variant,
-          alpha: (existing?.alpha ?? INITIAL_ALPHA) + delta.alpha,
-          beta: (existing?.beta ?? INITIAL_BETA) + delta.beta,
-          lastUpdated: new Date(),
-        };
-        await dbAdapter.upsertBanditParams(params);
+      Object.entries(deltas).map(async ([key, delta]) => {
+        const [stateId, variant] = key.split('::');
+        await dbAdapter.incrementBanditParams(stateId!, variant!, delta.alpha, delta.beta);
       }),
     );
   }
@@ -51,15 +47,12 @@ export class BanditService {
    * Returns a renormalized probability distribution.
    */
   static async blendPersonaScores(
+    stateId: string,
     scores: Record<string, number>,
   ): Promise<Record<string, number>> {
-    const allParams = await dbAdapter.getAllBanditParams();
-    const paramsByVariant: Record<string, IBanditParams> = {};
-    for (const p of allParams) paramsByVariant[p.variant] = p;
-
     const blended: Record<string, number> = {};
     for (const [variant, score] of Object.entries(scores)) {
-      const params = paramsByVariant[variant];
+      const params = await dbAdapter.getBanditParams(stateId, variant);
       const sampled = sampleBeta(params?.alpha ?? INITIAL_ALPHA, params?.beta ?? INITIAL_BETA);
       blended[variant] = score * (1 + sampled);
     }

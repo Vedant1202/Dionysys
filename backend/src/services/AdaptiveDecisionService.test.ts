@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { LLMDecisionConnector, LLMDecisionInput } from '@dionysys/core';
 import type { IEvent } from '../db/IDatabaseAdapter.js';
 import { resolveAdaptiveDecisionForEvents } from './AdaptiveDecisionService.js';
+import * as FeedbackBetaService from './FeedbackBetaService.js';
+import { BanditService } from './BanditService.js';
+import { vi } from 'vitest';
 
 const makeEvent = (eventType: string, payload: unknown, timestampMs: number): IEvent => ({
   sessionId: 'test-session',
@@ -19,6 +22,25 @@ describe('resolveAdaptiveDecisionForEvents', () => {
     expect(decision.mode).toBe('deterministic');
     expect(decision.variant).toBeTruthy();
     expect(decision.personaScores).toHaveProperty('draw_first');
+  });
+
+  it('blends persona scores with bandit parameters when beta feedback is enabled', async () => {
+    const betaSpy = vi.spyOn(FeedbackBetaService, 'isAdaptiveFeedbackBetaEnabled').mockReturnValue(true);
+    const banditSpy = vi.spyOn(BanditService, 'blendPersonaScores').mockResolvedValue({
+      draw_first: 0.9,
+      text_first: 0.1,
+    });
+
+    const decision = await resolveAdaptiveDecisionForEvents('deterministic', [
+      makeEvent('element_drawn', { type: 'rectangle' }, 1_000),
+    ]);
+
+    expect(decision.mode).toBe('deterministic');
+    expect(decision.variant).toBeTruthy();
+    expect(banditSpy).toHaveBeenCalled();
+    
+    betaSpy.mockRestore();
+    banditSpy.mockRestore();
   });
 
   it('passes summarized interactions and persona scores to the MCP connector', async () => {
