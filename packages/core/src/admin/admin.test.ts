@@ -107,15 +107,27 @@ const config: AdminConsoleConfig = {
     supportedTools: ['selection', 'rectangle', 'text'],
     supportedMenuItems: ['help'],
   },
+  feedbackWeights: {
+    explicit: {
+      thumbs_up: 0.5,
+      thumbs_down: -0.5,
+    },
+    implicit: {},
+    creationWeight: 0.1,
+    textAdditionWeight: 0.2,
+    modificationWeight: 0.05,
+    deletionPenalty: 0.1,
+    hiddenToolPenalty: 0.2,
+  },
 };
 
 describe('AdminConsoleConfigSchema', () => {
   it('validates serializable runtime admin configuration', () => {
     const parsed = AdminConsoleConfigSchema.parse(config);
 
-    expect(parsed.mode.defaultMode).toBe('mcp');
+    expect(parsed.mode.defaultMode).toBe('deterministic');
     expect(parsed.mode.presentationMode).toBe('prototype');
-    expect(parsed.mode.decisionApplication).toBe('immediate');
+    expect(parsed.mode.decisionApplication).toBe('next-refresh');
     expect(parsed.mode.persistenceMode).toBe('browser');
     expect(parsed.deterministic.axes.modality.personas[1]).toBe('draw_first');
     expect(parsed.mcp.axes.modalityResources[0]?.actions[0]?.uiState.variant).toBe('neutral');
