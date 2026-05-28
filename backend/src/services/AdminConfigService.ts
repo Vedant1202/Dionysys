@@ -41,9 +41,9 @@ export const FILE_SEEDED_ADMIN_CONFIG: AdminConsoleConfig = {
   version: 1,
   updatedAt: new Date(0).toISOString(),
   mode: {
-    defaultMode: 'deterministic',
+    defaultMode: 'mcp',
     presentationMode: 'prototype',
-    decisionApplication: 'next-refresh',
+    decisionApplication: 'immediate',
     persistenceMode: 'browser',
     minEventsBeforeLock: 5,
     pollingIntervalMs: 3000,
