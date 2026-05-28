@@ -2,11 +2,12 @@ import type { IEvent } from '../db/IDatabaseAdapter.js';
 import {
   buildLockedModalityScores,
   countModalityEvents,
+  MODALITY_PERSONAS,
   type ModalityPersona,
 } from '@dionysys/core';
 
-export const PERSONAS = ['neutral', 'draw_first', 'text_first'] as const;
-export type Persona = typeof PERSONAS[number];
+export const PERSONAS = MODALITY_PERSONAS;
+export type Persona = ModalityPersona;
 
 export class InferenceService {
   static inferPersona(events: IEvent[]): Record<Persona, number> {

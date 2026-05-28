@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PolicyService } from '../services/PolicyService.js';
-import type { Persona } from '../services/InferenceService.js';
-
-const PERSONAS: Persona[] = ['neutral', 'draw_first', 'text_first'];
+import { PERSONAS, type Persona } from '../services/InferenceService.js';
 
 // Uniform distribution helper
 const uniformProbs = (): Record<Persona, number> =>

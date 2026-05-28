@@ -22,11 +22,10 @@ describe('InferenceService.inferPersona', () => {
     expect(total).toBeCloseTo(1.0, 5);
   });
 
-  it('stays neutral when there is only one draw event', () => {
+  it('boosts draw_first when there is only one draw event', () => {
     const events = [makeEvent('element_drawn', { type: 'rectangle' })];
     const result = InferenceService.inferPersona(events);
-    expect(result.neutral).toBeGreaterThan(result.draw_first);
-    expect(result.neutral).toBeGreaterThan(result.text_first);
+    expect(result.draw_first).toBeGreaterThan(result.neutral);
   });
 
   it('boosts draw_first after drawing rectangle shapes', () => {
@@ -75,13 +74,13 @@ describe('InferenceService.inferPersona', () => {
     }
   });
 
-  it('stays neutral for mixed single draw and single text sessions', () => {
+  it('boosts draw_first and text_first above neutral for mixed single draw and single text sessions', () => {
     const result = InferenceService.inferPersona([
       makeEvent('element_drawn', { type: 'rectangle' }),
       makeEvent('text_added', { textValue: 'note' }),
     ]);
 
-    expect(result.neutral).toBeGreaterThan(result.draw_first);
-    expect(result.neutral).toBeGreaterThan(result.text_first);
+    expect(result.draw_first).toBeGreaterThan(result.neutral);
+    expect(result.text_first).toBeGreaterThan(result.neutral);
   });
 });

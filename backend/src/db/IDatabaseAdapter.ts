@@ -2,7 +2,9 @@
 // Generic models
 export interface IEvent {
   sessionId: string;
-  userId?: string;
+  userId?: string | undefined;
+  tabId?: string | undefined;
+  sequenceId?: number | undefined;
   eventType: string;
   timestamp: Date;
   payload: any;
