@@ -11,7 +11,7 @@ export class DionysysTransport {
   private readonly apiBaseUrl: string;
 
   constructor(options: TransportOptions = {}) {
-    this.fetchImplementation = options.fetchImplementation ?? fetch;
+    this.fetchImplementation = options.fetchImplementation ?? fetch.bind(globalThis);
     this.apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl);
   }
 
