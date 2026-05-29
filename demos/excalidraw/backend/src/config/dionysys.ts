@@ -5,17 +5,21 @@ import {
   type CreateDionysysServerOptions,
   type DionysysDecisionConnector,
 } from '@dionysys/server';
+import { anthropicConnector, type AnthropicConnectorOptions } from '@dionysys/connector-anthropic';
+import { geminiConnector, type GeminiConnectorOptions } from '@dionysys/connector-gemini';
 import { openAiConnector, type OpenAiConnectorOptions } from '@dionysys/connector-openai';
 import { createMongoDionysysStorage } from '@dionysys/storage-mongodb';
 import { isAdminConsoleEnabled } from '../services/AdminConfigService.js';
 
 export type DionysysStorageProvider = 'memory' | 'mongodb';
-export type DionysysLlmProvider = 'mock' | 'custom-http' | 'openai';
+export type DionysysLlmProvider = 'mock' | 'custom-http' | 'openai' | 'gemini' | 'anthropic';
 
 type RuntimeBuildOptions = {
   env?: NodeJS.ProcessEnv;
   fetchImplementation?: typeof fetch;
   openAiClient?: OpenAiConnectorOptions['client'];
+  geminiClient?: GeminiConnectorOptions['client'];
+  anthropicClient?: AnthropicConnectorOptions['client'];
 };
 
 type RuntimeConnectorStatus = NonNullable<NonNullable<CreateDionysysServerOptions['admin']>['connectorStatus']>;
@@ -75,6 +79,26 @@ function buildConnector(
         ...(options.openAiClient ? { client: options.openAiClient } : {}),
       });
     }
+    case 'gemini': {
+      const temperature = parseFloatNumber(env.DIONYSYS_GEMINI_TEMPERATURE);
+      return geminiConnector({
+        ...(env.GEMINI_API_KEY ? { apiKey: env.GEMINI_API_KEY } : {}),
+        ...(env.DIONYSYS_GEMINI_MODEL ? { model: env.DIONYSYS_GEMINI_MODEL } : {}),
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(options.geminiClient ? { client: options.geminiClient } : {}),
+      });
+    }
+    case 'anthropic': {
+      const temperature = parseFloatNumber(env.DIONYSYS_ANTHROPIC_TEMPERATURE);
+      const maxTokens = parseNumber(env.DIONYSYS_ANTHROPIC_MAX_TOKENS);
+      return anthropicConnector({
+        ...(env.ANTHROPIC_API_KEY ? { apiKey: env.ANTHROPIC_API_KEY } : {}),
+        ...(env.DIONYSYS_ANTHROPIC_MODEL ? { model: env.DIONYSYS_ANTHROPIC_MODEL } : {}),
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(maxTokens !== undefined ? { maxTokens } : {}),
+        ...(options.anthropicClient ? { client: options.anthropicClient } : {}),
+      });
+    }
     case 'mock':
     default:
       return mockConnector();
@@ -99,6 +123,28 @@ function buildConnectorStatus(provider: DionysysLlmProvider, env: NodeJS.Process
     };
   }
 
+  if (provider === 'gemini') {
+    return {
+      type: 'gemini',
+      endpointConfigured: true,
+      apiKeyConfigured: Boolean(env.GEMINI_API_KEY),
+      ...(env.DIONYSYS_GEMINI_MODEL
+        ? { model: env.DIONYSYS_GEMINI_MODEL }
+        : { model: 'gemini-3.1-flash-lite' }),
+    };
+  }
+
+  if (provider === 'anthropic') {
+    return {
+      type: 'anthropic',
+      endpointConfigured: true,
+      apiKeyConfigured: Boolean(env.ANTHROPIC_API_KEY),
+      ...(env.DIONYSYS_ANTHROPIC_MODEL
+        ? { model: env.DIONYSYS_ANTHROPIC_MODEL }
+        : { model: 'claude-3-5-haiku-20241022' }),
+    };
+  }
+
   return {
     type: 'mock',
     endpointConfigured: false,
@@ -114,6 +160,8 @@ function getLlmProvider(env: NodeJS.ProcessEnv): DionysysLlmProvider {
   switch (env.DIONYSYS_LLM_PROVIDER) {
     case 'custom-http':
     case 'openai':
+    case 'gemini':
+    case 'anthropic':
       return env.DIONYSYS_LLM_PROVIDER;
     default:
       return 'mock';

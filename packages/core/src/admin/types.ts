@@ -109,7 +109,7 @@ export interface AdminConsoleConfig {
 }
 
 export interface AdminConnectorStatus {
-  type: 'mock' | 'custom-http' | 'openai';
+  type: 'mock' | 'custom-http' | 'openai' | 'gemini' | 'anthropic';
   endpointConfigured: boolean;
   apiKeyConfigured: boolean;
   model?: string | undefined;

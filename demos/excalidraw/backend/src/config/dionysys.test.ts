@@ -127,6 +127,70 @@ describe('buildDionysysServerOptions', () => {
     expect(result?.personaId).toBe('neutral');
   });
 
+  it('builds a Gemini connector from env-backed config', async () => {
+    const generateContent = vi.fn(async () => ({
+      text: JSON.stringify({
+        personaId: 'neutral',
+        actionId: 'show_neutral_workspace',
+        confidence: 0.72,
+      }),
+    }));
+    const options = buildDionysysServerOptions({
+      env: {
+        DIONYSYS_LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEY: 'test-key',
+        DIONYSYS_GEMINI_MODEL: 'gemini-3.1-flash-lite',
+      },
+      geminiClient: {
+        models: {
+          generateContent,
+        },
+      },
+    });
+
+    const result = await options.llmConnector?.decide(sampleDecisionInput);
+
+    expect(options.admin?.connectorStatus?.type).toBe('gemini');
+    expect(options.admin?.connectorStatus?.model).toBe('gemini-3.1-flash-lite');
+    expect(generateContent).toHaveBeenCalledTimes(1);
+    expect(result?.personaId).toBe('neutral');
+  });
+
+  it('builds an Anthropic connector from env-backed config', async () => {
+    const create = vi.fn(async () => ({
+      content: [
+        {
+          type: 'tool_use',
+          name: 'select_dionysys_decision',
+          input: {
+            personaId: 'neutral',
+            actionId: 'show_neutral_workspace',
+            confidence: 0.74,
+          },
+        },
+      ],
+    }));
+    const options = buildDionysysServerOptions({
+      env: {
+        DIONYSYS_LLM_PROVIDER: 'anthropic',
+        ANTHROPIC_API_KEY: 'test-key',
+        DIONYSYS_ANTHROPIC_MODEL: 'claude-3-5-haiku-20241022',
+      },
+      anthropicClient: {
+        messages: {
+          create,
+        },
+      },
+    });
+
+    const result = await options.llmConnector?.decide(sampleDecisionInput);
+
+    expect(options.admin?.connectorStatus?.type).toBe('anthropic');
+    expect(options.admin?.connectorStatus?.model).toBe('claude-3-5-haiku-20241022');
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result?.personaId).toBe('neutral');
+  });
+
   it('throws when mongodb storage is selected without a configured URI', () => {
     expect(() => buildDionysysServerOptions({
       env: { DIONYSYS_STORAGE: 'mongodb' },
