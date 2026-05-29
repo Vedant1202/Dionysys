@@ -6,28 +6,36 @@ slug: /
 
 # Dionysys Documentation
 
-Dionysys is a modular adaptive UI experimentation framework. It supports deterministic persona inference and policy selection, plus MCP-driven mode where validated personality resources define scoring rules and UI actions.
+Dionysys is a self-hosted SDK suite for persona-driven UI adaptation. The core idea is simple: your app emits loose UI events, the server resolves adaptive decisions, and the client plus React layers make those decisions usable in a real interface.
 
-The root `docs/` directory is the canonical source for the web docs, and the package READMEs are kept aligned with it so contributors get the same story in the repo and in the rendered site.
+## Start here
 
-## Start Here
+- [Usage](./usage.md): mount the server, create a client, and wire React
+- [Configuration](./configuration.md): storage, connectors, env vars, and event naming
+- [Architecture](./architecture.md): package boundaries and request flow
+- [Admin Console](./admin-console.md): runtime inspection and tuning
+- [Feedback Loop](./feedback-loop.md): beta learning loop behavior
+- [Excalidraw Configuration](./excalidraw-configuration.md): reference app specifics
 
-- [Package Usage](./usage.md): integrate `@dionysys/core` and `@dionysys/react` in an application.
-- [Configuration](./configuration.md): configure inference, policy, and MCP resources.
-- [Admin Console](./admin-console.md): inspect and edit runtime adaptive configuration from a reusable package UI.
-- [Excalidraw Configuration](./excalidraw-configuration.md): edit the current demo variants, MCP resources, toolbar tools, and connector settings.
-- [Architecture](./architecture.md): understand the monorepo packages, backend, frontend demo, and data flow.
-- [Feedback Loop](./feedback-loop.md): how user feedback and passive metrics feed the Thompson-sampling bandit and cross-session warm-start.
-- [MCP Mode Spec](./specs/mcp-mode.md): read the detailed MCP-driven adaptive UI mode design.
+## Package map
 
-## Modes
+| Package | Purpose |
+| --- | --- |
+| `@dionysys/server` | Self-hosted backend routes under `/api/dionysys` |
+| `@dionysys/client` | Framework-agnostic client SDK |
+| `@dionysys/react` | React provider, hooks, feedback, and admin UI |
+| `@dionysys/storage-mongodb` | MongoDB storage adapter |
+| `@dionysys/connector-openai` | OpenAI-backed decision connector |
+| `@dionysys/core` | Shared contracts and adaptive decision logic |
 
-| Mode | Best for | Decision source |
-| --- | --- | --- |
-| Deterministic | Repeatable A/B behavior and local scoring | `InferenceEngine` probabilities plus `PolicyEngine` selection |
-| MCP | Resource-defined personalities with LLM-assisted action selection | Summarized interactions, deterministic persona scores, and a validated connector response |
+## Principles
 
-## Local Docs Commands
+- Keep provider keys on the server only
+- Treat `/api/dionysys/*` as the primary public API surface
+- Keep app-specific event translation in app code, not in the SDK
+- Prefer `client={dionysysClient}` in React over compatibility callback props
+
+## Local docs commands
 
 ```bash
 npm run docs

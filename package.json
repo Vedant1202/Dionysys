@@ -6,25 +6,26 @@
   },
   "workspaces": [
     "packages/*",
-    "frontend",
-    "backend"
+    "demos/excalidraw/frontend",
+    "demos/excalidraw/backend"
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend",
+    "build:demo:backend": "npm run build --workspace=@dionysys-demo/excalidraw-backend",
+    "build:demo:frontend": "npm run build --workspace=@dionysys-demo/excalidraw-frontend",
     "build:blog-preview": "node blog-current/build-preview.mjs",
     "build:blog-preview:watch": "node blog-current/build-preview.mjs --watch",
     "build:docs": "npm --prefix web-docs run build",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "start:backend": "npm run start --workspace=backend",
-    "preview:frontend": "npm run preview --workspace=frontend",
+    "start:demo:backend": "npm run start --workspace=@dionysys-demo/excalidraw-backend",
+    "preview:demo:frontend": "npm run preview --workspace=@dionysys-demo/excalidraw-frontend",
     "docs": "npm --prefix web-docs run start",
     "docs:build": "npm --prefix web-docs run build",
     "docs:serve": "npm --prefix web-docs run serve",
-    "docs:typecheck": "npm --prefix web-docs run typecheck"
+    "docs:typecheck": "npm --prefix web-docs run typecheck",
+    "pack:check": "node scripts/pack-check.mjs"
   },
   "devDependencies": {
     "happy-dom": "^20.9.0"

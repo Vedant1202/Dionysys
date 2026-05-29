@@ -4,10 +4,15 @@ import type {
   AdminConsoleOverview,
   PersonalityResource,
 } from '@dionysys/core';
+import type { DionysysClient } from '@dionysys/client';
 
 export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'components' | 'data' | 'apis' | 'export' | 'explorer';
 
 export interface AdminConsoleProps {
+  client?: Pick<DionysysClient, 'admin'>;
+  /**
+   * @deprecated Compatibility API. Prefer `client` when possible.
+   */
   apiBaseUrl?: string;
   sessionId?: string;
   persistenceMode?: AdaptivePersistenceMode;

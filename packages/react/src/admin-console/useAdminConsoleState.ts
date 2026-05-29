@@ -1,19 +1,19 @@
 import * as React from 'react';
 import type { AdminConfigExport, AdminConsoleConfig } from '@dionysys/core';
+import { createLegacyAdminApi } from '../internal/legacyApi.js';
 import { downloadJson, formatJson } from './utils.js';
 import type {
-  AdminConfigResponse,
   AdminConsoleProps,
   AdminConsoleState,
-  AdminOverviewResponse,
 } from './types.js';
 
 export function useAdminConsoleState({
+  client,
   apiBaseUrl = 'http://localhost:3001',
   sessionId,
   onConfigSaved,
   defaultTab = 'overview',
-}: Pick<AdminConsoleProps, 'apiBaseUrl' | 'sessionId' | 'onConfigSaved' | 'defaultTab'>): AdminConsoleState {
+}: Pick<AdminConsoleProps, 'client' | 'apiBaseUrl' | 'sessionId' | 'onConfigSaved' | 'defaultTab'>): AdminConsoleState {
   const [activeTab, setActiveTab] = React.useState<AdminConsoleState['activeTab']>(defaultTab);
   const [config, setConfig] = React.useState<AdminConsoleConfig | undefined>();
   const [overview, setOverview] = React.useState<AdminConsoleState['overview']>(undefined);
@@ -23,31 +23,29 @@ export function useAdminConsoleState({
   const [notice, setNotice] = React.useState<string | undefined>();
   const [error, setError] = React.useState<string | undefined>();
   const [jsonDraft, setJsonDraft] = React.useState('');
-  const baseUrl = React.useMemo(() => apiBaseUrl.replace(/\/$/, ''), [apiBaseUrl]);
+  const legacyAdminApi = React.useMemo(() => createLegacyAdminApi(apiBaseUrl), [apiBaseUrl]);
 
   const loadAdminState = React.useCallback(async () => {
     setIsLoading(true);
     setError(undefined);
 
     try {
-      const configResponse = await fetch(`${baseUrl}/api/admin/config`);
-
-      if (!configResponse.ok) {
-        throw new Error(configResponse.status === 404
-          ? 'Admin console is disabled on the backend. Set ADMIN_CONSOLE_ENABLED=true to use it.'
-          : `Admin config request failed with ${configResponse.status}.`);
+      if (client) {
+        const loadedConfig = await client.admin.getConfig();
+        setConfig(loadedConfig);
+        setJsonDraft(formatJson(loadedConfig));
+        return;
       }
 
-      const configPayload = await configResponse.json() as AdminConfigResponse;
-
-      setConfig(configPayload.config);
-      setJsonDraft(formatJson(configPayload.config));
+      const loadedConfig = await legacyAdminApi.getConfig();
+      setConfig(loadedConfig);
+      setJsonDraft(formatJson(loadedConfig));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to load admin console data.');
     } finally {
       setIsLoading(false);
     }
-  }, [baseUrl]);
+  }, [client, legacyAdminApi]);
 
   React.useEffect(() => {
     void loadAdminState();
@@ -55,7 +53,9 @@ export function useAdminConsoleState({
 
   // Setup SSE connection for live overview data
   React.useEffect(() => {
-    const url = `${baseUrl}/api/admin/overview/stream${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`;
+    const url = client
+      ? client.admin.getOverviewStreamUrl(sessionId)
+      : legacyAdminApi.getOverviewStreamUrl(sessionId);
     const eventSource = new EventSource(url);
 
     eventSource.onmessage = (event) => {
@@ -75,7 +75,7 @@ export function useAdminConsoleState({
     return () => {
       eventSource.close();
     };
-  }, [baseUrl, sessionId]);
+  }, [client, legacyAdminApi, sessionId]);
 
   React.useEffect(() => {
     if (!config) return;
@@ -101,28 +101,28 @@ export function useAdminConsoleState({
     setNotice(undefined);
 
     try {
-      const response = await fetch(`${baseUrl}/api/admin/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Save failed with ${response.status}.`);
+      if (client) {
+        const savedConfig = await client.admin.updateConfig(config);
+        setConfig(savedConfig);
+        setJsonDraft(formatJson(savedConfig));
+        setNotice('Runtime configuration saved.');
+        onConfigSaved?.(savedConfig);
+        void loadAdminState();
+        return;
       }
 
-      const payload = await response.json() as AdminConfigResponse;
-      setConfig(payload.config);
-      setJsonDraft(formatJson(payload.config));
+      const savedConfig = await legacyAdminApi.updateConfig(config);
+      setConfig(savedConfig);
+      setJsonDraft(formatJson(savedConfig));
       setNotice('Runtime configuration saved.');
-      onConfigSaved?.(payload.config);
+      onConfigSaved?.(savedConfig);
       void loadAdminState();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save admin configuration.');
     } finally {
       setIsSaving(false);
     }
-  }, [baseUrl, config, loadAdminState, onConfigSaved]);
+  }, [client, config, legacyAdminApi, loadAdminState, onConfigSaved]);
 
   const resetConfig = React.useCallback(async () => {
     setIsSaving(true);
@@ -130,33 +130,50 @@ export function useAdminConsoleState({
     setNotice(undefined);
 
     try {
-      const response = await fetch(`${baseUrl}/api/admin/config/reset`, { method: 'POST' });
-      if (!response.ok) {
-        throw new Error(`Reset failed with ${response.status}.`);
+      if (client) {
+        const resetConfigValue = await client.admin.resetConfig();
+        setConfig(resetConfigValue);
+        setJsonDraft(formatJson(resetConfigValue));
+        setNotice('Runtime configuration reset to file defaults.');
+        onConfigSaved?.(resetConfigValue);
+        void loadAdminState();
+        return;
       }
 
-      const payload = await response.json() as AdminConfigResponse;
-      setConfig(payload.config);
-      setJsonDraft(formatJson(payload.config));
+      const resetConfigValue = await legacyAdminApi.resetConfig();
+      setConfig(resetConfigValue);
+      setJsonDraft(formatJson(resetConfigValue));
       setNotice('Runtime configuration reset to file defaults.');
-      onConfigSaved?.(payload.config);
+      onConfigSaved?.(resetConfigValue);
       void loadAdminState();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to reset admin configuration.');
     } finally {
       setIsSaving(false);
     }
-  }, [baseUrl, loadAdminState, onConfigSaved]);
+  }, [client, legacyAdminApi, loadAdminState, onConfigSaved]);
 
   const exportConfig = React.useCallback(() => {
     if (!config) return;
+    if (client) {
+      void client.admin.exportConfig()
+        .then((exported) => {
+          downloadJson(`dionysys-admin-config-${Date.now()}.json`, exported);
+          setNotice('Configuration exported as JSON.');
+        })
+        .catch((caught) => {
+          setError(caught instanceof Error ? caught.message : 'Failed to export admin configuration.');
+        });
+      return;
+    }
+
     const exported: AdminConfigExport = {
       exportedAt: new Date().toISOString(),
       config,
     };
     downloadJson(`dionysys-admin-config-${Date.now()}.json`, exported);
     setNotice('Configuration exported as JSON.');
-  }, [config]);
+  }, [client, config]);
 
   const clearNotice = React.useCallback(() => {
     setNotice(undefined);

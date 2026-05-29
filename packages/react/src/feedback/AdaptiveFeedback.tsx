@@ -1,4 +1,5 @@
 import * as React from 'react';
+import type { DionysysClient } from '@dionysys/client';
 import { useFeedback } from './useFeedback.js';
 import type { FeedbackSentiment, UseFeedbackOptions } from './useFeedback.js';
 
@@ -37,6 +38,7 @@ interface AdaptiveFeedbackControlledProps extends AdaptiveFeedbackBaseProps {
   error?: string;
   sessionId?: never;
   baseUrl?: never;
+  client?: never;
   onRevert?: never;
   autoRevert?: never;
 }
@@ -49,8 +51,12 @@ interface AdaptiveFeedbackConnectedProps extends AdaptiveFeedbackBaseProps {
   onSubmit?: never;
   /** Session ID to associate all feedback with. */
   sessionId: string;
-  /** Base URL of the backend, e.g. "http://localhost:3001". */
-  baseUrl: string;
+  client?: Pick<DionysysClient, 'feedback'> | undefined;
+  /**
+   * @deprecated Compatibility API. Prefer `client` when possible.
+   * Base URL of the backend, e.g. "http://localhost:3001".
+   */
+  baseUrl?: string | undefined;
   /**
    * Called when the user confirms a revert prompt (or immediately if `autoRevert` is true).
    * Typically: `() => store.setManualOverride({ variant: defaultVariant })`
@@ -66,11 +72,16 @@ interface AdaptiveFeedbackConnectedProps extends AdaptiveFeedbackBaseProps {
 export type AdaptiveFeedbackProps = AdaptiveFeedbackControlledProps | AdaptiveFeedbackConnectedProps;
 
 export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
-  if (props.sessionId != null && props.baseUrl != null) {
+  if (
+    props.sessionId != null
+    && ('client' in props || 'baseUrl' in props)
+    && (((props as AdaptiveFeedbackConnectedProps).client != null) || ((props as AdaptiveFeedbackConnectedProps).baseUrl != null))
+  ) {
     return (
       <AdaptiveFeedbackConnected
         sessionId={props.sessionId}
-        baseUrl={props.baseUrl}
+        client={(props as AdaptiveFeedbackConnectedProps).client}
+        baseUrl={(props as AdaptiveFeedbackConnectedProps).baseUrl}
         title={props.title}
         onRevert={props.onRevert}
         autoRevert={props.autoRevert}
@@ -98,12 +109,13 @@ export function AdaptiveFeedback(props: AdaptiveFeedbackProps) {
 
 function AdaptiveFeedbackConnected({
   sessionId,
+  client,
   baseUrl,
   title = 'Dionysys simplified the toolbar for Focus.',
   onRevert,
   autoRevert,
   onDismiss,
-}: Required<Pick<AdaptiveFeedbackConnectedProps, 'sessionId' | 'baseUrl'>> &
+}: Pick<AdaptiveFeedbackConnectedProps, 'sessionId' | 'client' | 'baseUrl'> &
   Pick<AdaptiveFeedbackConnectedProps, 'title' | 'onRevert' | 'autoRevert'> &
   Pick<AdaptiveFeedbackBaseProps, 'onDismiss'>) {
   const [showSurvey, setShowSurvey] = React.useState(false);
@@ -116,7 +128,7 @@ function AdaptiveFeedbackConnected({
     showCalibrationNote,
     confirmRevert,
     dismissRevert,
-  } = useFeedback({ sessionId, baseUrl, onRevert, autoRevert });
+  } = useFeedback({ sessionId, client, baseUrl, onRevert, autoRevert });
 
   const handleKeep = async () => {
     dismissRevert();

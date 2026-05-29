@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc && cp src/admin-console/admin-console.css dist/admin-console/",
@@ -24,6 +25,7 @@
     "zustand": "^4.0.0 || ^5.0.0"
   },
   "dependencies": {
+    "@dionysys/client": "*",
     "@dionysys/core": "*",
     "@types/dagre": "^0.7.54",
     "@xyflow/react": "^12.10.2",

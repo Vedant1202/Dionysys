@@ -9,8 +9,8 @@ The loop never changes the active UI mid-session. Feedback shapes the *next* dec
 Set both flags:
 
 ```bash
-ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=backend
-VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=frontend
+ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=@dionysys-demo/excalidraw-backend
+VITE_ADAPTIVE_FEEDBACK_BETA_ENABLED=true npm run dev --workspace=@dionysys-demo/excalidraw-frontend
 ```
 
 When the backend flag is off, the feedback routes are not mounted and beta-only event types are dropped from event ingestion. Nothing in this document runs unless both flags are true.
@@ -78,17 +78,17 @@ Recommendations are recorded on every `IFeedbackLoopRecord` along with the metri
 
 | Concern | File |
 | --- | --- |
-| Passive metrics + records | `backend/src/services/FeedbackLoopService.ts` |
-| Recommendation workflow | `backend/src/services/FeedbackLoopGraphService.ts` |
-| Bandit params + score blend | `backend/src/services/BanditService.ts` |
-| Cross-session prior (EMA) | `backend/src/services/BrowserPriorService.ts` |
-| Reward + loop trigger on session end | `backend/src/services/RewardService.ts`, `backend/src/routes/reward.ts` |
-| Bandit wired into selection | `backend/src/services/AdaptiveDecisionService.ts` |
-| Cohort aggregation | `backend/src/services/CohortService.ts` |
-| Feedback APIs | `backend/src/routes/adaptiveFeedback.ts` |
+| Passive metrics + records | `demos/excalidraw/backend/src/services/FeedbackLoopService.ts` |
+| Recommendation workflow | `demos/excalidraw/backend/src/services/FeedbackLoopGraphService.ts` |
+| Bandit params + score blend | `demos/excalidraw/backend/src/services/BanditService.ts` |
+| Cross-session prior (EMA) | `demos/excalidraw/backend/src/services/BrowserPriorService.ts` |
+| Reward + loop trigger on session end | `demos/excalidraw/backend/src/services/RewardService.ts`, `demos/excalidraw/backend/src/routes/reward.ts` |
+| Bandit wired into selection | `demos/excalidraw/backend/src/services/AdaptiveDecisionService.ts` |
+| Cohort aggregation | `demos/excalidraw/backend/src/services/CohortService.ts` |
+| Feedback APIs | `demos/excalidraw/backend/src/routes/adaptiveFeedback.ts` |
 | Prompt timing | `packages/react/src/feedback/useFeedbackTrigger.ts` |
 | Feedback widget | `packages/react/src/feedback/AdaptiveFeedback.tsx` |
-| Warm-start seeding | `frontend/src/App.tsx` |
+| Warm-start seeding | `demos/excalidraw/frontend/src/App.tsx` |
 
 ## Boundaries
 
@@ -96,4 +96,4 @@ Recommendations are recorded on every `IFeedbackLoopRecord` along with the metri
 - Feedback applies to the next decision, never a mid-session auto-revert.
 - No beta-only telemetry or feedback-loop records are sent when the flag is off.
 
-For the original design notes, see the [Persona Feedback Loop Beta spec](./specs/persona-feedback-loop-beta.md).
+For the broader productization roadmap around this beta system, see the [SDK upgrade spec](./sdk-upgrade-spec.md).

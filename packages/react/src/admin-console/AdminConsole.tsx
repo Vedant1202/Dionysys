@@ -17,6 +17,7 @@ import type { AdminConsoleProps } from './types.js';
 export type { AdminConsoleProps } from './types.js';
 
 export function AdminConsole({
+  client,
   apiBaseUrl = 'http://localhost:3001',
   sessionId,
   persistenceMode,
@@ -47,7 +48,7 @@ export function AdminConsole({
     exportConfig,
     applyJsonDraft,
     clearNotice,
-  } = useAdminConsoleState({ apiBaseUrl, sessionId, onConfigSaved, defaultTab });
+  } = useAdminConsoleState({ client, apiBaseUrl, sessionId, onConfigSaved, defaultTab });
 
   const handleNavigation = React.useCallback((tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -137,7 +138,7 @@ export function AdminConsole({
             <ComponentsPanel config={config} updateConfig={updateConfig} />
           )}
           {!isLoading && config && activeTab === 'data' && (
-            <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} />
+            <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} client={client} />
           )}
           {!isLoading && config && activeTab === 'apis' && (
             <ApisPanel

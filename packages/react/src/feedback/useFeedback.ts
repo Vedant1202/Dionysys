@@ -1,4 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { DionysysClient } from '@dionysys/client';
+import { createLegacyFeedbackApi } from '../internal/legacyApi.js';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -12,7 +14,7 @@ export interface FeedbackSubmission {
 
 export interface FeedbackLoopRecord {
   sessionId: string;
-  timestamp: string;
+  timestamp: string | number | Date;
   source: 'passive' | 'explicit';
   graphRecommendation: FeedbackGraphRecommendation;
   graphRationale: string;
@@ -44,8 +46,13 @@ export interface FeedbackLoopRecord {
 export interface UseFeedbackOptions {
   /** Session ID to associate all feedback with. */
   sessionId: string;
-  /** Base URL of the backend, e.g. "http://localhost:3001". */
-  baseUrl: string;
+  /** Optional Dionysys client. Preferred over baseUrl when provided. */
+  client?: Pick<DionysysClient, 'feedback'> | undefined;
+  /**
+   * @deprecated Compatibility API. Prefer `client.feedback.*` when possible.
+   * Base URL of the backend, e.g. "http://localhost:3001".
+   */
+  baseUrl?: string | undefined;
   /**
    * Called when the feedback loop produces a `revert` recommendation.
    * In connected mode, this is fired after the user confirms the prompt
@@ -112,6 +119,7 @@ function isDev(): boolean {
 
 export function useFeedback({
   sessionId,
+  client,
   baseUrl,
   onRevert,
   autoRevert = false,
@@ -123,6 +131,7 @@ export function useFeedback({
   const [pendingRevert, setPendingRevert] = useState(false);
   const [showCalibrationNote, setShowCalibrationNote] = useState(false);
   const calibrationTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const legacyFeedbackApi = useMemo(() => createLegacyFeedbackApi(baseUrl), [baseUrl]);
 
   const handleRecord = useCallback(
     (record: FeedbackLoopRecord) => {
@@ -152,59 +161,45 @@ export function useFeedback({
       setError(undefined);
 
       try {
-        const response = await fetch(`${baseUrl}/api/adaptive-feedback`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, ...submission }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({})) as { error?: string };
-          throw new Error(data.error ?? `Request failed with status ${response.status}`);
+        if (client) {
+          handleRecord(await client.feedback.submit({ sessionId, ...submission }));
+          return;
         }
 
-        const data = await response.json() as { success: boolean; record: FeedbackLoopRecord };
-        handleRecord(data.record);
+        handleRecord(await legacyFeedbackApi.submit(sessionId, submission));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Feedback could not be sent.');
       } finally {
         setIsSubmitting(false);
       }
     },
-    [sessionId, baseUrl, handleRecord],
+    [sessionId, client, legacyFeedbackApi, handleRecord],
   );
 
   const triggerPassiveEval = useCallback(async () => {
     try {
-      const response = await fetch(`${baseUrl}/api/adaptive-feedback/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      });
-
-      // 409 = no adaptive decision applied yet; treat as a silent no-op
-      if (response.status === 409) return;
-
-      if (!response.ok) {
-        if (isDev()) {
-          console.warn(
-            '[useFeedback] Passive eval failed (status %d). ' +
-            'Is ADAPTIVE_FEEDBACK_BETA_ENABLED=true set on the backend?',
-            response.status,
-          );
-        }
+      if (client) {
+        handleRecord(await client.feedback.evaluate({ sessionId, source: 'passive' }));
         return;
       }
 
-      const data = await response.json() as { success: boolean; record: FeedbackLoopRecord };
-      handleRecord(data.record);
-    } catch {
-      // Passive evals are best-effort — don't surface network errors to the user
+      const record = await legacyFeedbackApi.evaluate(sessionId);
+      if (!record) return;
+      handleRecord(record);
+    } catch (err) {
+      if (err instanceof Error && !err.message.includes('status')) {
+        if (isDev()) {
+          console.warn('[useFeedback] Passive eval network request failed.');
+        }
+        return;
+      }
       if (isDev()) {
-        console.warn('[useFeedback] Passive eval network request failed.');
+        console.warn(
+          '[useFeedback] Passive eval failed. Is ADAPTIVE_FEEDBACK_BETA_ENABLED=true set on the backend?',
+        );
       }
     }
-  }, [sessionId, baseUrl, handleRecord]);
+  }, [sessionId, client, legacyFeedbackApi, handleRecord]);
 
   const confirmRevert = useCallback(() => {
     setPendingRevert(false);

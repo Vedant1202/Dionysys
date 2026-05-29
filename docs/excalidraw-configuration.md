@@ -6,23 +6,23 @@ This guide explains how to change the current Excalidraw adaptive UI implementat
 
 | Concern | File |
 | --- | --- |
-| Deterministic variant UI definitions | `frontend/src/config/variantConfig.ts` |
-| MCP personality resources, scoring rules, and action UI states | `backend/src/services/ExcalidrawMcpResources.ts` |
-| Mode switch and provider wiring | `frontend/src/App.tsx` |
-| Applying the selected UI state to Excalidraw | `frontend/src/components/EditorShell.tsx` |
-| Custom allowlisted toolbar rendering | `frontend/src/components/DynamicToolbar.tsx` |
-| Debug readout for mode, scores, confidence, and lock state | `frontend/src/components/DebugPanel.tsx` |
-| Runtime admin console overlay | `frontend/src/App.tsx` and `@dionysys/react` `AdminConsole` |
-| Shared session id for telemetry and decisions | `frontend/src/core/session.ts` |
-| Telemetry collection and flushing | `frontend/src/core/eventCollector.ts` |
+| Deterministic variant UI definitions | `demos/excalidraw/frontend/src/config/variantConfig.ts` |
+| MCP personality resources, scoring rules, and action UI states | `demos/excalidraw/backend/src/services/ExcalidrawMcpResources.ts` |
+| Mode switch and provider wiring | `demos/excalidraw/frontend/src/App.tsx` |
+| Applying the selected UI state to Excalidraw | `demos/excalidraw/frontend/src/components/EditorShell.tsx` |
+| Custom allowlisted toolbar rendering | `demos/excalidraw/frontend/src/components/DynamicToolbar.tsx` |
+| Debug readout for mode, scores, confidence, and lock state | `demos/excalidraw/frontend/src/components/DebugPanel.tsx` |
+| Runtime admin console overlay | `demos/excalidraw/frontend/src/App.tsx` and `@dionysys/react` `AdminConsole` |
+| Dionysys client/session/event/decision adapters | `demos/excalidraw/frontend/src/dionysys/` |
+| Telemetry collection and flushing | `demos/excalidraw/frontend/src/core/eventCollector.ts` |
 
 ## Runtime Editing with the Admin Console
 
 For fast experimentation, enable the admin console and edit runtime configuration from the browser:
 
 ```bash
-ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
-npm run dev --workspace=frontend
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=@dionysys-demo/excalidraw-backend
+npm run dev --workspace=@dionysys-demo/excalidraw-frontend
 ```
 
 The demo shows an Admin button in development. The console is seeded from the current files on backend startup, then lets you edit:
@@ -64,8 +64,8 @@ Instead, production mode renders a lightweight feedback panel through `AdaptiveF
 
 The top bar switch in `EditorShell` selects the mode:
 
-- `Deterministic`: `AdaptiveProvider` polls `/api/inference/:sessionId`, then posts to `/api/adaptive/decision` with `mode: 'deterministic'`.
-- `MCP`: `AdaptiveProvider` posts to `/api/adaptive/decision` with `mode: 'mcp'`, then renders `lastDecision.uiState`.
+- `Deterministic`: `AdaptiveProvider` resolves decisions through the Dionysys client against `/api/dionysys/decisions:resolve` with `mode: 'deterministic'`.
+- `MCP`: `AdaptiveProvider` resolves decisions through the Dionysys client against `/api/dionysys/decisions:resolve` with `mode: 'mcp'`, then renders `lastDecision.uiState`.
 
 `App.tsx` remounts the provider when the mode or runtime admin config changes, so switching modes or saving admin config resets lock state, selected variant, and MCP decision fields.
 
@@ -73,7 +73,7 @@ When `decisionApplication` is `next-refresh`, policy/MCP decisions are stored as
 
 ## Editing Deterministic Variants
 
-Edit `frontend/src/config/variantConfig.ts`.
+Edit `demos/excalidraw/frontend/src/config/variantConfig.ts`.
 
 Each entry in `VARIANT_CONFIGS` controls the UI for a variant:
 
@@ -109,7 +109,7 @@ MCP action payloads can still carry arbitrary string menu ids through `mainMenu`
 
 ## Editing MCP Personality Resources
 
-Edit `backend/src/services/ExcalidrawMcpResources.ts`.
+Edit `demos/excalidraw/backend/src/services/ExcalidrawMcpResources.ts`.
 
 Each MCP resource has three important parts:
 
@@ -170,9 +170,9 @@ Supported operators are `<`, `<=`, `>`, `>=`, `==`, `!=`, `contains`, and `notCo
 
 ## Adding a New Variant and Persona
 
-1. Add the variant key to `UiVariant` in `frontend/src/config/variantConfig.ts`.
+1. Add the variant key to `UiVariant` in `demos/excalidraw/frontend/src/config/variantConfig.ts`.
 2. Add a matching `VARIANT_CONFIGS[variant]` entry for deterministic mode.
-3. Add a matching `PersonalityResource` in `backend/src/services/ExcalidrawMcpResources.ts`.
+3. Add a matching `PersonalityResource` in `demos/excalidraw/backend/src/services/ExcalidrawMcpResources.ts`.
 4. Set every action `uiState.variant` to the variant key you want the frontend badge and config resolver to use.
 5. Add `mainMenu` and `mainMenuItems` to MCP action UI states. `mainMenu` is part of the package UI schema; `mainMenuItems` is the current Excalidraw demo's render helper.
 6. Mark at least one conservative action with `isSafeFallback: true` when it should be eligible for fallback.
@@ -190,7 +190,7 @@ To call an external decision service, set environment variables before starting 
 ADAPTIVE_LLM_ENDPOINT=https://example.com/decision \
 ADAPTIVE_LLM_API_KEY=replace-me \
 ADAPTIVE_LLM_MODEL=optional-model-name \
-npm run dev --workspace=backend
+npm run dev --workspace=@dionysys-demo/excalidraw-backend
 ```
 
 The fetch connector sends:
@@ -222,24 +222,24 @@ Content-Type: application/json
 }
 ```
 
-The frontend displays the current session id in the top bar. `frontend/src/core/session.ts` is shared by telemetry and adaptive decision calls, so changing it affects event collection, inference polling, policy evaluation, and MCP decisions together.
+The frontend displays the current session id in the top bar. Dionysys-specific browser/session helpers live in `demos/excalidraw/frontend/src/dionysys/session.ts`; Excalidraw scene persistence still lives in the demo frontend and should not be promoted into public SDK packages.
 
 ## Verification
 
 Run targeted checks after configuration edits:
 
 ```bash
-npm run test --workspace=frontend
-npm run test --workspace=backend
-npm run build --workspace=frontend
-npm run build --workspace=backend
+npm run test --workspace=@dionysys-demo/excalidraw-frontend
+npm run test --workspace=@dionysys-demo/excalidraw-backend
+npm run build --workspace=@dionysys-demo/excalidraw-frontend
+npm run build --workspace=@dionysys-demo/excalidraw-backend
 ```
 
 Run the demo manually:
 
 ```bash
-npm run dev --workspace=backend
-npm run dev --workspace=frontend
+npm run dev --workspace=@dionysys-demo/excalidraw-backend
+npm run dev --workspace=@dionysys-demo/excalidraw-frontend
 ```
 
 Then open the frontend, switch between `Deterministic` and `MCP`, draw shapes or add text, and confirm the debug panel shows the expected mode, persona scores, selected personality, confidence, and variant.

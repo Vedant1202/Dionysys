@@ -1,6 +1,8 @@
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { DionysysClient } from '@dionysys/client';
 import type { AdminConsoleOverview } from '@dionysys/core';
+import { createLegacyAdminApi } from '../../internal/legacyApi.js';
 import { ComparisonRows, EmptyState, JsonBlock, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { formatMs } from '../utils.js';
@@ -10,26 +12,36 @@ import { CohortPanel, type CohortOverview } from './CohortPanel.js';
 export function DataPanel({
   overview,
   apiBaseUrl,
+  client,
 }: {
   overview?: AdminConsoleOverview;
   apiBaseUrl?: string;
+  client?: Pick<DionysysClient, 'admin'>;
 }) {
   const session = overview?.session;
   const feedbackLoop = overview?.feedbackLoop;
 
   const [cohortOverview, setCohortOverview] = useState<CohortOverview | null>(null);
+  const legacyAdminApi = useMemo(() => createLegacyAdminApi(apiBaseUrl), [apiBaseUrl]);
 
   useEffect(() => {
-    if (!apiBaseUrl) return;
     let cancelled = false;
-    fetch(`${apiBaseUrl}/api/admin/cohort-overview`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((body: { success: boolean; overview: CohortOverview }) => {
-        if (!cancelled) setCohortOverview(body.overview);
+    if (client) {
+      void client.admin.getCohortOverview()
+        .then((body) => {
+          if (!cancelled) setCohortOverview(body as unknown as CohortOverview);
+        })
+        .catch(() => { /* beta may be disabled — stay null */ });
+      return () => { cancelled = true; };
+    }
+
+    void legacyAdminApi.getCohortOverview()
+      .then((body) => {
+        if (!cancelled) setCohortOverview(body);
       })
       .catch(() => { /* beta may be disabled — stay null */ });
     return () => { cancelled = true; };
-  }, [apiBaseUrl]);
+  }, [client, legacyAdminApi]);
 
   if (!session) {
     return <EmptyState title="No session data loaded" description="Pass a sessionId to AdminConsole to inspect live interaction summaries." />;

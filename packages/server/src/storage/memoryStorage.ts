@@ -1,10 +1,20 @@
 import type { DionysysSession, DionysysEvent, DionysysDecision } from '@dionysys/core';
-import type { DionysysStorage } from './types.js';
+import type {
+  DionysysBanditParams,
+  DionysysBrowserPrior,
+  DionysysFeedbackRecord,
+  DionysysStorage,
+} from './types.js';
 
 export function createMemoryStorage(): DionysysStorage {
   const sessions = new Map<string, DionysysSession>();
   const events: DionysysEvent[] = [];
   const decisions = new Map<string, DionysysDecision>();
+  const feedbackRecords: DionysysFeedbackRecord[] = [];
+  const banditParams = new Map<string, DionysysBanditParams>();
+  const browserPriors = new Map<string, DionysysBrowserPrior>();
+
+  const banditKey = (stateId: string, variant: string) => `${stateId}::${variant}`;
 
   return {
     async createSession(id, metadata) {
@@ -37,6 +47,9 @@ export function createMemoryStorage(): DionysysStorage {
     async deleteSession(id) {
       sessions.delete(id);
     },
+    async saveEvent(event) {
+      events.push(event);
+    },
     async saveEvents(newEvents) {
       events.push(...newEvents);
     },
@@ -46,9 +59,48 @@ export function createMemoryStorage(): DionysysStorage {
     async saveDecision(decision) {
       decisions.set(decision.id, decision);
     },
-    async saveFeedback(data) {},
-    async getBanditParams() { return {}; },
-    async updateBanditParams(params) {},
-    async getBrowserPriors(sessionId) { return {}; },
+    async getDecisionsBySession(sessionId) {
+      return [...decisions.values()].filter((decision) => decision.sessionId === sessionId);
+    },
+    async saveFeedbackLoopRecord(record) {
+      feedbackRecords.push(record);
+    },
+    async getFeedbackLoopRecordsBySession(sessionId) {
+      return feedbackRecords.filter((record) => record.sessionId === sessionId);
+    },
+    async getAllFeedbackLoopRecords() {
+      return [...feedbackRecords];
+    },
+    async getBanditParams(stateId, variant) {
+      return banditParams.get(banditKey(stateId, variant)) ?? null;
+    },
+    async upsertBanditParams(params) {
+      banditParams.set(banditKey(params.stateId, params.variant), params);
+    },
+    async incrementBanditParams(stateId, variant, alphaInc, betaInc) {
+      const key = banditKey(stateId, variant);
+      const existing = banditParams.get(key) ?? {
+        stateId,
+        variant,
+        alpha: 1,
+        beta: 1,
+        lastUpdated: Date.now(),
+      };
+      banditParams.set(key, {
+        ...existing,
+        alpha: existing.alpha + alphaInc,
+        beta: existing.beta + betaInc,
+        lastUpdated: Date.now(),
+      });
+    },
+    async getAllBanditParams() {
+      return [...banditParams.values()];
+    },
+    async getBrowserPrior(browserId) {
+      return browserPriors.get(browserId) ?? null;
+    },
+    async upsertBrowserPrior(prior) {
+      browserPriors.set(prior.browserId, prior);
+    },
   };
 }
