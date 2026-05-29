@@ -46,7 +46,7 @@ describe('customHttpConnector', () => {
 
       return new Response(
         JSON.stringify({
-          personalityId: 'neutral',
+          personaId: 'neutral',
           actionId: 'show_neutral_workspace',
           confidence: 0.9,
           rationale: 'Endpoint selected the neutral path.',
@@ -66,7 +66,7 @@ describe('customHttpConnector', () => {
     const result = await connector.decide(sampleInput);
 
     expect(fetchImplementation).toHaveBeenCalledTimes(1);
-    expect(result.personalityId).toBe('neutral');
+    expect(result.personaId).toBe('neutral');
     expect(result.actionId).toBe('show_neutral_workspace');
   });
 
@@ -74,7 +74,7 @@ describe('customHttpConnector', () => {
     const connector = customHttpConnector({
       endpoint: 'https://example.com/resolve',
       fetchImplementation: vi.fn(async () =>
-        new Response(JSON.stringify({ personalityId: 'neutral', confidence: 2 }), { status: 200 }),
+        new Response(JSON.stringify({ personaId: 'neutral', confidence: 2 }), { status: 200 }),
       ) as typeof fetch,
     });
 

@@ -1,4 +1,4 @@
-import { LLMDecisionResultSchema } from '@dionysys/core';
+import { DionysysConnectorDecisionSchema } from '@dionysys/core';
 import type { DionysysDecisionConnector, DionysysDecisionInput } from './types.js';
 
 export type CustomHttpConnectorOptions = {
@@ -37,7 +37,7 @@ export function customHttpConnector(options: CustomHttpConnectorOptions): Dionys
         }
 
         const json = await response.json();
-        return LLMDecisionResultSchema.parse(json);
+        return DionysysConnectorDecisionSchema.parse(json);
       } finally {
         clearTimeout(timeoutId);
       }

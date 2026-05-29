@@ -35,7 +35,7 @@ describe('mockConnector', () => {
       },
     });
 
-    expect(result.personalityId).toBe('draw_first');
+    expect(result.personaId).toBe('draw_first');
     expect(result.actionId).toBe('show_draw_workspace');
   });
 });

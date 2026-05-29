@@ -66,14 +66,14 @@ describe('buildDionysysServerOptions', () => {
 
     expect(options.storage).toBeDefined();
     expect(options.admin?.connectorStatus?.type).toBe('mock');
-    expect(result?.personalityId).toBe('neutral');
+    expect(result?.personaId).toBe('neutral');
   });
 
   it('builds a custom HTTP connector from env', async () => {
     const fetchImplementation = vi.fn(async () =>
       new Response(
         JSON.stringify({
-          personalityId: 'neutral',
+          personaId: 'neutral',
           actionId: 'show_neutral_workspace',
           confidence: 0.9,
         }),
@@ -101,7 +101,7 @@ describe('buildDionysysServerOptions', () => {
   it('builds an OpenAI connector from env-backed config', async () => {
     const create = vi.fn(async () => ({
       output_text: JSON.stringify({
-        personalityId: 'neutral',
+        personaId: 'neutral',
         actionId: 'show_neutral_workspace',
         confidence: 0.7,
       }),
@@ -124,7 +124,7 @@ describe('buildDionysysServerOptions', () => {
     expect(options.admin?.connectorStatus?.type).toBe('openai');
     expect(options.admin?.connectorStatus?.model).toBe('gpt-5');
     expect(create).toHaveBeenCalledTimes(1);
-    expect(result?.personalityId).toBe('neutral');
+    expect(result?.personaId).toBe('neutral');
   });
 
   it('throws when mongodb storage is selected without a configured URI', () => {

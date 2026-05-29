@@ -50,7 +50,7 @@ describe('openAiConnector', () => {
   it('uses the Responses API client and validates good JSON output', async () => {
     const create = vi.fn(async () => ({
       output_text: JSON.stringify({
-        personalityId: 'neutral',
+        personaId: 'neutral',
         actionId: 'show_neutral_workspace',
         confidence: 0.88,
         rationale: 'Balanced workspace is the safest fit.',
@@ -67,7 +67,7 @@ describe('openAiConnector', () => {
     const result = await connector.decide(sampleInput);
 
     expect(create).toHaveBeenCalledTimes(1);
-    expect(result.personalityId).toBe('neutral');
+    expect(result.personaId).toBe('neutral');
     expect(result.actionId).toBe('show_neutral_workspace');
   });
 
@@ -79,7 +79,7 @@ describe('openAiConnector', () => {
         responses: {
           create: vi.fn(async () => ({
             output_text: JSON.stringify({
-              personalityId: 'neutral',
+              personaId: 'neutral',
               actionId: 'show_neutral_workspace',
               confidence: 0.6,
             }),
@@ -89,7 +89,7 @@ describe('openAiConnector', () => {
     });
 
     await expect(connector.decide(sampleInput)).resolves.toMatchObject({
-      personalityId: 'neutral',
+      personaId: 'neutral',
       actionId: 'show_neutral_workspace',
     });
   });
@@ -114,7 +114,7 @@ describe('openAiConnector', () => {
         responses: {
           create: vi.fn(async () => ({
             output_text: JSON.stringify({
-              personalityId: 'neutral',
+              personaId: 'neutral',
               actionId: 'show_neutral_workspace',
               confidence: 5,
             }),

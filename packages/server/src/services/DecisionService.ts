@@ -8,16 +8,17 @@ import {
   type AdaptiveMode,
   type DionysysDecision,
   type DionysysEvent,
-  type GenericEvent,
   type LLMDecisionConnector,
+  type GenericEvent,
   type SummarizableInteractionEvent,
 } from '@dionysys/core';
+import type { DionysysDecisionConnector } from '../connectors/types.js';
 import type { DionysysStorage } from '../storage/types.js';
 
 export interface DecisionServiceOptions {
   config: AdminConsoleConfig;
   storage: DionysysStorage;
-  llmConnector: LLMDecisionConnector;
+  llmConnector: DionysysDecisionConnector;
 }
 
 export interface ResolveDecisionInput {
@@ -88,7 +89,7 @@ export class DecisionService {
   private async resolveMcp(sessionId: string, events: DionysysEvent[]): Promise<DionysysDecision> {
     const resolver = new McpModeResolver({
       resourcesByAxis: this.options.config.mcp.axes,
-      llmConnector: this.options.llmConnector,
+      llmConnector: this.toMcpConnector(),
       minConfidence: this.options.config.mcp.minConfidence,
       fallbackVariant: this.options.config.mcp.fallbackVariant,
     });
@@ -122,6 +123,20 @@ export class DecisionService {
         axisMatchedSignals: decision.axisMatchedSignals,
         interactionSummary: decision.interactionSummary,
         isFallback: decision.isFallback,
+      },
+    };
+  }
+
+  private toMcpConnector(): LLMDecisionConnector {
+    return {
+      decide: async (input) => {
+        const decision = await this.options.llmConnector.decide(input);
+        return {
+          personalityId: decision.personaId,
+          actionId: decision.actionId,
+          confidence: decision.confidence,
+          ...(decision.rationale ? { rationale: decision.rationale } : {}),
+        };
       },
     };
   }

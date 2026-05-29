@@ -1,3 +1,5 @@
+import type { LLMDecisionInput } from '../mcp/types.js';
+
 export type DionysysEvent = {
   type: string;
   timestamp?: number | string | Date;
@@ -31,10 +33,9 @@ export type DionysysDecision = {
   metadata?: Record<string, unknown>;
 };
 
-export type DionysysDecisionInput = {
-  sessionId: string;
+export type DionysysDecisionInput = LLMDecisionInput & {
+  sessionId?: string;
   metadata?: Record<string, unknown>;
-  [key: string]: unknown;
 };
 
 export type DionysysConnectorDecision = {

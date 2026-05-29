@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { LLMDecisionResultSchema } from '@dionysys/core';
+import { DionysysConnectorDecisionSchema } from '@dionysys/core';
 import type { DionysysDecisionConnector, DionysysDecisionInput } from '@dionysys/server';
 import {
   defaultOpenAiInstructions,
@@ -31,12 +31,12 @@ const decisionJsonSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    personalityId: { type: 'string' },
+    personaId: { type: 'string' },
     actionId: { type: 'string' },
     confidence: { type: 'number', minimum: 0, maximum: 1 },
     rationale: { type: 'string' },
   },
-  required: ['personalityId', 'actionId', 'confidence'],
+  required: ['personaId', 'actionId', 'confidence'],
 } as const;
 
 export function openAiConnector(options: OpenAiConnectorOptions = {}): DionysysDecisionConnector {
@@ -74,7 +74,7 @@ export function openAiConnector(options: OpenAiConnectorOptions = {}): DionysysD
         );
       }
 
-      return LLMDecisionResultSchema.parse(parsed);
+      return DionysysConnectorDecisionSchema.parse(parsed);
     },
   };
 }

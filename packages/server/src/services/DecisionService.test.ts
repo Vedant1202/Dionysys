@@ -53,7 +53,7 @@ describe('DecisionService', () => {
       llmConnector: {
         async decide() {
           return {
-            personalityId: 'unknown',
+            personaId: 'unknown',
             actionId: 'unknown',
             confidence: 2,
           };
@@ -69,5 +69,28 @@ describe('DecisionService', () => {
   it('rejects invalid requests', async () => {
     const { service } = createService();
     await expect(service.resolve({ sessionId: '' })).rejects.toBeInstanceOf(DecisionValidationError);
+  });
+
+  it('maps connector personaId onto MCP selectedPersona', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([{ type: 'text_added', sessionId: 's4' }]);
+    const service = new DecisionService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      llmConnector: {
+        async decide() {
+          return {
+            personaId: 'neutral',
+            actionId: 'show_neutral_workspace',
+            confidence: 0.75,
+          };
+        },
+      },
+    });
+
+    const decision = await service.resolve({ sessionId: 's4', mode: 'mcp' });
+
+    expect(decision.selectedPersona.id).toBe('neutral');
+    expect(decision.selectedPersona.confidence).toBe(0.75);
   });
 });
