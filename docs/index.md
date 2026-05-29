@@ -26,6 +26,8 @@ Dionysys is a self-hosted SDK suite for persona-driven UI adaptation. The core i
 | `@dionysys/react` | React provider, hooks, feedback, and admin UI |
 | `@dionysys/storage-mongodb` | MongoDB storage adapter |
 | `@dionysys/connector-openai` | OpenAI-backed decision connector |
+| `@dionysys/connector-gemini` | Gemini-backed decision connector |
+| `@dionysys/connector-anthropic` | Anthropic-backed decision connector |
 | `@dionysys/core` | Shared contracts and adaptive decision logic |
 
 ## Principles

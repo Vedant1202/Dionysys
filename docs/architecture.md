@@ -20,6 +20,8 @@ app UI
   ^-- @dionysys/server
         ^-- @dionysys/storage-mongodb
         ^-- @dionysys/connector-openai
+        ^-- @dionysys/connector-gemini
+        ^-- @dionysys/connector-anthropic
         (also: mockConnector, customHttpConnector — built into @dionysys/server)
 ```
 
@@ -72,6 +74,14 @@ MongoDB-backed implementation of the server storage contract.
 ### `@dionysys/connector-openai`
 
 OpenAI-backed implementation of the decision connector contract.
+
+### `@dionysys/connector-gemini`
+
+Gemini-backed implementation of the decision connector contract.
+
+### `@dionysys/connector-anthropic`
+
+Anthropic-backed implementation of the decision connector contract.
 
 ## Request flow
 

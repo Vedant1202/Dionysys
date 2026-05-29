@@ -14,6 +14,8 @@ const SDK_PACKAGES = [
   'react',
   'server',
   'storage-mongodb',
+  'connector-gemini',
+  'connector-anthropic',
   'connector-openai',
 ];
 

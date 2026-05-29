@@ -16,6 +16,8 @@ Add adapters as needed:
 
 ```bash
 npm install @dionysys/storage-mongodb @dionysys/connector-openai
+npm install @dionysys/connector-gemini
+npm install @dionysys/connector-anthropic
 ```
 
 ## Backend setup
@@ -25,6 +27,8 @@ import express from 'express';
 import { createDionysysServer } from '@dionysys/server';
 import { createMongoDionysysStorage } from '@dionysys/storage-mongodb';
 import { openAiConnector } from '@dionysys/connector-openai';
+// import { geminiConnector } from '@dionysys/connector-gemini';
+// import { anthropicConnector } from '@dionysys/connector-anthropic';
 
 const app = express();
 
@@ -42,7 +46,10 @@ const dionysys = createDionysysServer({
 app.use('/api/dionysys', dionysys.router());
 ```
 
-Keep provider keys like `OPENAI_API_KEY` on the server only.
+For Gemini, use `geminiConnector({ apiKey: process.env.GEMINI_API_KEY })`.
+For Anthropic, use `anthropicConnector({ apiKey: process.env.ANTHROPIC_API_KEY })`.
+
+Keep provider keys like `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `ANTHROPIC_API_KEY` on the server only.
 
 ## Client setup
 

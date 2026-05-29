@@ -21,7 +21,7 @@ This guide covers every environment variable, client option, and connector selec
 | `MONGO_URI` | `string` | `mongodb://127.0.0.1:27017/autoui_ab_testing` | MongoDB connection string when using the MongoDB storage adapter |
 | `ADMIN_CONSOLE_ENABLED` | `boolean` | `false` | Enables the admin config endpoints (`/api/dionysys/admin/*`) |
 | `DIONYSYS_STORAGE` | `memory\|mongodb` | `memory` | Storage backend; `mongodb` requires `MONGO_URI` |
-| `DIONYSYS_LLM_PROVIDER` | `mock\|custom-http\|openai` | `mock` | Decision connector to use |
+| `DIONYSYS_LLM_PROVIDER` | `mock\|custom-http\|openai\|gemini\|anthropic` | `mock` | Decision connector to use |
 
 ### OpenAI connector variables
 
@@ -31,6 +31,23 @@ This guide covers every environment variable, client option, and connector selec
 | `DIONYSYS_OPENAI_MODEL` | `string` | `gpt-4o` | OpenAI model to use for MCP decision calls |
 | `DIONYSYS_OPENAI_TEMPERATURE` | `number` | `0.2` | Sampling temperature (0–2) |
 | `DIONYSYS_OPENAI_TIMEOUT_MS` | `number` | `15000` | Request timeout in milliseconds |
+
+### Gemini connector variables
+
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | `string` | — | **Server-side only.** Required when `DIONYSYS_LLM_PROVIDER=gemini` |
+| `DIONYSYS_GEMINI_MODEL` | `string` | `gemini-3.1-flash-lite` | Gemini model to use for MCP decision calls |
+| `DIONYSYS_GEMINI_TEMPERATURE` | `number` | provider default | Sampling temperature |
+
+### Anthropic connector variables
+
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | `string` | — | **Server-side only.** Required when `DIONYSYS_LLM_PROVIDER=anthropic` |
+| `DIONYSYS_ANTHROPIC_MODEL` | `string` | `claude-3-5-haiku-20241022` | Anthropic model to use for MCP decision calls |
+| `DIONYSYS_ANTHROPIC_TEMPERATURE` | `number` | provider default | Sampling temperature |
+| `DIONYSYS_ANTHROPIC_MAX_TOKENS` | `number` | `1024` | Maximum output tokens for the decision tool call |
 
 ### Custom HTTP connector variables
 
@@ -42,7 +59,7 @@ This guide covers every environment variable, client option, and connector selec
 | `DIONYSYS_CUSTOM_CONNECTOR_HEADERS_JSON` | `string` | — | JSON-serialized object of additional request headers |
 | `DIONYSYS_CUSTOM_CONNECTOR_TIMEOUT_MS` | `number` | `15000` | Request timeout in milliseconds |
 
-> **Security:** Never expose `OPENAI_API_KEY` or connector credentials to the browser. All connector variables are server-side only.
+> **Security:** Never expose `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or connector credentials to the browser. All connector variables are server-side only.
 
 ## Connector selection
 
@@ -55,6 +72,12 @@ Need deterministic scoring only?
 Need an OpenAI-powered MCP connector?
   └─ DIONYSYS_LLM_PROVIDER=openai + OPENAI_API_KEY + optional DIONYSYS_OPENAI_MODEL
 
+Need a Gemini-powered MCP connector?
+  └─ DIONYSYS_LLM_PROVIDER=gemini + GEMINI_API_KEY + optional DIONYSYS_GEMINI_MODEL
+
+Need an Anthropic-powered MCP connector?
+  └─ DIONYSYS_LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY + optional DIONYSYS_ANTHROPIC_MODEL
+
 Need to call your own inference endpoint?
   └─ DIONYSYS_LLM_PROVIDER=custom-http + DIONYSYS_CUSTOM_CONNECTOR_ENDPOINT
 ```
@@ -64,10 +87,18 @@ In code:
 ```ts
 import { createDionysysServer } from '@dionysys/server';
 import { openAiConnector } from '@dionysys/connector-openai';
+import { geminiConnector } from '@dionysys/connector-gemini';
+import { anthropicConnector } from '@dionysys/connector-anthropic';
 import { mockConnector } from '@dionysys/server';  // built-in
 
 // OpenAI
 createDionysysServer({ llmConnector: openAiConnector({ apiKey: process.env.OPENAI_API_KEY }) });
+
+// Gemini
+createDionysysServer({ llmConnector: geminiConnector({ apiKey: process.env.GEMINI_API_KEY }) });
+
+// Anthropic
+createDionysysServer({ llmConnector: anthropicConnector({ apiKey: process.env.ANTHROPIC_API_KEY }) });
 
 // Mock (deterministic only, no LLM)
 createDionysysServer({ llmConnector: mockConnector() });

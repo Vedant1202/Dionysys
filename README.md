@@ -9,6 +9,8 @@ Self-hosted adaptive UI infrastructure for products that want persona-aware deci
 - `@dionysys/react`: `AdaptiveProvider`, `useAdaptiveUI`, `AdaptiveFeedback`, and `AdminConsole`
 - `@dionysys/storage-mongodb`: MongoDB adapter for the server SDK
 - `@dionysys/connector-openai`: OpenAI-backed decision connector
+- `@dionysys/connector-gemini`: Gemini-backed decision connector
+- `@dionysys/connector-anthropic`: Anthropic-backed decision connector
 - `demos/excalidraw/frontend/`: Excalidraw reference app using the public SDK path
 - `demos/excalidraw/backend/`: thin Express host wiring around the server SDK
 
@@ -44,6 +46,20 @@ DIONYSYS_OPENAI_MODEL=gpt-5
 
 Keep API keys on the server only. Do not put `OPENAI_API_KEY` in frontend env files.
 
+Gemini and Anthropic are also supported:
+
+```bash
+DIONYSYS_LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_key
+DIONYSYS_GEMINI_MODEL=gemini-3.1-flash-lite
+
+DIONYSYS_LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+DIONYSYS_ANTHROPIC_MODEL=claude-3-5-haiku-20241022
+```
+
+Keep all provider API keys out of frontend env files.
+
 ### 3. Configure the frontend
 
 Create `demos/excalidraw/frontend/.env`:
@@ -71,6 +87,8 @@ import express from 'express';
 import { createDionysysServer } from '@dionysys/server';
 import { createMongoDionysysStorage } from '@dionysys/storage-mongodb';
 import { openAiConnector } from '@dionysys/connector-openai';
+// import { geminiConnector } from '@dionysys/connector-gemini';
+// import { anthropicConnector } from '@dionysys/connector-anthropic';
 
 const app = express();
 
