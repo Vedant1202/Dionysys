@@ -34,6 +34,8 @@ await dionysys.events.track({
   ],
 });
 
+await dionysys.events.flush();
+
 const decision = await dionysys.decisions.resolve({
   sessionId: session.id,
   mode: 'deterministic',
@@ -44,7 +46,7 @@ const decision = await dionysys.decisions.resolve({
 
 - session create/get/update/end/delete helpers
 - current-session persistence helpers
-- event ingestion
+- buffered event ingestion with explicit flush
 - decision resolution
 - feedback submission and passive evaluation
 - admin config and overview access

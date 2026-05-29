@@ -258,8 +258,10 @@ paths:
       summary: Reset admin configuration to file defaults
       tags:
         - Admin
-  /api/dionysys/decisions/resolve:
+  /api/dionysys/decisions:resolve:
     post:
+      description: Preferred SDK route. The server also accepts
+        /api/dionysys/decisions/resolve as a compatibility alias.
       requestBody:
         content:
           application/json:

@@ -134,9 +134,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'post',
-    path: '/api/dionysys/decisions/resolve',
+    path: '/api/dionysys/decisions:resolve',
     tags: ['Decisions'],
     summary: 'Resolve an adaptive decision',
+    description: 'Preferred SDK route. The server also accepts /api/dionysys/decisions/resolve as a compatibility alias.',
     request: {
       body: {
         content: {

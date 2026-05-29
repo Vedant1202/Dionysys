@@ -8,7 +8,7 @@ const EXPECTED_PATHS = [
   '/api/dionysys/sessions/{sessionId}',
   '/api/dionysys/sessions/{sessionId}/end',
   '/api/dionysys/events',
-  '/api/dionysys/decisions/resolve',
+  '/api/dionysys/decisions:resolve',
   '/api/dionysys/feedback',
   '/api/dionysys/feedback/evaluate',
   '/api/dionysys/admin/config',
@@ -62,9 +62,9 @@ describe('registerPaths', () => {
     expect(sessionsPost).toBeDefined();
   });
 
-  it('decisions/resolve POST uses DionysysDecisionResolve request body schema', () => {
+  it('decisions:resolve POST uses DionysysDecisionResolve request body schema', () => {
     const doc = buildTestDoc();
-    const decisionPost = (doc.paths['/api/dionysys/decisions/resolve'] as Record<string, unknown>)?.post as Record<string, unknown>;
+    const decisionPost = (doc.paths['/api/dionysys/decisions:resolve'] as Record<string, unknown>)?.post as Record<string, unknown>;
     expect(decisionPost).toBeDefined();
   });
 });

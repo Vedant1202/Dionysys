@@ -6,7 +6,7 @@ const EXPECTED_PATHS = [
   '/api/dionysys/sessions/{sessionId}',
   '/api/dionysys/sessions/{sessionId}/end',
   '/api/dionysys/events',
-  '/api/dionysys/decisions/resolve',
+  '/api/dionysys/decisions:resolve',
   '/api/dionysys/feedback',
   '/api/dionysys/feedback/evaluate',
   '/api/dionysys/admin/config',

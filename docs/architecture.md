@@ -49,7 +49,7 @@ Self-hosted backend SDK:
 Framework-agnostic API client:
 
 - Session CRUD and current-session persistence
-- Event tracking
+- Buffered event tracking with explicit flush
 - Decision resolution
 - Feedback submission and passive evaluation
 - Admin config and overview access
@@ -88,7 +88,7 @@ App code translates local interaction events into `DionysysEvent` envelopes and 
 The client calls:
 
 ```http
-POST /api/dionysys/decisions/resolve
+POST /api/dionysys/decisions:resolve
 ```
 
 The server reads recent events, computes deterministic or MCP context, invokes the configured connector when needed, validates the result, stores the decision, and returns a full decision object.
