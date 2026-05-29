@@ -83,21 +83,27 @@ class EventCollector {
         tabId: this.tabId,
         events: itemsToSend.map(toDionysysEvent),
       });
+    } catch (e) {
+      console.error('Failed to queue events for flush', e);
+      this.batch = [...itemsToSend, ...this.batch].slice(-MAX_BUFFER_SIZE);
+      return;
+    }
+
+    try {
+      await this.client.events.flush();
       // Fire callback if set
       if (this.onFlush) {
         void this.onFlush(itemsToSend.length, itemsToSend);
       }
     } catch (e) {
       console.error('Failed to flush events', e);
-      // Restore items so they're retried on the next flush cycle, maintaining buffer limit
-      this.batch = [...itemsToSend, ...this.batch].slice(-MAX_BUFFER_SIZE);
     }
   }
 
   shutdown() {
     if (this.intervalId) clearInterval(this.intervalId);
     this.plugins.forEach(p => p.destroy());
-    this.flush(); // Fire remaining
+    void this.flush();
   }
 }
 

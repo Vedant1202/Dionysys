@@ -4,6 +4,7 @@ import type { AppEvent } from './IEventPlugin';
 
 describe('eventCollector', () => {
   const track = vi.fn();
+  const flush = vi.fn();
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -12,9 +13,11 @@ describe('eventCollector', () => {
     (eventCollector as any).plugins = [];
     (eventCollector as any).nextSequenceId = 1;
     eventCollector.setSessionId('test-session');
-    eventCollector.setClient({ events: { track } } as any);
+    eventCollector.setClient({ events: { track, flush } } as any);
     track.mockReset();
+    flush.mockReset();
     track.mockResolvedValue({ success: true, accepted: 1 });
+    flush.mockResolvedValue({ success: true, accepted: 1 });
   });
 
   afterEach(() => {
@@ -53,6 +56,7 @@ describe('eventCollector', () => {
     await (eventCollector as any).flush();
 
     expect(track).toHaveBeenCalledTimes(1);
+    expect(flush).toHaveBeenCalledTimes(1);
     const payload = track.mock.calls[0][0];
 
     expect(payload.sessionId).toBe('test-session');
@@ -61,5 +65,16 @@ describe('eventCollector', () => {
     expect(payload.events.length).toBe(1);
     expect(payload.events[0].type).toBe('test');
     expect(payload.events[0].timestamp).toBe(123);
+  });
+
+  it('leaves retry semantics to the client when delivery fails after queueing', async () => {
+    flush.mockRejectedValueOnce(new Error('network down'));
+    eventCollector.recordEvent({ eventType: 'test', timestamp: 123, payload: {} });
+
+    await (eventCollector as any).flush();
+
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect((eventCollector as any).batch).toEqual([]);
   });
 });
