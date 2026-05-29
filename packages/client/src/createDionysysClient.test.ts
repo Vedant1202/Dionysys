@@ -150,18 +150,120 @@ describe('createDionysysClient', () => {
       session: { persistence: 'memory' },
     });
 
-    const tracked = await client.events.track({
-      sessionId: 'sess_1',
-      events: [{ type: 'ui.interaction', subject: 'toolbar.text', action: 'selected' }],
-    });
     const feedback = await client.feedback.submit({ sessionId: 'sess_1', sentiment: 'helpful' });
     const completion = await client.sessions.complete('sess_1', { browserId: 'browser_1' });
     const config = await client.admin.getConfig();
 
-    expect(tracked.accepted).toBe(1);
     expect(feedback.graphRecommendation).toBe('keep');
     expect(completion.reward).toBe(1);
     expect(config.version).toBe(1);
     expect(client.admin.getOverviewStreamUrl('sess_1')).toContain('/api/dionysys/admin/overview/stream?sessionId=sess_1');
+  });
+
+  it('buffers tracked events until flush posts a standard batch', async () => {
+    const fetchImplementation = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith('/api/dionysys/events') && init?.method === 'POST') {
+        expect(init.body).toBe(JSON.stringify({
+          sessionId: 'sess_1',
+          tabId: 'tab_1',
+          events: [
+            { type: 'ui.interaction', subject: 'toolbar.text', action: 'selected' },
+            { type: 'content.created', payload: { kind: 'text' } },
+          ],
+        }));
+
+        return new Response(JSON.stringify({ success: true, accepted: 2 }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const client = createDionysysClient({
+      apiBaseUrl: 'http://localhost:3001',
+      fetchImplementation: fetchImplementation as typeof fetch,
+      session: { persistence: 'memory' },
+      events: { tabId: 'tab_1' },
+    });
+
+    const tracked = await client.events.track({
+      sessionId: 'sess_1',
+      tabId: 'tab_1',
+      events: [
+        { type: 'ui.interaction', subject: 'toolbar.text', action: 'selected' },
+        { type: 'content.created', payload: { kind: 'text' } },
+      ],
+    });
+
+    expect(tracked).toEqual({ success: true, accepted: 2 });
+    expect(fetchImplementation).not.toHaveBeenCalled();
+
+    const flushed = await client.events.flush();
+
+    expect(flushed).toEqual({ success: true, accepted: 2 });
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+  });
+
+  it('requeues failed flushes and retries them on the next flush', async () => {
+    const fetchImplementation = vi.fn(async () => {
+      if (fetchImplementation.mock.calls.length === 1) {
+        throw new Error('network down');
+      }
+
+      return new Response(JSON.stringify({ success: true, accepted: 1 }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const client = createDionysysClient({
+      apiBaseUrl: 'http://localhost:3001',
+      fetchImplementation: fetchImplementation as typeof fetch,
+      session: { persistence: 'memory' },
+      events: { tabId: 'tab_2' },
+    });
+
+    await client.events.track({
+      sessionId: 'sess_2',
+      event: { type: 'ui.interaction', subject: 'toolbar.shape', action: 'selected' },
+    });
+
+    await expect(client.events.flush()).rejects.toThrow(/network down/);
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+
+    await expect(client.events.flush()).resolves.toEqual({ success: true, accepted: 1 });
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops the oldest buffered events when the client buffer limit is exceeded', async () => {
+    const fetchImplementation = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
+      new Response(JSON.stringify({ success: true, accepted: JSON.parse(String(init?.body)).events.length }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createDionysysClient({
+      apiBaseUrl: 'http://localhost:3001',
+      fetchImplementation: fetchImplementation as typeof fetch,
+      session: { persistence: 'memory' },
+      events: { bufferLimit: 2, tabId: 'tab_3' },
+    });
+
+    await client.events.track({ sessionId: 'sess_3', event: { type: 'event_1' } });
+    await client.events.track({ sessionId: 'sess_3', event: { type: 'event_2' } });
+    await client.events.track({ sessionId: 'sess_3', event: { type: 'event_3' } });
+    await client.events.flush();
+
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({
+      sessionId: 'sess_3',
+      tabId: 'tab_3',
+      events: [{ type: 'event_2' }, { type: 'event_3' }],
+    }));
   });
 });

@@ -7,6 +7,11 @@ import type {
 } from '@dionysys/core';
 import { DionysysTransport } from './transport.js';
 import { createSessionPersistence } from './sessionPersistence.js';
+import {
+  DEFAULT_EVENT_BUFFER_LIMIT,
+  EventBuffer,
+  normalizeTrackedEvents,
+} from './eventBuffer.js';
 import type {
   CreateDionysysClientOptions,
   DionysysClient,
@@ -59,6 +64,8 @@ export function createDionysysClient(options: CreateDionysysClientOptions = {}):
     options.session?.persistence ?? 'browser',
     options.session?.storageKey,
   );
+  const eventBuffer = new EventBuffer(options.events?.bufferLimit ?? DEFAULT_EVENT_BUFFER_LIMIT);
+  const defaultTabId = options.events?.tabId ?? createTabId();
 
   return {
     sessions: {
@@ -104,7 +111,26 @@ export function createDionysysClient(options: CreateDionysysClientOptions = {}):
     },
     events: {
       async track(input) {
-        return transport.sendJson<EventTrackResponse>('/events', 'POST', input);
+        const accepted = eventBuffer.enqueue(normalizeTrackedEvents(input, defaultTabId));
+        return { success: true, accepted };
+      },
+      async flush() {
+        let accepted = 0;
+
+        while (true) {
+          const next = eventBuffer.drainNextBatch();
+          if (!next) {
+            return { success: true, accepted };
+          }
+
+          try {
+            const response = await transport.sendJson<EventTrackResponse>('/events', 'POST', next.batch);
+            accepted += response.accepted;
+          } catch (error) {
+            eventBuffer.prepend(next.entries);
+            throw error;
+          }
+        }
       },
     },
     decisions: {
@@ -169,4 +195,12 @@ export function createDionysysClient(options: CreateDionysysClientOptions = {}):
       },
     },
   };
+}
+
+function createTabId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `tab_${Math.random().toString(36).slice(2, 10)}`;
 }

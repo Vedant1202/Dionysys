@@ -21,6 +21,10 @@ export type CreateDionysysClientOptions = {
     persistence?: DionysysClientSessionPersistence;
     storageKey?: string;
   };
+  events?: {
+    bufferLimit?: number;
+    tabId?: string;
+  };
 };
 
 export type DionysysTrackEventsInput =
@@ -130,6 +134,7 @@ export type DionysysClient = {
   };
   events: {
     track(input: DionysysTrackEventsInput): Promise<{ success: true; accepted: number }>;
+    flush(): Promise<{ success: true; accepted: number }>;
   };
   decisions: {
     resolve(input: DionysysDecisionResolveInput): Promise<DionysysDecision>;
