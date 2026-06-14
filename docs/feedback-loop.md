@@ -11,6 +11,8 @@ The canonical loop lives in `@dionysys/server` and runs in MCP mode (no beta fla
 
 At decision time `DecisionService` reads the arms for the current context and blends them with the connector via `wBandit = n / (n + banditEvidenceK)` (`n` derived from the arm's `alpha + beta` minus priors). The context key is `stateId = "<modality>:<expertise>"` (the deterministic guess); the arms are the applied modality. Cold arms reduce the blend to the model's free choice. Tune everything via `mcp.gate` / `mcp.bandit` — see [Configuration](./configuration.md).
 
+**Decay (discounted Thompson sampling).** By default each reward update first discounts the arm toward its prior (`mcp.bandit.decay`, effective window 200) so stale evidence fades as new evidence arrives, and a quiet arm is further discounted on read by `γ^(days idle)` — in memory only. Set `decay.enabled: false` to keep the original forever-accumulating behaviour. Inspect and maintain the learned arms (posterior mean, credible interval, `P(best)`, snapshot/reset/decay) from the admin console's [Bandit tab](./admin-console.md#bandit-tab).
+
 ## How the demo collects feedback (beta)
 
 The Excalidraw demo adds an optional feedback UI on top of the canonical loop, gated behind beta flags (off by default):
@@ -41,8 +43,11 @@ There is one feedback path now — the SDK routes. The demo no longer has its ow
 | Concern | File |
 | --- | --- |
 | Bandit math (sampleBeta, blend, reward→increments) | `packages/core/src/bandit/ThompsonBandit.ts` |
-| Decision blend (reads arms) | `packages/server/src/services/DecisionService.ts` |
-| Feedback → bandit update | `packages/server/src/services/FeedbackService.ts` |
+| Posterior stats (mean, credible interval, P(best)) | `packages/core/src/bandit/posteriorStats.ts` |
+| Decay math (discountTowardPrior, effectiveWindowToGamma) | `packages/core/src/bandit/decay.ts` |
+| Decision blend (reads arms, read-time decay) | `packages/server/src/services/DecisionService.ts` |
+| Feedback → bandit update (on-update decay) | `packages/server/src/services/FeedbackService.ts` |
+| Bandit inspector + maintenance | `packages/server/src/services/AdminConfigService.ts` |
 | Feedback routes | `packages/server/src/routes/feedback.ts` |
 | Feedback widget | `packages/react/src/feedback/AdaptiveFeedback.tsx` |
 | Feedback submission hook | `packages/react/src/feedback/useFeedback.ts` |
@@ -53,7 +58,6 @@ There is one feedback path now — the SDK routes. The demo no longer has its ow
 
 The pre-extraction demo had extra cross-session machinery that was **removed** during the SDK split and is not yet reimplemented in `@dionysys/server`:
 
-- **Cohort aggregation** — `GET /api/dionysys/admin/cohort-overview` returns an empty shape; per-variant / cross-session stats are not computed yet, so the admin Data tab shows "no cohort data yet".
 - **Cross-session browser-prior warm-start** — `DionysysBrowserPrior` exists in the storage contract but is not wired, so each context cold-starts on the model until the bandit warms.
 - **Graph/LLM recommendation workflow** — feedback maps directly to keep/revert/observe; there is no separate recommendation graph.
 
