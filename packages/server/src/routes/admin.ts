@@ -43,23 +43,37 @@ export function createAdminRouter(adminService: AdminConfigService) {
   });
 
   router.get('/overview/stream', async (req, res) => {
-    try {
-      const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : undefined;
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.write(`data: ${JSON.stringify(await adminService.buildOverview(sessionId))}\n\n`);
-      res.end();
-    } catch (error) {
-      handleAdminError(error, res);
-    }
+    const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : undefined;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Persistent SSE: push the overview now and on an interval rather than closing
+    // immediately (which made EventSource reconnect-loop and log connection errors).
+    const send = async () => {
+      try {
+        res.write(`data: ${JSON.stringify(await adminService.buildOverview(sessionId))}\n\n`);
+      } catch {
+        // Transient build error — keep the stream open and retry on the next tick.
+      }
+    };
+
+    await send();
+    const interval = setInterval(() => { void send(); }, 3000);
+    req.on('close', () => clearInterval(interval));
   });
 
   router.get('/cohort-overview', (_req, res) => {
+    // Empty-but-correctly-shaped cohort overview so the admin Data tab renders its
+    // empty state instead of crashing on missing fields. Real aggregation is a later task.
     res.json({
       success: true,
       overview: {
-        variants: [],
-        totalRecords: 0,
+        totalSessions: 0,
+        totalFeedbackRecords: 0,
+        byVariant: {},
+        overallRecommendations: { keep: 0, revert: 0, observe: 0 },
+        overallSentiments: { helpful: 0, in_the_way: 0 },
       },
     });
   });
