@@ -11,7 +11,7 @@ export function buildOpenApiDocument(): OpenAPIObject {
     openapi: '3.1.0',
     info: {
       title: 'Dionysys API',
-      version: '1.0.0',
+      version: '1.1.0',
       description: 'REST API for the Dionysys adaptive UI SDK. Provides session management, event ingestion, adaptive decision resolution, user feedback, and admin configuration.',
     },
     servers: [
