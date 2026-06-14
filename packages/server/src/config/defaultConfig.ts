@@ -171,6 +171,10 @@ export function createDefaultDionysysConfig(): AdminConsoleConfig {
         keepReward: 1,
         revertReward: 0,
         passiveRewardWeight: 0.25,
+        decay: {
+          enabled: true,
+          effectiveWindow: 200,
+        },
       },
     },
     ui: {

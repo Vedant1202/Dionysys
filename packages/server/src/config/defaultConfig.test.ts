@@ -18,7 +18,12 @@ describe('createDefaultDionysysConfig', () => {
       keepReward: 1,
       revertReward: 0,
       passiveRewardWeight: 0.25,
+      decay: { enabled: true, effectiveWindow: 200 },
     });
+  });
+
+  it('includes decay defaults under mcp.bandit', () => {
+    expect(createDefaultDionysysConfig().mcp.bandit.decay).toEqual({ enabled: true, effectiveWindow: 200 });
   });
 
   it('remains valid against the core schema', () => {

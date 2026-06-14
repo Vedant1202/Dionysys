@@ -77,6 +77,13 @@ export interface AdminMcpGateConfig {
   lockMargin: number;
 }
 
+export interface AdminMcpBanditDecayConfig {
+  enabled: boolean;
+  // Effective window N: roughly how many recent observations dominate. The
+  // discount gamma = 1 - 1/N (effective sample size ~ 1/(1 - gamma)).
+  effectiveWindow: number;
+}
+
 export interface AdminMcpBanditConfig {
   enabled: boolean;
   // Observation count at which the bandit and the LLM carry equal weight in the
@@ -90,6 +97,8 @@ export interface AdminMcpBanditConfig {
   revertReward: number;
   // Weight of the passive session-level reward relative to explicit feedback.
   passiveRewardWeight: number;
+  // Discounted-Thompson-sampling decay toward priors (non-stationary adaptivity).
+  decay?: AdminMcpBanditDecayConfig | undefined;
 }
 
 export interface AdminMcpConfig {

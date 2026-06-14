@@ -189,6 +189,7 @@ describe('AdminMcpConfig gate and bandit', () => {
       keepReward: 1,
       revertReward: 0,
       passiveRewardWeight: 0.25,
+      decay: { enabled: true, effectiveWindow: 200 },
     });
   });
 
@@ -240,6 +241,19 @@ describe('AdminMcpConfig gate and bandit', () => {
     })).toThrow();
     expect(() => AdminConsoleConfigSchema.parse({
       ...config, mcp: { ...config.mcp, bandit: { keepReward: 2 } },
+    })).toThrow();
+  });
+});
+
+describe('AdminMcpBanditDecayConfig', () => {
+  it('applies decay defaults under mcp.bandit', () => {
+    const parsed = AdminConsoleConfigSchema.parse(config);
+    expect(parsed.mcp.bandit.decay).toEqual({ enabled: true, effectiveWindow: 200 });
+  });
+
+  it('rejects an effective window <= 1', () => {
+    expect(() => AdminConsoleConfigSchema.parse({
+      ...config, mcp: { ...config.mcp, bandit: { decay: { effectiveWindow: 1 } } },
     })).toThrow();
   });
 });

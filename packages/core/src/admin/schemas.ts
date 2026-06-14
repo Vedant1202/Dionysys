@@ -72,6 +72,11 @@ export const AdminMcpGateConfigSchema = z.object({
   lockMargin: z.number().min(0).max(1).default(0.15),
 });
 
+export const AdminMcpBanditDecayConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  effectiveWindow: z.number().gt(1).default(200),
+});
+
 export const AdminMcpBanditConfigSchema = z.object({
   enabled: z.boolean().default(true),
   banditEvidenceK: z.number().positive().default(3),
@@ -80,6 +85,7 @@ export const AdminMcpBanditConfigSchema = z.object({
   keepReward: z.number().min(0).max(1).default(1),
   revertReward: z.number().min(0).max(1).default(0),
   passiveRewardWeight: z.number().min(0).max(1).default(0.25),
+  decay: AdminMcpBanditDecayConfigSchema.default({}),
 });
 
 export const AdminMcpConfigSchema = z.object({
