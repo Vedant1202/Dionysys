@@ -64,7 +64,7 @@ blog-current/
 .vercel
 references/
 /hooks/
-plugins/
+/plugins/
 .claude-plugin/
 .claude/
 .gemini/
