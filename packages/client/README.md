@@ -50,6 +50,7 @@ const decision = await dionysys.decisions.resolve({
 - decision resolution
 - feedback submission and passive evaluation
 - admin config and overview access
+- bandit inspection and maintenance (`admin.getBandit`, `decayBandit`, `exportBandit`, `importBandit`, `resetBandit`)
 
 ## Development
 

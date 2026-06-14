@@ -160,6 +160,55 @@ describe('createDionysysClient', () => {
     expect(client.admin.getOverviewStreamUrl('sess_1')).toContain('/api/dionysys/admin/overview/stream?sessionId=sess_1');
   });
 
+  it('supports the admin bandit inspector and maintenance APIs', async () => {
+    const calls: Array<{ url: string; method?: string }> = [];
+    const fetchImplementation = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, method: init?.method });
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (url.includes('/admin/bandit/reset') && init?.method === 'POST') return json({ success: true, reset: 3 });
+      if (url.includes('/admin/bandit/export')) return json({ success: true, exportedAt: 'T0', arms: [{ stateId: 's', variant: 'v', alpha: 5, beta: 2, lastUpdated: 0 }] });
+      if (url.includes('/admin/bandit/import') && init?.method === 'POST') return json({ success: true, imported: 1 });
+      if (url.includes('/admin/bandit/decay') && init?.method === 'POST') return json({ success: true, decayed: 4 });
+      if (url.includes('/admin/bandit')) {
+        return json({
+          success: true,
+          overview: {
+            contexts: [{ stateId: 'neutral:standard', wouldPick: 'text_first', arms: [] }],
+            totalArms: 0,
+            decay: { enabled: true, effectiveWindow: 200, gamma: 0.995 },
+          },
+        });
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const client = createDionysysClient({
+      apiBaseUrl: 'http://localhost:3001/api/dionysys',
+      fetchImplementation: fetchImplementation as typeof fetch,
+      session: { persistence: 'memory' },
+    });
+
+    const overview = await client.admin.getBandit('sess_1');
+    const reset = await client.admin.resetBandit({ stateId: 'neutral:standard' });
+    const snapshot = await client.admin.exportBandit();
+    const imported = await client.admin.importBandit({ arms: snapshot.arms });
+    const decayed = await client.admin.decayBandit();
+
+    expect(overview.contexts[0].wouldPick).toBe('text_first');
+    expect(overview.decay.gamma).toBeCloseTo(0.995);
+    expect(reset).toBe(3);
+    expect(snapshot.arms).toHaveLength(1);
+    expect(imported).toBe(1);
+    expect(decayed).toBe(4);
+    expect(calls.some((c) => c.url.includes('/admin/bandit?sessionId=sess_1'))).toBe(true);
+  });
+
   it('buffers tracked events until flush posts a standard batch', async () => {
     const fetchImplementation = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);

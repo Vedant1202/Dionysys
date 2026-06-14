@@ -4,6 +4,7 @@ import type {
   AdminConsoleConfig,
   AdminConsoleOverview,
   AdaptiveMode,
+  CredibleInterval,
   DionysysApiError,
   DionysysDecision,
   DionysysEvent,
@@ -114,6 +115,58 @@ export type DionysysCohortOverview = {
   totalRecords: number;
 };
 
+// ─── Bandit inspector (mirrors the server's AdminConfigService BanditOverview) ──
+
+export type DionysysBanditArmView = {
+  stateId: string;
+  variant: string;
+  alpha: number;
+  beta: number;
+  observations: number;
+  posteriorMean: number;
+  credibleInterval: CredibleInterval;
+  evidenceWeight: number;
+  probabilityBest: number;
+  lastUpdated: number | string;
+};
+
+export type DionysysBanditContextView = {
+  stateId: string;
+  arms: DionysysBanditArmView[];
+  wouldPick: string;
+};
+
+export type DionysysBanditDecisionTrace = {
+  variant: string;
+  stateId?: string;
+  signalStrength?: string;
+  resolvedBy?: string;
+  llmModality?: string;
+  llmConfidence?: number;
+  chosenModality?: string;
+  banditWeight?: number;
+};
+
+export type DionysysBanditOverview = {
+  contexts: DionysysBanditContextView[];
+  totalArms: number;
+  decay: { enabled: boolean; effectiveWindow: number; gamma: number };
+  trace?: DionysysBanditDecisionTrace;
+};
+
+export type DionysysBanditArmRecord = {
+  stateId: string;
+  variant: string;
+  alpha: number;
+  beta: number;
+  lastUpdated: number | string;
+};
+
+export type DionysysBanditSnapshot = {
+  exportedAt: string;
+  arms: DionysysBanditArmRecord[];
+};
+
 export type DionysysClientError = Error & {
   status?: number;
   apiError?: DionysysApiError;
@@ -152,5 +205,10 @@ export type DionysysClient = {
     getOverview(sessionId?: string): Promise<AdminConsoleOverview>;
     getOverviewStreamUrl(sessionId?: string): string;
     getCohortOverview(): Promise<DionysysCohortOverview>;
+    getBandit(sessionId?: string): Promise<DionysysBanditOverview>;
+    resetBandit(input?: { stateId?: string; variant?: string }): Promise<number>;
+    exportBandit(): Promise<DionysysBanditSnapshot>;
+    importBandit(snapshot: { arms: DionysysBanditArmRecord[] }): Promise<number>;
+    decayBandit(): Promise<number>;
   };
 };
