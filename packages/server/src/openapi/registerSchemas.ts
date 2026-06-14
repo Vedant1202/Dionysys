@@ -1,5 +1,6 @@
 import { extendZodWithOpenApi, OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import {
+  AdminConsoleConfigSchema,
   DionysysApiErrorSchema,
   DionysysConnectorDecisionSchema,
   DionysysDecisionResolveSchema,
@@ -29,6 +30,7 @@ export function createRegistry(): OpenAPIRegistry {
   registry.register('DionysysDecisionResolve', DionysysDecisionResolveSchema);
   registry.register('DionysysConnectorDecision', DionysysConnectorDecisionSchema);
   registry.register('DionysysApiError', DionysysApiErrorSchema);
+  registry.register('AdminConsoleConfig', AdminConsoleConfigSchema);
 
   return registry;
 }

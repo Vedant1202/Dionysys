@@ -11,6 +11,7 @@ const EXPECTED_SCHEMAS = [
   'DionysysDecisionResolve',
   'DionysysConnectorDecision',
   'DionysysApiError',
+  'AdminConsoleConfig',
 ];
 
 describe('registerSchemas', () => {

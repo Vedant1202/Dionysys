@@ -57,4 +57,14 @@ describe('buildOpenApiDocument', () => {
     const doc2 = buildOpenApiDocument();
     expect(JSON.stringify(doc1)).toBe(JSON.stringify(doc2));
   });
+
+  it('documents the admin config schema including the Direction 2 gate and bandit fields', () => {
+    const doc = buildOpenApiDocument();
+    expect(doc.components?.schemas).toHaveProperty('AdminConsoleConfig');
+
+    const serialized = JSON.stringify(doc);
+    expect(serialized).toContain('banditEvidenceK');
+    expect(serialized).toContain('lockMargin');
+    expect(serialized).toContain('lockMinEvents');
+  });
 });

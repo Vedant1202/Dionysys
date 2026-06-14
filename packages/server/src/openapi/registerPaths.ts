@@ -1,4 +1,4 @@
-import { z } from '@dionysys/core';
+import { AdminConsoleConfigSchema, z } from '@dionysys/core';
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
 const ApiErrorRef = { $ref: '#/components/schemas/DionysysApiError' };
@@ -213,7 +213,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Read admin configuration',
     responses: {
-      200: { description: 'Current admin configuration object' },
+      200: {
+        description: 'Current admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },
@@ -228,13 +231,16 @@ export function registerPaths(registry: OpenAPIRegistry): void {
       body: {
         content: {
           'application/json': {
-            schema: z.object({ config: z.record(z.string(), z.unknown()) }),
+            schema: z.object({ config: AdminConsoleConfigSchema }),
           },
         },
       },
     },
     responses: {
-      200: { description: 'Updated admin configuration object' },
+      200: {
+        description: 'Updated admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       400: { description: 'Validation error', content: { 'application/json': { schema: ApiErrorRef } } },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
@@ -247,7 +253,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Reset admin configuration to file defaults',
     responses: {
-      200: { description: 'Reset admin configuration object' },
+      200: {
+        description: 'Reset admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },
@@ -259,7 +268,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Export admin configuration as JSON',
     responses: {
-      200: { description: 'Admin configuration export including exportedAt timestamp' },
+      200: {
+        description: 'Admin configuration export including exportedAt timestamp',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), exportedAt: z.string(), config: AdminConsoleConfigSchema }) } },
+      },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },
