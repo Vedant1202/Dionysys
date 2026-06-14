@@ -11,7 +11,7 @@ import { createSessionsRouter } from './routes/sessions.js';
 import { createEventsRouter } from './routes/events.js';
 import { createDecisionsRouter } from './routes/decisions.js';
 import { createCompletionRouter, createFeedbackRouter } from './routes/feedback.js';
-import { createAdminRouter } from './routes/admin.js';
+import { createAdminRouter, type AdminAuthorize } from './routes/admin.js';
 import { createDefaultDionysysConfig } from './config/defaultConfig.js';
 import { mockConnector } from './connectors/mockConnector.js';
 import type { DionysysDecisionConnector } from './connectors/types.js';
@@ -26,6 +26,8 @@ export type CreateDionysysServerOptions = {
   admin?: {
     enabled?: boolean;
     connectorStatus?: AdminConfigServiceOptions['connectorStatus'];
+    // Optional authorization hook applied to every admin route (beyond the enabled flag).
+    authorize?: AdminAuthorize;
   };
 };
 
@@ -59,7 +61,7 @@ export function createDionysysServer(options: CreateDionysysServerOptions) {
       router.use('/events', createEventsRouter(eventService));
       router.use(createDecisionsRouter(decisionService));
       router.use('/feedback', createFeedbackRouter(feedbackService));
-      router.use('/admin', createAdminRouter(adminService));
+      router.use('/admin', createAdminRouter(adminService, options.admin?.authorize));
       
       return router;
     }

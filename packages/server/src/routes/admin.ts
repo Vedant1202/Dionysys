@@ -3,13 +3,33 @@ import { ZodError } from 'zod';
 import type { AdminConfigService } from '../services/AdminConfigService.js';
 import { forbiddenError, internalError, validationError } from '../http/errors.js';
 
-export function createAdminRouter(adminService: AdminConfigService) {
+/**
+ * Optional authorization hook for admin routes. Receives the request and returns
+ * (or resolves to) whether the request may read/modify admin config. When omitted,
+ * the admin router stays gated only by the enabled flag (back-compatible).
+ */
+export type AdminAuthorize = (req: express.Request) => boolean | Promise<boolean>;
+
+export function createAdminRouter(adminService: AdminConfigService, authorize?: AdminAuthorize) {
   const router = express.Router();
 
-  router.use((req, res, next) => {
+  router.use(async (req, res, next) => {
     if (!adminService.isEnabled()) {
       return res.status(404).json(forbiddenError('Admin console is disabled'));
     }
+
+    if (authorize) {
+      let allowed = false;
+      try {
+        allowed = await authorize(req);
+      } catch {
+        allowed = false;
+      }
+      if (!allowed) {
+        return res.status(403).json(forbiddenError('Admin request is not authorized'));
+      }
+    }
+
     next();
   });
 
