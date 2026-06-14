@@ -93,10 +93,10 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** `packages/core/src/bandit/ThompsonBandit.ts`, `packages/core/src/bandit/index.ts`, `packages/core/src/bandit/ThompsonBandit.test.ts`, `packages/core/src/index.ts`
 **Scope:** Medium
 
-### Checkpoint: Core Foundation
-- [ ] `npm run build --workspace=packages/core`
-- [ ] `npm run test --workspace=packages/core`
-- [ ] New public exports resolve; no consumer wired yet; server/react still build.
+### Checkpoint: Core Foundation — ✅ complete (commits d726dc9, eb9ae7d, c7acea0)
+- [x] `npm run build --workspace=packages/core` (tsc clean)
+- [x] `npm run test --workspace=packages/core` (49 passed, +28 new across T1–T3)
+- [x] New public exports resolve; server/react/storage/connector builds stay green.
 
 ## Phase 2: Core Resolver (Gate + Blend)
 
