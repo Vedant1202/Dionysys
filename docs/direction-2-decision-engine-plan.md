@@ -295,10 +295,14 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** none expected unless verification finds issues
 **Scope:** Small
 
-### Checkpoint: Complete
-- [ ] Full `npm run build` and `npm run test` pass.
-- [ ] Strong signal → deterministic; weak signal → blended; keep/revert shifts subsequent decisions.
-- [ ] New knobs editable and exportable; docs build.
+### Checkpoint: Complete — ✅ (Phases 1–6)
+- [x] Full `npm run build` (exit 0) and `npm run test` (exit 0) pass across all workspaces (core 53, server 66, frontend 59, backend 30, client/connectors/storage green).
+- [x] Strong signal → deterministic; weak signal → blended; keep/revert shifts subsequent decisions (proven end-to-end via real-services scratch and a demo HTTP smoke through `buildDionysysServerOptions`).
+- [x] New knobs editable and exportable (ModesPanel + OverviewPanel; flow through Save/Export).
+
+### Phase 6 notes
+- **T11 demo verification:** the demo's SDK path was verified over HTTP (memory storage + mock connector, no Mongo) — a weak-signal session returns `resolvedBy: blended` with `metadata.blend`. Live admin-console screenshot is blocked by a *legacy* coupling: the demo backend's `startServer()` requires `dbAdapter.connect(mongoUri)` to boot, independent of the SDK storage. The vestigial demo-local bandit (`db/IDatabaseAdapter`, `db/MongoDbAdapter`) is superseded by the SDK and is dead in the decision path. Both are flagged as a follow-up cleanup (out of Direction 2 scope).
+- **T12 docs:** architecture/configuration/feedback-loop updated. `npm run docs:build` targets the separate `web-docs` Docusaurus site, not these canonical `docs/*.md`.
 
 ## Parallelization
 
