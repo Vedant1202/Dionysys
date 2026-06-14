@@ -215,7 +215,7 @@ export function DebugPanel() {
                     ? 'border-slate-200/60 text-slate-400 cursor-not-allowed opacity-60'
                     : 'border-indigo-100/70 text-indigo-600 cursor-pointer'
                 }`}
-                value={currentVariant}
+                value={currentVariant ?? DEBUG_VARIANT_OPTIONS[0]}
                 onChange={handleVariantChange}
                 disabled={isPolicyLocked}
               >
