@@ -17,7 +17,7 @@ import {
 
 - `AdaptiveProvider`: orchestrates polling, decision resolution, queued next-refresh decisions, and applied adaptive-state persistence
 - `useAdaptiveUI()`: reads adaptive state from the provider
-- `AdminConsole`: reusable runtime configuration UI
+- `AdminConsole`: reusable runtime configuration UI, including a **Bandit** tab that inspects the Thompson-sampling arms (posterior mean, credible interval, `P(best)`) and runs decay / snapshot / reset maintenance
 - `AdaptiveFeedback`: front-facing feedback component for production experiences
 - `useFeedback` / `useFeedbackTrigger`: hooks that submit feedback and decide when to show the prompt (time gate plus activity gate, with dismiss and auto-dismiss)
 

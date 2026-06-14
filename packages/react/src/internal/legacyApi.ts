@@ -1,6 +1,7 @@
 import type { AdminConsoleConfig } from '@dionysys/core';
 import type { FeedbackLoopRecord, FeedbackSubmission } from '../feedback/useFeedback.js';
 import type { CohortOverview } from '../admin-console/sections/CohortPanel.js';
+import type { BanditOverview, BanditSnapshot } from '../admin-console/sections/BanditPanel.js';
 
 type LegacyAdminConfigResponse = {
   success: boolean;
@@ -111,6 +112,65 @@ export function createLegacyAdminApi(baseUrl: string | undefined) {
       }
 
       return (await parseJson<{ success: boolean; overview: CohortOverview }>(response)).overview;
+    },
+
+    async getBandit(sessionId?: string): Promise<BanditOverview> {
+      const response = await fetch(`${normalizedBaseUrl}/api/admin/bandit${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''}`);
+
+      if (!response.ok) {
+        throw new Error(`Bandit overview failed with ${response.status}.`);
+      }
+
+      return (await parseJson<{ success: boolean; overview: BanditOverview }>(response)).overview;
+    },
+
+    async resetBandit(input: { stateId?: string; variant?: string } = {}): Promise<number> {
+      const response = await fetch(`${normalizedBaseUrl}/api/admin/bandit/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Bandit reset failed with ${response.status}.`);
+      }
+
+      return (await parseJson<{ success: boolean; reset: number }>(response)).reset;
+    },
+
+    async exportBandit(): Promise<BanditSnapshot> {
+      const response = await fetch(`${normalizedBaseUrl}/api/admin/bandit/export`);
+
+      if (!response.ok) {
+        throw new Error(`Bandit export failed with ${response.status}.`);
+      }
+
+      const body = await parseJson<{ success: boolean } & BanditSnapshot>(response);
+      return { exportedAt: body.exportedAt, arms: body.arms };
+    },
+
+    async importBandit(snapshot: { arms: BanditSnapshot['arms'] }): Promise<number> {
+      const response = await fetch(`${normalizedBaseUrl}/api/admin/bandit/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Bandit import failed with ${response.status}.`);
+      }
+
+      return (await parseJson<{ success: boolean; imported: number }>(response)).imported;
+    },
+
+    async decayBandit(): Promise<number> {
+      const response = await fetch(`${normalizedBaseUrl}/api/admin/bandit/decay`, { method: 'POST' });
+
+      if (!response.ok) {
+        throw new Error(`Bandit decay failed with ${response.status}.`);
+      }
+
+      return (await parseJson<{ success: boolean; decayed: number }>(response)).decayed;
     },
   };
 }
