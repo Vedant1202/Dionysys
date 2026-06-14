@@ -121,10 +121,10 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** `packages/core/src/mcp/McpModeResolver.ts`, `packages/core/src/mcp/types.ts`, `packages/core/src/mcp/mcp.test.ts`
 **Scope:** Medium
 
-### Checkpoint: Core Resolver
-- [ ] `npm run build --workspace=packages/core` and `npm run test --workspace=packages/core`
-- [ ] `npm run build --workspace=packages/server` (still compiles against optional-param resolver)
-- [ ] Without bandit wiring, weak-signal decisions already let the LLM decide (interim milestone = the core "let the AI decide" behavior).
+### Checkpoint: Core Resolver — ✅ complete (commit 2f36db9)
+- [x] `npm run build --workspace=packages/core` (tsc clean) and `npm run test --workspace=packages/core` (53 passed)
+- [x] `npm run build --workspace=packages/server` + full server suite green (54 passed) — no regression through the new optional-param resolver
+- [x] Without bandit wiring, weak-signal decisions already let the LLM decide freely (interim milestone = the core "let the AI decide" behavior). react typecheck + storage/connector builds green.
 
 ## Phase 3: Server Decision Wiring
 
