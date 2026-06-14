@@ -4,6 +4,17 @@ import { adminConsoleStyles as styles } from '../styles.js';
 import { toBoundedNumber, toPositiveInteger } from '../utils.js';
 import type { AdminConfigUpdater } from '../types.js';
 
+const GATE_DEFAULTS = { lockMinEvents: 2, lockMargin: 0.15 };
+const BANDIT_DEFAULTS = {
+  enabled: true,
+  banditEvidenceK: 3,
+  priorAlpha: 1,
+  priorBeta: 1,
+  keepReward: 1,
+  revertReward: 0,
+  passiveRewardWeight: 0.25,
+};
+
 export function ModesPanel({
   config,
   updateConfig,
@@ -22,6 +33,17 @@ export function ModesPanel({
   const updateMode = (patch: Partial<AdminModeConfig>) => updateConfig((current) => ({
     ...current,
     mode: { ...current.mode, ...patch },
+  }));
+
+  const gate = config.mcp.gate ?? GATE_DEFAULTS;
+  const bandit = config.mcp.bandit ?? BANDIT_DEFAULTS;
+  const updateGate = (patch: Partial<typeof GATE_DEFAULTS>) => updateConfig((current) => ({
+    ...current,
+    mcp: { ...current.mcp, gate: { ...(current.mcp.gate ?? GATE_DEFAULTS), ...patch } },
+  }));
+  const updateBandit = (patch: Partial<typeof BANDIT_DEFAULTS>) => updateConfig((current) => ({
+    ...current,
+    mcp: { ...current.mcp, bandit: { ...(current.mcp.bandit ?? BANDIT_DEFAULTS), ...patch } },
   }));
 
   return (
@@ -133,6 +155,26 @@ export function ModesPanel({
               }))}
             />
           </Field>
+          <Field label="Gate: min modality events (strong signal)">
+            <input
+              className={styles.input}
+              type="number"
+              min={1}
+              value={gate.lockMinEvents}
+              onChange={(event) => updateGate({ lockMinEvents: toPositiveInteger(event.target.value, gate.lockMinEvents) })}
+            />
+          </Field>
+          <Field label="Gate: confidence margin (strong signal)">
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={gate.lockMargin}
+              onChange={(event) => updateGate({ lockMargin: toBoundedNumber(event.target.value, gate.lockMargin, 0, 1) })}
+            />
+          </Field>
           <p className={styles.helpText}>
             Changes apply after Save. The frontend can remount the provider from this runtime config without mutating source files.
           </p>
@@ -141,6 +183,63 @@ export function ModesPanel({
               Production mode hides personality, scores, variants, debug details, and admin controls from front-facing users.
             </p>
           )}
+        </SectionCard>
+
+        <SectionCard title="Bandit Learning">
+          <Field label="Enabled">
+            <input
+              type="checkbox"
+              checked={bandit.enabled}
+              onChange={(event) => updateBandit({ enabled: event.target.checked })}
+            />
+          </Field>
+          <Field label="Evidence K (LLM/bandit equal-weight point)">
+            <input
+              className={styles.input}
+              type="number"
+              min={1}
+              step={1}
+              value={bandit.banditEvidenceK}
+              onChange={(event) => updateBandit({ banditEvidenceK: toPositiveInteger(event.target.value, bandit.banditEvidenceK) })}
+            />
+          </Field>
+          <Field label="Keep reward">
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              max={1}
+              step={0.1}
+              value={bandit.keepReward}
+              onChange={(event) => updateBandit({ keepReward: toBoundedNumber(event.target.value, bandit.keepReward, 0, 1) })}
+            />
+          </Field>
+          <Field label="Revert reward">
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              max={1}
+              step={0.1}
+              value={bandit.revertReward}
+              onChange={(event) => updateBandit({ revertReward: toBoundedNumber(event.target.value, bandit.revertReward, 0, 1) })}
+            />
+          </Field>
+          <Field label="Passive reward weight">
+            <input
+              className={styles.input}
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={bandit.passiveRewardWeight}
+              onChange={(event) => updateBandit({ passiveRewardWeight: toBoundedNumber(event.target.value, bandit.passiveRewardWeight, 0, 1) })}
+            />
+          </Field>
+          <p className={styles.helpText}>
+            Strong-signal decisions stay deterministic. On weak signal the model and the bandit blend with weight n/(n+K);
+            keep/revert feedback updates the arm. Changes apply after Save.
+          </p>
         </SectionCard>
       </div>
     </div>
