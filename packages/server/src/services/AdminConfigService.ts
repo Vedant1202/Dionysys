@@ -31,6 +31,21 @@ export interface AdminConfigServiceOptions {
   };
 }
 
+export interface CohortVariantStats {
+  sessions: number;
+  avgActivityScore: number;
+  recommendations: { keep: number; revert: number; observe: number };
+  sentiments: { helpful: number; in_the_way: number };
+}
+
+export interface DionysysCohortOverview {
+  totalSessions: number;
+  totalFeedbackRecords: number;
+  byVariant: Record<string, CohortVariantStats>;
+  overallRecommendations: { keep: number; revert: number; observe: number };
+  overallSentiments: { helpful: number; in_the_way: number };
+}
+
 export class AdminConfigService {
   private config: AdminConsoleConfig;
 
@@ -81,6 +96,61 @@ export class AdminConfigService {
       }) as AdminConsoleOverview['connector'],
       endpoints: this.getEndpoints(),
       session: sessionId ? this.computeSessionOverview(sessionId, events) : undefined,
+    };
+  }
+
+  // Aggregate stored feedback records into cross-session / per-variant cohort stats.
+  async buildCohortOverview(): Promise<DionysysCohortOverview> {
+    const records = await this.options.storage.getAllFeedbackLoopRecords();
+
+    const emptyRecommendations = () => ({ keep: 0, revert: 0, observe: 0 });
+    const emptySentiments = () => ({ helpful: 0, in_the_way: 0 });
+
+    const overallRecommendations = emptyRecommendations();
+    const overallSentiments = emptySentiments();
+    const sessions = new Set<string>();
+    const byVariant: Record<string, CohortVariantStats> = {};
+    const variantSessions: Record<string, Set<string>> = {};
+    const variantActivity: Record<string, number[]> = {};
+
+    for (const record of records) {
+      sessions.add(record.sessionId);
+      const variant = record.appliedDecision?.variant ?? 'unknown';
+
+      const stats = (byVariant[variant] ??= {
+        sessions: 0,
+        avgActivityScore: 0,
+        recommendations: emptyRecommendations(),
+        sentiments: emptySentiments(),
+      });
+      (variantSessions[variant] ??= new Set()).add(record.sessionId);
+      (variantActivity[variant] ??= []).push(record.metrics?.activityScore ?? 0);
+
+      const recommendation = record.graphRecommendation;
+      if (recommendation === 'keep' || recommendation === 'revert' || recommendation === 'observe') {
+        overallRecommendations[recommendation] += 1;
+        stats.recommendations[recommendation] += 1;
+      }
+      if (record.sentiment === 'helpful' || record.sentiment === 'in_the_way') {
+        overallSentiments[record.sentiment] += 1;
+        stats.sentiments[record.sentiment] += 1;
+      }
+    }
+
+    for (const [variant, stats] of Object.entries(byVariant)) {
+      const activity = variantActivity[variant] ?? [];
+      stats.sessions = variantSessions[variant]?.size ?? 0;
+      stats.avgActivityScore = activity.length
+        ? activity.reduce((sum, value) => sum + value, 0) / activity.length
+        : 0;
+    }
+
+    return {
+      totalSessions: sessions.size,
+      totalFeedbackRecords: records.length,
+      byVariant,
+      overallRecommendations,
+      overallSentiments,
     };
   }
 

@@ -83,19 +83,12 @@ export function createAdminRouter(adminService: AdminConfigService, authorize?: 
     req.on('close', () => clearInterval(interval));
   });
 
-  router.get('/cohort-overview', (_req, res) => {
-    // Empty-but-correctly-shaped cohort overview so the admin Data tab renders its
-    // empty state instead of crashing on missing fields. Real aggregation is a later task.
-    res.json({
-      success: true,
-      overview: {
-        totalSessions: 0,
-        totalFeedbackRecords: 0,
-        byVariant: {},
-        overallRecommendations: { keep: 0, revert: 0, observe: 0 },
-        overallSentiments: { helpful: 0, in_the_way: 0 },
-      },
-    });
+  router.get('/cohort-overview', async (_req, res) => {
+    try {
+      res.json({ success: true, overview: await adminService.buildCohortOverview() });
+    } catch (error) {
+      handleAdminError(error, res);
+    }
   });
 
   return router;

@@ -1,7 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultDionysysConfig } from '../config/defaultConfig.js';
 import { createMemoryStorage } from '../storage/memoryStorage.js';
+import type { DionysysFeedbackRecommendation, DionysysFeedbackRecord, DionysysFeedbackSentiment } from '../storage/types.js';
 import { AdminConfigService } from './AdminConfigService.js';
+
+function makeFeedbackRecord(
+  sessionId: string,
+  variant: string,
+  graphRecommendation: DionysysFeedbackRecommendation,
+  sentiment: DionysysFeedbackSentiment,
+  activityScore: number,
+): DionysysFeedbackRecord {
+  return {
+    sessionId,
+    timestamp: 0,
+    source: 'explicit',
+    appliedDecision: { variant },
+    windowStart: 0,
+    windowEnd: 0,
+    metrics: {
+      productiveActionsPerMinute: 0,
+      creationCount: 0,
+      textAdditionCount: 0,
+      modificationCount: 0,
+      deletionCount: 0,
+      hiddenToolClicks: 0,
+      hiddenToolFrictionRate: 0,
+      activityScore,
+      windowDurationMs: 1,
+      totalToolSelections: 0,
+    },
+    graphRecommendation,
+    graphRationale: 'test',
+    sentiment,
+  };
+}
 
 describe('AdminConfigService', () => {
   it('reads, updates, resets, and exports config', () => {
@@ -55,5 +88,28 @@ describe('AdminConfigService', () => {
     expect(session?.interactionSummary.eventCountsByType.element_drawn).toBe(2);
     expect(session?.mcpScoreResult.selectedModality).toBe('draw_first'); // 2 draws vs 1 text
     expect(session?.deterministicAxisScores.selectedModality).toBe('draw_first');
+  });
+
+  it('aggregates feedback records into a cohort overview', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveFeedbackLoopRecord(makeFeedbackRecord('s1', 'draw_first', 'keep', 'helpful', 10));
+    await storage.saveFeedbackLoopRecord(makeFeedbackRecord('s2', 'draw_first', 'revert', 'in_the_way', 4));
+    await storage.saveFeedbackLoopRecord(makeFeedbackRecord('s3', 'text_first', 'keep', 'helpful', 6));
+    const service = new AdminConfigService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      enabled: true,
+    });
+
+    const cohort = await service.buildCohortOverview();
+
+    expect(cohort.totalFeedbackRecords).toBe(3);
+    expect(cohort.totalSessions).toBe(3);
+    expect(cohort.overallRecommendations).toEqual({ keep: 2, revert: 1, observe: 0 });
+    expect(cohort.overallSentiments).toEqual({ helpful: 2, in_the_way: 1 });
+    expect(cohort.byVariant.draw_first.sessions).toBe(2);
+    expect(cohort.byVariant.draw_first.recommendations).toEqual({ keep: 1, revert: 1, observe: 0 });
+    expect(cohort.byVariant.draw_first.avgActivityScore).toBe(7); // (10 + 4) / 2
+    expect(cohort.byVariant.text_first.sentiments.helpful).toBe(1);
   });
 });
