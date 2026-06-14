@@ -203,9 +203,9 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** `packages/server/src/services/FeedbackService.ts`, `packages/server/src/services/FeedbackService.test.ts`
 **Scope:** Small
 
-### Checkpoint: Learning Loop
-- [ ] `npm run build` and `npm run test` for `packages/core` and `packages/server`
-- [ ] A test demonstrates: apply weak-signal decision → keep → a subsequent weak-signal blend in the same context shifts toward the rewarded arm.
+### Checkpoint: Learning Loop — ✅ complete (commit b18b61f)
+- [x] `npm run build` + `npm run test` for `packages/core` (53) and `packages/server` (66 passed, +5 learning tests); all connector/storage builds green
+- [x] Demonstrated end-to-end (real services): cold context applied the LLM's `draw_first`; after 12× `keep` on `text_first` (arm α=13, β=1) the identical LLM ask resolved to `text_first` (bandit weight 0.80 override). Feedback shifts later decisions toward the rewarded arm.
 
 ## Phase 5: React Admin Knobs
 
