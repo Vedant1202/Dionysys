@@ -35,4 +35,25 @@ describe('AdminConfigService', () => {
     expect(overview.enabled).toBe(true);
     expect(overview.session?.eventCount).toBe(1);
   });
+
+  it('computes real session scores from events instead of returning a stub', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([
+      { type: 'element_drawn', sessionId: 's2' },
+      { type: 'element_drawn', sessionId: 's2' },
+      { type: 'text_added', sessionId: 's2' },
+    ]);
+    const service = new AdminConfigService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      enabled: true,
+    });
+
+    const session = (await service.buildOverview('s2')).session;
+
+    expect(session?.interactionSummary.totalEvents).toBe(3);
+    expect(session?.interactionSummary.eventCountsByType.element_drawn).toBe(2);
+    expect(session?.mcpScoreResult.selectedModality).toBe('draw_first'); // 2 draws vs 1 text
+    expect(session?.deterministicAxisScores.selectedModality).toBe('draw_first');
+  });
 });

@@ -1,9 +1,21 @@
 import {
   AdminConsoleConfigSchema,
+  InteractionSummarizer,
+  PersonalityScorer,
+  buildLockedModalityScores,
+  composeUiVariant,
+  countModalityEvents,
+  getTopScoredKey,
+  inferDeterministicAxesFromAdminConfig,
   type AdminApiEndpoint,
   type AdminConfigExport,
   type AdminConsoleConfig,
   type AdminConsoleOverview,
+  type AdminSessionOverview,
+  type DionysysEvent,
+  type ExpertisePersona,
+  type GenericEvent,
+  type ModalityPersona,
 } from '@dionysys/core';
 import type { DionysysStorage } from '../storage/types.js';
 
@@ -68,46 +80,57 @@ export class AdminConfigService {
         apiKeyConfigured: false,
       }) as AdminConsoleOverview['connector'],
       endpoints: this.getEndpoints(),
-      session: sessionId
-        ? {
-            sessionId,
-            eventCount: events.length,
-            deterministicAxisScores: {
-              modalityScores: { neutral: 1, draw_first: 0, text_first: 0 },
-              expertiseScores: { novice: 0, standard: 1, power_user: 0 },
-              selectedModality: 'neutral',
-              selectedExpertise: 'standard',
-              composedUiVariant: 'neutral_standard',
-              personaScores: { neutral: 1, draw_first: 0, text_first: 0 },
-            },
-            deterministicPersonaScores: { neutral: 1, draw_first: 0, text_first: 0 },
-            mcpScoreResult: {
-              modality: { rawScores: {}, personaScores: {}, matchedSignals: {} },
-              expertise: { rawScores: {}, personaScores: {}, matchedSignals: {} },
-              modalityScores: { neutral: 1, draw_first: 0, text_first: 0 },
-              expertiseScores: { novice: 0, standard: 1, power_user: 0 },
-              selectedModality: 'neutral',
-              selectedExpertise: 'standard',
-              composedUiVariant: 'neutral_standard',
-              personaScores: { neutral: 1, draw_first: 0, text_first: 0 },
-              rawScores: {},
-              matchedSignals: {},
-              axisRawScores: { modality: {}, expertise: {} },
-              axisMatchedSignals: { modality: {}, expertise: {} },
-            },
-            interactionSummary: {
-              totalEvents: events.length,
-              eventCountsByType: {},
-              elementCountsByType: {},
-              toolDiversity: 0,
-              textToShapeRatio: 0,
-              recentEventTypes: events.slice(-10).map((event) => event.type),
-              recentEvents: [],
-              derivedSignals: [],
-            },
-            recentEvents: [],
-          }
-        : undefined,
+      session: sessionId ? this.computeSessionOverview(sessionId, events) : undefined,
+    };
+  }
+
+  // Compute the live session overview from the session's events using the same
+  // core primitives the decision engine uses, so the admin console / explorer
+  // reflect real state instead of a static placeholder.
+  private computeSessionOverview(sessionId: string, events: DionysysEvent[]): AdminSessionOverview {
+    const genericEvents: GenericEvent[] = events.map((event) => ({
+      eventType: event.type,
+      payload: event.payload,
+      timestamp: toTimestamp(event.timestamp),
+      sessionId: event.sessionId,
+    }));
+    const firstTimestamp = genericEvents[0]?.timestamp;
+    const summaryOptions = firstTimestamp === undefined
+      ? { nowMs: Date.now() }
+      : { sessionStartMs: firstTimestamp, nowMs: Date.now() };
+
+    const interactionSummary = new InteractionSummarizer().summarize(genericEvents, summaryOptions);
+    const deterministicAxisScores = inferDeterministicAxesFromAdminConfig(this.config.deterministic, genericEvents);
+
+    const scorer = new PersonalityScorer();
+    const modality = scorer.score(this.config.mcp.axes.modalityResources, interactionSummary);
+    const expertise = scorer.score(this.config.mcp.axes.expertiseResources, interactionSummary);
+    const { drawCount, textCount } = countModalityEvents(genericEvents);
+    const modalityScores = buildLockedModalityScores(drawCount, textCount);
+    const selectedModality = getTopScoredKey<ModalityPersona>(modalityScores, 'neutral');
+    const selectedExpertise = getTopScoredKey<ExpertisePersona>(expertise.personaScores, 'standard');
+
+    return {
+      sessionId,
+      eventCount: events.length,
+      deterministicAxisScores,
+      deterministicPersonaScores: deterministicAxisScores.personaScores,
+      mcpScoreResult: {
+        modality,
+        expertise,
+        modalityScores,
+        expertiseScores: expertise.personaScores as Record<ExpertisePersona, number>,
+        selectedModality,
+        selectedExpertise,
+        composedUiVariant: composeUiVariant(selectedModality, selectedExpertise),
+        personaScores: modalityScores,
+        rawScores: modality.rawScores,
+        matchedSignals: modality.matchedSignals,
+        axisRawScores: { modality: modality.rawScores, expertise: expertise.rawScores },
+        axisMatchedSignals: { modality: modality.matchedSignals, expertise: expertise.matchedSignals },
+      },
+      interactionSummary,
+      recentEvents: interactionSummary.recentEvents,
     };
   }
 
@@ -125,4 +148,10 @@ export class AdminConfigService {
 
 function cloneConfig(config: AdminConsoleConfig): AdminConsoleConfig {
   return AdminConsoleConfigSchema.parse(JSON.parse(JSON.stringify(config)));
+}
+
+function toTimestamp(value: DionysysEvent['timestamp']): number {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') return new Date(value).getTime();
+  return typeof value === 'number' ? value : Date.now();
 }
