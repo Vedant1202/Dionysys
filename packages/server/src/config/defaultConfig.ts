@@ -159,6 +159,19 @@ export function createDefaultDionysysConfig(): AdminConsoleConfig {
       },
       minConfidence: 0.3,
       fallbackVariant: 'neutral',
+      gate: {
+        lockMinEvents: 2,
+        lockMargin: 0.15,
+      },
+      bandit: {
+        enabled: true,
+        banditEvidenceK: 3,
+        priorAlpha: 1,
+        priorBeta: 1,
+        keepReward: 1,
+        revertReward: 0,
+        passiveRewardWeight: 0.25,
+      },
     },
     ui: {
       supportedTools: [],
