@@ -1,6 +1,7 @@
-import type { DionysysEvent } from '@dionysys/core';
+import { rewardToIncrements, type AdminConsoleConfig, type DionysysEvent } from '@dionysys/core';
 import type {
   DionysysAppliedDecision,
+  DionysysFeedbackRecommendation,
   DionysysFeedbackRecord,
   DionysysFeedbackSentiment,
   DionysysFeedbackSource,
@@ -33,7 +34,10 @@ export class FeedbackValidationError extends Error {
 }
 
 export class FeedbackService {
-  constructor(private readonly storage: DionysysStorage) {}
+  constructor(
+    private readonly storage: DionysysStorage,
+    private readonly config?: AdminConsoleConfig,
+  ) {}
 
   async submit(input: SubmitFeedbackInput): Promise<DionysysFeedbackRecord | null> {
     if (!input.sessionId) throw new FeedbackValidationError('Missing sessionId');
@@ -53,9 +57,11 @@ export class FeedbackService {
     const events = await this.storage.getEventsBySession(input.sessionId);
     await this.storage.endSession(input.sessionId).catch(() => undefined);
     const creativeEvents = events.filter((event) => event.type === 'element_drawn' || event.type === 'text_added');
+    const reward = creativeEvents.length > 0 ? 1 : 0;
+    await this.applyPassiveBanditReward(input.sessionId, reward);
     return {
       sessionId: input.sessionId,
-      reward: creativeEvents.length > 0 ? 1 : 0,
+      reward,
       metrics: {
         totalEvents: events.length,
         totalCreativeEvents: creativeEvents.length,
@@ -101,7 +107,49 @@ export class FeedbackService {
     };
 
     await this.storage.saveFeedbackLoopRecord(record);
+    await this.applyExplicitBanditReward(input.sessionId, record.graphRecommendation);
     return record;
+  }
+
+  // Resolve the bandit arm (context + applied modality) from the session's most
+  // recent MCP decision. Deterministic decisions and pre-blend decisions are skipped.
+  private async resolveLatestMcpArm(sessionId: string): Promise<{ stateId: string; modality: string } | null> {
+    const decisions = await this.storage.getDecisionsBySession(sessionId);
+    for (let index = decisions.length - 1; index >= 0; index -= 1) {
+      const decision = decisions[index];
+      if (!decision || decision.mode !== 'mcp') continue;
+      const metadata = (decision.metadata ?? {}) as Record<string, unknown>;
+      const blend = metadata['blend'] as { stateId?: unknown } | undefined;
+      const stateId = blend?.stateId;
+      const modality = metadata['selectedModality'];
+      if (typeof stateId === 'string' && typeof modality === 'string') {
+        return { stateId, modality };
+      }
+    }
+    return null;
+  }
+
+  private async applyExplicitBanditReward(
+    sessionId: string,
+    recommendation: DionysysFeedbackRecommendation,
+  ): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    if (!bandit?.enabled) return;
+    if (recommendation !== 'keep' && recommendation !== 'revert') return;
+    const arm = await this.resolveLatestMcpArm(sessionId);
+    if (!arm) return;
+    const reward = recommendation === 'keep' ? bandit.keepReward : bandit.revertReward;
+    const { alphaInc, betaInc } = rewardToIncrements(reward, 1);
+    await this.storage.incrementBanditParams(arm.stateId, arm.modality, alphaInc, betaInc);
+  }
+
+  private async applyPassiveBanditReward(sessionId: string, reward: number): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    if (!bandit?.enabled) return;
+    const arm = await this.resolveLatestMcpArm(sessionId);
+    if (!arm) return;
+    const { alphaInc, betaInc } = rewardToIncrements(reward, bandit.passiveRewardWeight);
+    await this.storage.incrementBanditParams(arm.stateId, arm.modality, alphaInc, betaInc);
   }
 }
 

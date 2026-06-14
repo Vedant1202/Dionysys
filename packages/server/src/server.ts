@@ -36,7 +36,7 @@ export function createDionysysServer(options: CreateDionysysServerOptions) {
   const sessionService = new SessionService(storage);
   const eventService = new EventService(storage);
   const decisionService = new DecisionService({ config, storage, llmConnector });
-  const feedbackService = new FeedbackService(storage);
+  const feedbackService = new FeedbackService(storage, config);
   const adminService = new AdminConfigService({
     config,
     storage,
