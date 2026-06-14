@@ -163,9 +163,9 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** `packages/server/src/services/DecisionService.ts`, `packages/server/src/services/DecisionService.test.ts`
 **Scope:** Medium
 
-### Checkpoint: Server Decision Wiring
-- [ ] `npm run build` and `npm run test` for `packages/core` and `packages/server`
-- [ ] No route/OpenAPI changes; `/api/dionysys/decisions:resolve` returns blended decisions with new metadata.
+### Checkpoint: Server Decision Wiring — ✅ complete (commits 84f1f87, 91af02e)
+- [x] `npm run build` + `npm run test` for `packages/core` (53) and `packages/server` (61 passed, +4 wiring tests); all connector/storage builds green
+- [x] No route/OpenAPI changes; `/api/dionysys/decisions:resolve` now returns blended decisions with `metadata.signalStrength` / `resolvedBy` / `blend` (incl. stateId). Bandit reads keyed by `stateId = lockedModality:selectedExpertise`; skipped when `bandit.enabled` is false.
 
 ## Phase 4: Server Learning Loop
 
