@@ -191,6 +191,17 @@ describe('buildDionysysServerOptions', () => {
     expect(result?.personaId).toBe('neutral');
   });
 
+  it('wires the rich Excalidraw MCP resources and Direction 2 gate/bandit into the server config', () => {
+    const options = buildDionysysServerOptions({ env: {} });
+    const drawFirst = options.config?.mcp.axes.modalityResources.find((resource) => resource.id === 'draw_first');
+
+    // Rich toolbar uiState present -> the frontend can morph the toolbar in MCP mode.
+    expect(drawFirst?.actions[0]?.uiState.toolbar?.mode).toBe('allowlist');
+    // Direction 2 gate + bandit defaults are present (so the blend + learning run).
+    expect(options.config?.mcp.gate?.lockMinEvents).toBe(2);
+    expect(options.config?.mcp.bandit?.enabled).toBe(true);
+  });
+
   it('throws when mongodb storage is selected without a configured URI', () => {
     expect(() => buildDionysysServerOptions({
       env: { DIONYSYS_STORAGE: 'mongodb' },

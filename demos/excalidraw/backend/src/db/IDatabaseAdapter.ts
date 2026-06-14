@@ -84,14 +84,6 @@ export interface IBrowserPrior {
   lastUpdated: Date;
 }
 
-export interface IBanditParams {
-  stateId: string;
-  variant: string;
-  alpha: number;
-  beta: number;
-  lastUpdated: Date;
-}
-
 export interface IDatabaseAdapter {
   connect(uri: string): Promise<void>;
   disconnect(): Promise<void>;
@@ -116,12 +108,6 @@ export interface IDatabaseAdapter {
   saveFeedbackLoopRecord(record: IFeedbackLoopRecord): Promise<void>;
   getFeedbackLoopRecordsBySession(sessionId: string): Promise<IFeedbackLoopRecord[]>;
   getAllFeedbackLoopRecords(): Promise<IFeedbackLoopRecord[]>;
-
-  // Thompson sampling bandit params
-  getBanditParams(stateId: string, variant: string): Promise<IBanditParams | null>;
-  upsertBanditParams(params: IBanditParams): Promise<void>;
-  incrementBanditParams(stateId: string, variant: string, alphaInc: number, betaInc: number): Promise<void>;
-  getAllBanditParams(): Promise<IBanditParams[]>;
 
   // Cross-session browser prior
   getBrowserPrior(browserId: string): Promise<IBrowserPrior | null>;

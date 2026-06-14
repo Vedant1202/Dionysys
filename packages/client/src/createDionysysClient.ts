@@ -14,6 +14,8 @@ import {
 } from './eventBuffer.js';
 import type {
   CreateDionysysClientOptions,
+  DionysysBanditOverview,
+  DionysysBanditSnapshot,
   DionysysClient,
   DionysysCohortOverview,
   DionysysFeedbackOverview,
@@ -54,6 +56,16 @@ type AdminCohortOverviewResponse = {
   success: true;
   overview: DionysysCohortOverview;
 };
+
+type AdminBanditOverviewResponse = {
+  success: true;
+  overview: DionysysBanditOverview;
+};
+
+type AdminBanditResetResponse = { success: true; reset: number };
+type AdminBanditSnapshotResponse = { success: true } & DionysysBanditSnapshot;
+type AdminBanditImportResponse = { success: true; imported: number };
+type AdminBanditDecayResponse = { success: true; decayed: number };
 
 export function createDionysysClient(options: CreateDionysysClientOptions = {}): DionysysClient {
   const transport = new DionysysTransport({
@@ -192,6 +204,30 @@ export function createDionysysClient(options: CreateDionysysClientOptions = {}):
       async getCohortOverview() {
         const response = await transport.getJson<AdminCohortOverviewResponse>('/admin/cohort-overview');
         return response.overview;
+      },
+      async getBandit(sessionId) {
+        const response = await transport.getJson<AdminBanditOverviewResponse>(
+          sessionId
+            ? `/admin/bandit?sessionId=${encodeURIComponent(sessionId)}`
+            : '/admin/bandit',
+        );
+        return response.overview;
+      },
+      async resetBandit(input) {
+        const response = await transport.sendJson<AdminBanditResetResponse>('/admin/bandit/reset', 'POST', input ?? {});
+        return response.reset;
+      },
+      async exportBandit() {
+        const response = await transport.getJson<AdminBanditSnapshotResponse>('/admin/bandit/export');
+        return { exportedAt: response.exportedAt, arms: response.arms };
+      },
+      async importBandit(snapshot) {
+        const response = await transport.sendJson<AdminBanditImportResponse>('/admin/bandit/import', 'POST', snapshot);
+        return response.imported;
+      },
+      async decayBandit() {
+        const response = await transport.sendJson<AdminBanditDecayResponse>('/admin/bandit/decay', 'POST');
+        return response.decayed;
       },
     },
   };

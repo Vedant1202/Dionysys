@@ -194,3 +194,60 @@ GET  /api/dionysys/admin/overview/stream  Server-sent events stream
 ```
 
 Use the React `AdminConsole` to edit runtime config in memory. Export a snapshot when you want to promote tuned configuration back into source control.
+
+## MCP gate and bandit
+
+MCP-mode decisions run through a confidence gate and an evidence-weighted bandit blend. Both live under `mcp` in the admin config, are tunable at runtime in the admin console's **Modes** tab, and are carried through export/import. All fields default to safe values, so existing configs and the demo work unchanged.
+
+### `mcp.gate`
+
+| Field | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `lockMinEvents` | `number` | `2` | Minimum modality events before the deterministic signal counts as "strong" |
+| `lockMargin` | `number` (0–1) | `0.15` | Minimum gap between the top and runner-up modality scores for a "strong" signal |
+
+When the signal is strong, deterministic rules decide. When it is weak, the LLM and bandit blend.
+
+### `mcp.bandit`
+
+| Field | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | `true` | Master switch; when false, weak-signal decisions are a pure LLM choice and no bandit reads/updates occur |
+| `banditEvidenceK` | `number` | `3` | Observation count at which the bandit and the LLM carry equal weight (`wBandit = n / (n + K)`) |
+| `priorAlpha` | `number` | `1` | Beta prior alpha for a fresh arm |
+| `priorBeta` | `number` | `1` | Beta prior beta for a fresh arm |
+| `keepReward` | `number` (0–1) | `1` | Reward applied to the chosen arm on explicit "keep" |
+| `revertReward` | `number` (0–1) | `0` | Reward applied on explicit "revert" |
+| `passiveRewardWeight` | `number` (0–1) | `0.25` | Weight of the passive session reward relative to explicit feedback |
+| `decay` | `object` | see below | Discounted Thompson sampling — pulls arms back toward their priors so the bandit keeps exploring |
+
+### `mcp.bandit.decay`
+
+Without decay, a Beta arm's evidence accumulates forever, so a context that was popular months ago stays locked in even after user behaviour shifts. Decay applies **discounted Thompson sampling** (Raj & Kalyani 2017; the f-dsw variant, MDPI 2023): each arm is periodically pulled a fraction of the way back toward its prior, which lowers its effective sample size and re-opens exploration.
+
+| Field | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | `true` | When false, arms never forget — the bandit reproduces its pre-decay behaviour exactly (atomic increment) |
+| `effectiveWindow` | `number` (>1) | `200` | Target effective sample size. The per-step discount is `γ = 1 − 1/effectiveWindow`, so an arm "remembers" roughly the last `effectiveWindow` observations |
+
+Decay is applied in three scheduler-free places:
+
+- **On update** (`FeedbackService`): before each reward increment the arm is discounted toward its prior, so old evidence fades as new evidence arrives. With `enabled: false` this falls back to the original atomic `incrementBanditParams`.
+- **On read** (`DecisionService`): at decision time a quiet arm is discounted by `γ^(days since last update)`, in memory only — the stored arm is never mutated by a read.
+- **On demand** (`POST /admin/bandit/decay`): a hard, one-shot decay pass over every arm for hosts that prefer periodic maintenance.
+
+See [Feedback Loop](./feedback-loop.md) for how feedback updates the bandit arms, and [Admin Console](./admin-console.md#bandit-tab) for inspecting and maintaining them.
+
+## Bandit inspector & maintenance routes
+
+The admin API exposes the learned bandit state behind the same `authorize` hook as the rest of `/admin`:
+
+| Method & path | Purpose |
+| --- | --- |
+| `GET /api/dionysys/admin/bandit` | Overview: arms grouped by context, each with posterior mean, a 90% credible interval, observation count, evidence weight, and Monte-Carlo `P(best)`; plus the decay echo and (with `?sessionId=`) a decision trace |
+| `POST /api/dionysys/admin/bandit/reset` | Reset a single arm (`{ stateId, variant }`), a whole context (`{ stateId }`), or every arm (`{}`) to its prior |
+| `GET /api/dionysys/admin/bandit/export` | Snapshot the learned arms as JSON |
+| `POST /api/dionysys/admin/bandit/import` | Restore arms from a snapshot (`{ arms }`) |
+| `POST /api/dionysys/admin/bandit/decay` | Run one decay pass over all arms |
+
+These are surfaced in the SDK client as `client.admin.getBandit / resetBandit / exportBandit / importBandit / decayBandit`.

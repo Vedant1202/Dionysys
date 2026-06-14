@@ -9,7 +9,7 @@ import { anthropicConnector, type AnthropicConnectorOptions } from '@dionysys/co
 import { geminiConnector, type GeminiConnectorOptions } from '@dionysys/connector-gemini';
 import { openAiConnector, type OpenAiConnectorOptions } from '@dionysys/connector-openai';
 import { createMongoDionysysStorage } from '@dionysys/storage-mongodb';
-import { isAdminConsoleEnabled } from '../services/AdminConfigService.js';
+import { getAdminConfig, isAdminConsoleEnabled } from '../services/AdminConfigService.js';
 
 export type DionysysStorageProvider = 'memory' | 'mongodb';
 export type DionysysLlmProvider = 'mock' | 'custom-http' | 'openai' | 'gemini' | 'anthropic';
@@ -33,6 +33,10 @@ export function buildDionysysServerOptions(
   const connectorStatus = buildConnectorStatus(llmProvider, env);
 
   return {
+    // Use the demo's rich runtime config (Excalidraw MCP resources with toolbar
+    // uiState + Direction 2 gate/bandit defaults) so MCP decisions carry the
+    // uiState the frontend needs to morph the toolbar — not just the variant label.
+    config: getAdminConfig(),
     storage:
       storageProvider === 'mongodb'
         ? createMongoDionysysStorage({

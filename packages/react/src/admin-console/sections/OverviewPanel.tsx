@@ -15,6 +15,8 @@ export function OverviewPanel({
   const topDeterministicScore = getTopScore(session?.deterministicPersonaScores);
   const modalityResources = config.mcp.axes.modalityResources;
   const expertiseResources = config.mcp.axes.expertiseResources;
+  const gate = config.mcp.gate ?? { lockMinEvents: 2, lockMargin: 0.15 };
+  const bandit = config.mcp.bandit ?? { enabled: true, banditEvidenceK: 3 };
 
   return (
     <div className={styles.stack}>
@@ -35,6 +37,8 @@ export function OverviewPanel({
             ['Top MCP modality score', topMcpScore ? `${humanize(topMcpScore.id)} (${formatPercent(topMcpScore.score)})` : 'No MCP score yet'],
             ['Tool diversity', String(session?.interactionSummary.toolDiversity ?? 0)],
             ['Text to shape ratio', String(session?.interactionSummary.textToShapeRatio ?? 0)],
+            ['Confidence gate', `${gate.lockMinEvents}+ events, margin >= ${gate.lockMargin}`],
+            ['Bandit learning', bandit.enabled ? `on (K=${bandit.banditEvidenceK})` : 'off'],
           ]}
         />
       </SectionCard>

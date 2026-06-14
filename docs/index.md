@@ -13,8 +13,8 @@ Dionysys is a self-hosted SDK suite for persona-driven UI adaptation. The core i
 - [Usage](./usage.md): mount the server, create a client, and wire React
 - [Configuration](./configuration.md): storage, connectors, env vars, and event naming
 - [Architecture](./architecture.md): package boundaries and request flow
-- [Admin Console](./admin-console.md): runtime inspection and tuning
-- [Feedback Loop](./feedback-loop.md): beta learning loop behavior
+- [Admin Console](./admin-console.md): runtime inspection and tuning, including the bandit inspector
+- [Feedback Loop](./feedback-loop.md): the canonical learning loop, bandit decay, and inspector
 - [Excalidraw Configuration](./excalidraw-configuration.md): reference app specifics
 
 ## Package map

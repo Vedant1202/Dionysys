@@ -1,4 +1,4 @@
-import { z } from '@dionysys/core';
+import { AdminConsoleConfigSchema, z } from '@dionysys/core';
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 
 const ApiErrorRef = { $ref: '#/components/schemas/DionysysApiError' };
@@ -213,7 +213,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Read admin configuration',
     responses: {
-      200: { description: 'Current admin configuration object' },
+      200: {
+        description: 'Current admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },
@@ -228,13 +231,16 @@ export function registerPaths(registry: OpenAPIRegistry): void {
       body: {
         content: {
           'application/json': {
-            schema: z.object({ config: z.record(z.string(), z.unknown()) }),
+            schema: z.object({ config: AdminConsoleConfigSchema }),
           },
         },
       },
     },
     responses: {
-      200: { description: 'Updated admin configuration object' },
+      200: {
+        description: 'Updated admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       400: { description: 'Validation error', content: { 'application/json': { schema: ApiErrorRef } } },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
@@ -247,7 +253,10 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Reset admin configuration to file defaults',
     responses: {
-      200: { description: 'Reset admin configuration object' },
+      200: {
+        description: 'Reset admin configuration object',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), config: AdminConsoleConfigSchema }) } },
+      },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },
@@ -259,7 +268,84 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     tags: ['Admin'],
     summary: 'Export admin configuration as JSON',
     responses: {
-      200: { description: 'Admin configuration export including exportedAt timestamp' },
+      200: {
+        description: 'Admin configuration export including exportedAt timestamp',
+        content: { 'application/json': { schema: z.object({ success: z.boolean(), exportedAt: z.string(), config: AdminConsoleConfigSchema }) } },
+      },
+      404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
+      500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/dionysys/admin/bandit',
+    tags: ['Admin'],
+    summary: 'Inspect bandit arms (posterior mean, credible interval, P(best), evidence weight) and an optional decision trace',
+    responses: {
+      200: { description: 'Bandit overview' },
+      404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
+      500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/dionysys/admin/bandit/reset',
+    tags: ['Admin'],
+    summary: 'Reset a bandit arm, a whole context, or all arms to their priors',
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: z.object({ stateId: z.string().optional(), variant: z.string().optional() }) },
+        },
+      },
+    },
+    responses: {
+      200: { description: 'Number of arms reset' },
+      404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
+      500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/dionysys/admin/bandit/export',
+    tags: ['Admin'],
+    summary: 'Export a snapshot of learned bandit arms',
+    responses: {
+      200: { description: 'Bandit snapshot (exportedAt + arms)' },
+      404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
+      500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/dionysys/admin/bandit/import',
+    tags: ['Admin'],
+    summary: 'Restore bandit arms from a snapshot',
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: z.object({ arms: z.array(z.record(z.string(), z.unknown())) }) },
+        },
+      },
+    },
+    responses: {
+      200: { description: 'Number of arms imported' },
+      404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
+      500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/dionysys/admin/bandit/decay',
+    tags: ['Admin'],
+    summary: 'Decay all bandit arms toward their priors once (discounted Thompson sampling)',
+    responses: {
+      200: { description: 'Number of arms decayed' },
       404: { description: 'Admin console is disabled', content: { 'application/json': { schema: ApiErrorRef } } },
       500: { description: 'Internal error', content: { 'application/json': { schema: ApiErrorRef } } },
     },

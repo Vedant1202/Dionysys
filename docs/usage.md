@@ -70,7 +70,7 @@ The client handles:
 - event tracking
 - decision resolution
 - feedback submission and passive evaluation
-- admin config and overview access
+- admin config, overview, and bandit inspection / maintenance
 
 ## React setup
 
@@ -223,6 +223,20 @@ export function AdminPage() {
 ```
 
 The admin console edits runtime state only. It does not rewrite source config files.
+
+### Inspecting the bandit
+
+The **Bandit** tab exposes the weak-signal learner — per-arm posterior mean, a 90% credible interval, `P(best)`, and evidence weight — plus maintenance controls (decay, snapshot export/import, reset to priors). The same operations are available programmatically through `client.admin`:
+
+```ts
+const overview = await dionysys.admin.getBandit('session_123'); // arms grouped by context + decision trace
+await dionysys.admin.decayBandit();                              // one decay pass toward priors
+const snapshot = await dionysys.admin.exportBandit();            // { exportedAt, arms }
+await dionysys.admin.importBandit(snapshot);
+await dionysys.admin.resetBandit({ stateId: 'neutral:standard' }); // or {} to reset every arm
+```
+
+See [Feedback Loop](./feedback-loop.md) for the discounted-Thompson decay model and [Admin Console](./admin-console.md#bandit-tab) for the inspector.
 
 ## Persistence modes
 

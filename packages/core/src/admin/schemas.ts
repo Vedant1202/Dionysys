@@ -67,6 +67,27 @@ export const AdminModeConfigSchema = z.object({
   pollingIntervalMs: z.number().int().positive(),
 });
 
+export const AdminMcpGateConfigSchema = z.object({
+  lockMinEvents: z.number().int().min(0).default(2),
+  lockMargin: z.number().min(0).max(1).default(0.15),
+});
+
+export const AdminMcpBanditDecayConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  effectiveWindow: z.number().gt(1).default(200),
+});
+
+export const AdminMcpBanditConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  banditEvidenceK: z.number().positive().default(3),
+  priorAlpha: z.number().positive().default(1),
+  priorBeta: z.number().positive().default(1),
+  keepReward: z.number().min(0).max(1).default(1),
+  revertReward: z.number().min(0).max(1).default(0),
+  passiveRewardWeight: z.number().min(0).max(1).default(0.25),
+  decay: AdminMcpBanditDecayConfigSchema.default({}),
+});
+
 export const AdminMcpConfigSchema = z.object({
   axes: z.object({
     modalityResources: PersonalityResourcesSchema,
@@ -74,6 +95,8 @@ export const AdminMcpConfigSchema = z.object({
   }),
   minConfidence: z.number().min(0).max(1),
   fallbackVariant: z.string().min(1),
+  gate: AdminMcpGateConfigSchema.default({}),
+  bandit: AdminMcpBanditConfigSchema.default({}),
 });
 
 export const AdminUIConfigSchema = z.object({

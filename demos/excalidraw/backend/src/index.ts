@@ -33,15 +33,23 @@ app.use('/api/dionysys', createDionysysRouter());
 app.use('/api/status', statusRouter);
 
 async function startServer() {
-  try {
-    await dbAdapter.connect(mongoUri);
-    app.listen(port, () => {
-      console.log(`Backend server running on port ${port}`);
-    });
-  } catch (error) {
-    console.error('Failed to start server', error);
-    process.exit(1);
+  // The Dionysys SDK decision path (see config/dionysys.ts) runs fully in-memory
+  // by default, so the demo no longer needs MongoDB to boot. The legacy Mongoose
+  // adapter is only connected when the demo is explicitly configured for
+  // Mongo-backed storage; otherwise we skip it and /health reports dbConnected:false.
+  if (process.env.DIONYSYS_STORAGE === 'mongodb') {
+    try {
+      await dbAdapter.connect(mongoUri);
+    } catch (error) {
+      console.error('Failed to connect to MongoDB; continuing without legacy persistence', error);
+    }
+  } else {
+    console.log('Skipping legacy MongoDB connection; using in-memory storage');
   }
+
+  app.listen(port, () => {
+    console.log(`Backend server running on port ${port}`);
+  });
 }
 
 

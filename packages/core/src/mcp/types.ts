@@ -179,6 +179,19 @@ export interface AdaptiveDecision {
   };
   interactionSummary: InteractionSummary;
   isFallback: boolean;
+  // Direction 2 observability — how the decision was resolved and the gate/blend it went through.
+  resolvedBy?: DecisionResolvedBy | undefined;
+  signalStrength?: 'strong' | 'weak' | undefined;
+  blend?: DecisionBlendInfo | undefined;
+}
+
+export type DecisionResolvedBy = 'deterministic' | 'blended' | 'fallback';
+
+export interface DecisionBlendInfo {
+  llmModality?: string | undefined;
+  llmConfidence?: number | undefined;
+  chosenModality: string;
+  banditWeight: number;
 }
 
 export interface PendingAdaptiveDecision {

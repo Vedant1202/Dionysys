@@ -6,6 +6,7 @@ import { ModesPanel } from './sections/ModesPanel.js';
 import { PersonalitiesPanel } from './sections/PersonalitiesPanel.js';
 import { CalculationsPanel } from './sections/CalculationsPanel.js';
 import { DataPanel } from './sections/DataPanel.js';
+import { BanditPanel } from './sections/BanditPanel.js';
 import { ApisPanel } from './sections/ApisPanel.js';
 import { ExportPanel } from './sections/ExportPanel.js';
 import { ExplorerPanel } from './sections/ExplorerPanel.js';
@@ -139,6 +140,9 @@ export function AdminConsole({
           )}
           {!isLoading && config && activeTab === 'data' && (
             <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} client={client} />
+          )}
+          {!isLoading && config && activeTab === 'bandit' && (
+            <BanditPanel client={client} apiBaseUrl={apiBaseUrl} sessionId={sessionId} />
           )}
           {!isLoading && config && activeTab === 'apis' && (
             <ApisPanel

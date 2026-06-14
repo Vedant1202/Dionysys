@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { createSeededRng } from '@dionysys/core';
 import { createDefaultDionysysConfig } from '../config/defaultConfig.js';
 import { mockConnector } from '../connectors/mockConnector.js';
 import { createMemoryStorage } from '../storage/memoryStorage.js';
+import type { DionysysDecisionConnector } from '../connectors/types.js';
 import { DecisionService, DecisionValidationError } from './DecisionService.js';
 
 function createService() {
@@ -12,6 +14,21 @@ function createService() {
     llmConnector: mockConnector(),
   });
   return { storage, service };
+}
+
+function fixedConnector(personaId: string, actionId: string, confidence: number): DionysysDecisionConnector {
+  return { async decide() { return { personaId, actionId, confidence }; } };
+}
+
+// Wrap getBanditParams to record the (stateId, variant) keys the service reads.
+function trackBanditReads(storage: ReturnType<typeof createMemoryStorage>): string[] {
+  const reads: string[] = [];
+  const original = storage.getBanditParams.bind(storage);
+  storage.getBanditParams = async (stateId: string, variant: string) => {
+    reads.push(`${stateId}::${variant}`);
+    return original(stateId, variant);
+  };
+  return reads;
 }
 
 describe('DecisionService', () => {
@@ -92,5 +109,133 @@ describe('DecisionService', () => {
 
     expect(decision.selectedPersona.id).toBe('neutral');
     expect(decision.selectedPersona.confidence).toBe(0.75);
+  });
+
+  it('reads bandit params by stateId and blends to the LLM choice when arms are cold', async () => {
+    const storage = createMemoryStorage();
+    const reads = trackBanditReads(storage);
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 'w1' }]); // 1 event -> weak, locked=neutral
+
+    const service = new DecisionService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      llmConnector: fixedConnector('text_first', 'show_text_workspace', 0.9),
+      rng: createSeededRng(1),
+    });
+
+    const decision = await service.resolve({ sessionId: 'w1', mode: 'mcp' });
+
+    expect(decision.metadata?.signalStrength).toBe('weak');
+    expect(decision.metadata?.resolvedBy).toBe('blended');
+    expect(decision.variant).toBe('text_first'); // free LLM choice, not the locked neutral
+    expect((decision.metadata?.blend as { stateId?: string } | undefined)?.stateId).toBe('neutral:standard');
+    expect(reads).toContain('neutral:standard::text_first');
+  });
+
+  it('lets a warm bandit arm override the LLM on weak signal', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 'w2' }]);
+    await storage.upsertBanditParams({ stateId: 'neutral:standard', variant: 'draw_first', alpha: 50, beta: 1, lastUpdated: 0 });
+
+    const service = new DecisionService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      llmConnector: fixedConnector('text_first', 'show_text_workspace', 0.6),
+      rng: createSeededRng(7),
+      now: () => 0, // arm was just updated (lastUpdated: 0) -> no read-time decay
+    });
+
+    const decision = await service.resolve({ sessionId: 'w2', mode: 'mcp' });
+
+    expect(decision.metadata?.resolvedBy).toBe('blended');
+    expect(decision.variant).toBe('draw_first'); // bandit-favored arm overrides the LLM
+    expect((decision.metadata?.blend as { banditWeight?: number } | undefined)?.banditWeight).toBeGreaterThan(0.9);
+  });
+
+  it('decays a quiet arm at read time without persisting it (decay enabled)', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 'q1' }]);
+    await storage.upsertBanditParams({ stateId: 'neutral:standard', variant: 'draw_first', alpha: 50, beta: 1, lastUpdated: 0 });
+
+    // Same warm arm, two clocks. Each service gets its own seeded RNG so the only
+    // varying input is how long the arm has been quiet.
+    const makeService = (now: () => number) => new DecisionService({
+      config: createDefaultDionysysConfig(), // decay enabled, effectiveWindow 200
+      storage,
+      llmConnector: fixedConnector('text_first', 'show_text_workspace', 0.6),
+      rng: createSeededRng(7),
+      now,
+    });
+
+    const fresh = await makeService(() => 0).resolve({ sessionId: 'q1', mode: 'mcp' }); // Δt = 0
+    const stale = await makeService(() => 100_000 * 86_400_000).resolve({ sessionId: 'q1', mode: 'mcp' }); // Δt huge
+
+    const freshWeight = (fresh.metadata?.blend as { banditWeight: number }).banditWeight;
+    const staleWeight = (stale.metadata?.blend as { banditWeight: number }).banditWeight;
+    expect(freshWeight).toBeGreaterThan(0.9);
+    expect(staleWeight).toBeLessThan(freshWeight);
+    expect(fresh.variant).toBe('draw_first'); // fresh arm overrides the LLM
+    expect(stale.variant).toBe('text_first'); // decayed arm yields to the LLM
+
+    // Read-time decay is in-memory only: the stored arm is untouched.
+    expect((await storage.getBanditParams('neutral:standard', 'draw_first'))!.alpha).toBe(50);
+  });
+
+  it('does not apply read-time decay when decay is disabled', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 'q2' }]);
+    await storage.upsertBanditParams({ stateId: 'neutral:standard', variant: 'draw_first', alpha: 50, beta: 1, lastUpdated: 0 });
+
+    const config = createDefaultDionysysConfig();
+    config.mcp.bandit = { ...config.mcp.bandit!, decay: { enabled: false, effectiveWindow: 200 } };
+    const makeService = (now: () => number) => new DecisionService({
+      config,
+      storage,
+      llmConnector: fixedConnector('text_first', 'show_text_workspace', 0.6),
+      rng: createSeededRng(7),
+      now,
+    });
+
+    const fresh = await makeService(() => 0).resolve({ sessionId: 'q2', mode: 'mcp' });
+    const stale = await makeService(() => 100_000 * 86_400_000).resolve({ sessionId: 'q2', mode: 'mcp' });
+
+    // Decay off => elapsed time is irrelevant; both resolutions are identical.
+    expect((stale.metadata?.blend as { banditWeight: number }).banditWeight)
+      .toBeCloseTo((fresh.metadata?.blend as { banditWeight: number }).banditWeight, 10);
+    expect(fresh.variant).toBe('draw_first');
+    expect(stale.variant).toBe('draw_first');
+  });
+
+  it('skips bandit reads when the bandit is disabled', async () => {
+    const storage = createMemoryStorage();
+    const reads = trackBanditReads(storage);
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 'w3' }]);
+    const config = createDefaultDionysysConfig();
+    config.mcp.bandit = { ...config.mcp.bandit!, enabled: false };
+
+    const service = new DecisionService({
+      config,
+      storage,
+      llmConnector: fixedConnector('text_first', 'show_text_workspace', 0.9),
+      rng: createSeededRng(1),
+    });
+
+    const decision = await service.resolve({ sessionId: 'w3', mode: 'mcp' });
+
+    expect(reads).toHaveLength(0);
+    expect(decision.variant).toBe('text_first'); // pure LLM, no bandit influence
+  });
+
+  it('deterministic decisions carry no blend metadata', async () => {
+    const { storage, service } = createService();
+    await storage.saveEvents([
+      { type: 'element_drawn', sessionId: 'd1' },
+      { type: 'element_drawn', sessionId: 'd1' },
+    ]);
+
+    const decision = await service.resolve({ sessionId: 'd1', mode: 'deterministic' });
+
+    expect(decision.metadata?.blend).toBeUndefined();
+    expect(decision.metadata?.resolvedBy).toBeUndefined();
   });
 });

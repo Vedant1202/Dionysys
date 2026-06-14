@@ -1,11 +1,50 @@
-import type { DionysysEvent } from '@dionysys/core';
+import { discountTowardPrior, effectiveWindowToGamma, rewardToIncrements, type AdminConsoleConfig, type DionysysEvent, type FeedbackWeights } from '@dionysys/core';
 import type {
   DionysysAppliedDecision,
+  DionysysFeedbackRecommendation,
   DionysysFeedbackRecord,
   DionysysFeedbackSentiment,
   DionysysFeedbackSource,
   DionysysStorage,
 } from '../storage/types.js';
+
+// Raw score at which the passive reward reaches 0.5 — controls how quickly activity
+// saturates toward a reward of 1.
+const PASSIVE_REWARD_HALF_SATURATION = 10;
+
+const DEFAULT_FEEDBACK_WEIGHTS: FeedbackWeights = {
+  creationWeight: 3,
+  textAdditionWeight: 3,
+  modificationWeight: 1,
+  deletionPenalty: 2,
+  hiddenToolPenalty: 3,
+};
+
+/**
+ * Graded passive reward in [0,1) from a session's events: productive activity raises
+ * it, friction (deletions, hidden-tool clicks) lowers it. Replaces the previous binary
+ * "any creative event => 1" so the bandit gets a discriminating signal.
+ */
+export function computePassiveReward(events: DionysysEvent[], weights: FeedbackWeights): number {
+  const countByType = (type: string) => events.filter((event) => event.type === type).length;
+  const creations = countByType('element_drawn');
+  const textAdditions = countByType('text_added');
+  const modifications = countByType('element_modified') + countByType('text_updated');
+  const deletions = countByType('element_deleted');
+  const hiddenToolClicks = events.filter(
+    (event) => event.type === 'tool_selected' && toRecord(event.payload)?.['wasHiddenByPersona'] === true,
+  ).length;
+
+  const raw =
+    weights.creationWeight * creations
+    + weights.textAdditionWeight * textAdditions
+    + weights.modificationWeight * modifications
+    - weights.deletionPenalty * deletions
+    - weights.hiddenToolPenalty * hiddenToolClicks;
+
+  if (raw <= 0) return 0;
+  return raw / (raw + PASSIVE_REWARD_HALF_SATURATION);
+}
 
 export interface SubmitFeedbackInput {
   sessionId: string;
@@ -33,7 +72,10 @@ export class FeedbackValidationError extends Error {
 }
 
 export class FeedbackService {
-  constructor(private readonly storage: DionysysStorage) {}
+  constructor(
+    private readonly storage: DionysysStorage,
+    private readonly config?: AdminConsoleConfig,
+  ) {}
 
   async submit(input: SubmitFeedbackInput): Promise<DionysysFeedbackRecord | null> {
     if (!input.sessionId) throw new FeedbackValidationError('Missing sessionId');
@@ -53,9 +95,11 @@ export class FeedbackService {
     const events = await this.storage.getEventsBySession(input.sessionId);
     await this.storage.endSession(input.sessionId).catch(() => undefined);
     const creativeEvents = events.filter((event) => event.type === 'element_drawn' || event.type === 'text_added');
+    const reward = computePassiveReward(events, this.config?.feedbackWeights ?? DEFAULT_FEEDBACK_WEIGHTS);
+    await this.applyPassiveBanditReward(input.sessionId, reward);
     return {
       sessionId: input.sessionId,
-      reward: creativeEvents.length > 0 ? 1 : 0,
+      reward,
       metrics: {
         totalEvents: events.length,
         totalCreativeEvents: creativeEvents.length,
@@ -101,7 +145,79 @@ export class FeedbackService {
     };
 
     await this.storage.saveFeedbackLoopRecord(record);
+    await this.applyExplicitBanditReward(input.sessionId, record.graphRecommendation);
     return record;
+  }
+
+  // Resolve the bandit arm (context + applied modality) from the session's most
+  // recent MCP decision. Deterministic decisions and pre-blend decisions are skipped.
+  private async resolveLatestMcpArm(sessionId: string): Promise<{ stateId: string; modality: string } | null> {
+    const decisions = await this.storage.getDecisionsBySession(sessionId);
+    for (let index = decisions.length - 1; index >= 0; index -= 1) {
+      const decision = decisions[index];
+      if (!decision || decision.mode !== 'mcp') continue;
+      const metadata = (decision.metadata ?? {}) as Record<string, unknown>;
+      const blend = metadata['blend'] as { stateId?: unknown } | undefined;
+      const stateId = blend?.stateId;
+      const modality = metadata['selectedModality'];
+      if (typeof stateId === 'string' && typeof modality === 'string') {
+        return { stateId, modality };
+      }
+    }
+    return null;
+  }
+
+  // Apply a Beta increment to an arm. When decay is enabled this is discounted
+  // Thompson sampling (read -> discount toward prior -> add increment -> upsert);
+  // when disabled it stays the atomic increment so behavior matches pre-decay exactly.
+  private async applyBanditUpdate(stateId: string, variant: string, alphaInc: number, betaInc: number): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    const decay = bandit?.decay;
+    if (!decay?.enabled) {
+      await this.storage.incrementBanditParams(stateId, variant, alphaInc, betaInc);
+      return;
+    }
+    const priorAlpha = bandit?.priorAlpha ?? 1;
+    const priorBeta = bandit?.priorBeta ?? 1;
+    const gamma = effectiveWindowToGamma(decay.effectiveWindow);
+    const existing = await this.storage.getBanditParams(stateId, variant);
+    const discounted = discountTowardPrior(
+      existing?.alpha ?? priorAlpha,
+      existing?.beta ?? priorBeta,
+      gamma,
+      priorAlpha,
+      priorBeta,
+    );
+    await this.storage.upsertBanditParams({
+      stateId,
+      variant,
+      alpha: discounted.alpha + alphaInc,
+      beta: discounted.beta + betaInc,
+      lastUpdated: Date.now(),
+    });
+  }
+
+  private async applyExplicitBanditReward(
+    sessionId: string,
+    recommendation: DionysysFeedbackRecommendation,
+  ): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    if (!bandit?.enabled) return;
+    if (recommendation !== 'keep' && recommendation !== 'revert') return;
+    const arm = await this.resolveLatestMcpArm(sessionId);
+    if (!arm) return;
+    const reward = recommendation === 'keep' ? bandit.keepReward : bandit.revertReward;
+    const { alphaInc, betaInc } = rewardToIncrements(reward, 1);
+    await this.applyBanditUpdate(arm.stateId, arm.modality, alphaInc, betaInc);
+  }
+
+  private async applyPassiveBanditReward(sessionId: string, reward: number): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    if (!bandit?.enabled) return;
+    const arm = await this.resolveLatestMcpArm(sessionId);
+    if (!arm) return;
+    const { alphaInc, betaInc } = rewardToIncrements(reward, bandit.passiveRewardWeight);
+    await this.applyBanditUpdate(arm.stateId, arm.modality, alphaInc, betaInc);
   }
 }
 

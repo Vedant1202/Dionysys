@@ -106,8 +106,19 @@ The console has focused tabs for the main adaptive surfaces:
 | Personalities | MCP personality resource names, ids, descriptions, decision hints, base weights, scoring signals, actions, and UI states. |
 | Calculations | Deterministic personas, initial counts, policy epsilon, event weight rules, and heuristic rules. |
 | Data | Summarized interaction data, derived counts, timing metrics, and sanitized recent events for the selected session. |
+| Bandit | Inspect and maintain the Thompson-sampling arms — see [Bandit tab](#bandit-tab) below. |
 | MCP APIs | Runtime API status and the active MCP resource catalog. |
 | Export | Full JSON editor, local JSON apply, and JSON export for future use. |
+
+### Bandit tab
+
+The **Bandit** tab opens up the otherwise-opaque weak-signal learner. Arms are grouped by context (`<modality>:<expertise>`); each arm shows:
+
+- **Posterior mean** and a **90% credible interval** over its Beta posterior.
+- **Observations (n)** — evidence beyond the prior — and the **evidence weight** `wBandit = n / (n + banditEvidenceK)` that sets how much the arm pulls against the LLM.
+- **P(best)** — a Monte-Carlo estimate of how often the arm wins a posterior draw. This replaces argmax-of-means as the "would pick" signal, so the highlighted arm reflects genuine uncertainty.
+
+A **decision trace** (when a `sessionId` is supplied) reconstructs gate → LLM pick → bandit sample → blend → applied variant from the stored decision metadata. Maintenance controls let you **decay** all arms once, **export/import** a snapshot of learned state, or **reset** everything to priors. Decay status (on/off, effective window, derived `γ`) is shown alongside the totals. See [`mcp.bandit.decay`](./configuration.md#mcpbanditdecay) for the underlying model.
 
 ## Runtime Config API
 

@@ -6,7 +6,7 @@ import type {
 } from '@dionysys/core';
 import type { DionysysClient } from '@dionysys/client';
 
-export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'components' | 'data' | 'apis' | 'export' | 'explorer';
+export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'components' | 'data' | 'bandit' | 'apis' | 'export' | 'explorer';
 
 export interface AdminConsoleProps {
   client?: Pick<DionysysClient, 'admin'>;
