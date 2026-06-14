@@ -1,15 +1,23 @@
 import crypto from 'crypto';
 import {
   DionysysDecisionResolveSchema,
+  InteractionSummarizer,
   McpModeResolver,
+  PersonalityScorer,
+  buildLockedModalityScores,
+  countModalityEvents,
+  getTopScoredKey,
   inferDeterministicAxesFromAdminConfig,
   selectVariantFromAdminConfig,
   type AdminConsoleConfig,
+  type AdminMcpBanditConfig,
   type AdaptiveMode,
+  type BanditArm,
   type DionysysDecision,
   type DionysysEvent,
   type LLMDecisionConnector,
   type GenericEvent,
+  type PersonalityResource,
   type SummarizableInteractionEvent,
 } from '@dionysys/core';
 import type { DionysysDecisionConnector } from '../connectors/types.js';
@@ -19,6 +27,8 @@ export interface DecisionServiceOptions {
   config: AdminConsoleConfig;
   storage: DionysysStorage;
   llmConnector: DionysysDecisionConnector;
+  // Injectable RNG for the Thompson bandit blend; defaults to Math.random.
+  rng?: () => number;
 }
 
 export interface ResolveDecisionInput {
@@ -87,16 +97,34 @@ export class DecisionService {
   }
 
   private async resolveMcp(sessionId: string, events: DionysysEvent[]): Promise<DionysysDecision> {
+    const mcp = this.options.config.mcp;
+    const summarizable = toSummarizableEvents(events);
+    const summaryOptions = getSummaryOptions(events);
+
+    // Deterministic context — computed with the same primitives the resolver uses
+    // internally, so this stateId matches the one the resolver reasons over.
+    const { drawCount, textCount } = countModalityEvents(summarizable);
+    const lockedModality = getTopScoredKey(buildLockedModalityScores(drawCount, textCount), 'neutral');
+    const summary = new InteractionSummarizer().summarize(summarizable, summaryOptions);
+    const expertiseScores = new PersonalityScorer().score(mcp.axes.expertiseResources, summary).personaScores;
+    const selectedExpertise = getTopScoredKey(expertiseScores, 'standard');
+    const stateId = `${lockedModality}:${selectedExpertise}`;
+
+    const banditArms = mcp.bandit?.enabled
+      ? await this.readBanditArms(stateId, mcp.axes.modalityResources, mcp.bandit)
+      : {};
+
     const resolver = new McpModeResolver({
-      resourcesByAxis: this.options.config.mcp.axes,
+      resourcesByAxis: mcp.axes,
       llmConnector: this.toMcpConnector(),
-      minConfidence: this.options.config.mcp.minConfidence,
-      fallbackVariant: this.options.config.mcp.fallbackVariant,
+      minConfidence: mcp.minConfidence,
+      fallbackVariant: mcp.fallbackVariant,
+      gate: mcp.gate,
+      banditEvidenceK: mcp.bandit?.banditEvidenceK,
+      banditArms,
+      rng: this.options.rng,
     });
-    const decision = await resolver.resolve({
-      events: toSummarizableEvents(events),
-      summaryOptions: getSummaryOptions(events),
-    });
+    const decision = await resolver.resolve({ events: summarizable, summaryOptions });
 
     return {
       id: crypto.randomUUID(),
@@ -123,8 +151,31 @@ export class DecisionService {
         axisMatchedSignals: decision.axisMatchedSignals,
         interactionSummary: decision.interactionSummary,
         isFallback: decision.isFallback,
+        signalStrength: decision.signalStrength,
+        resolvedBy: decision.resolvedBy,
+        blend: decision.blend ? { ...decision.blend, stateId } : undefined,
       },
     };
+  }
+
+  private async readBanditArms(
+    stateId: string,
+    modalityResources: PersonalityResource[],
+    banditConfig: AdminMcpBanditConfig,
+  ): Promise<Record<string, BanditArm>> {
+    const priorTotal = banditConfig.priorAlpha + banditConfig.priorBeta;
+    const arms: Record<string, BanditArm> = {};
+    for (const resource of modalityResources) {
+      const params = await this.options.storage.getBanditParams(stateId, resource.id);
+      if (params) {
+        arms[resource.id] = {
+          alpha: params.alpha,
+          beta: params.beta,
+          observations: Math.max(0, (params.alpha + params.beta) - priorTotal),
+        };
+      }
+    }
+    return arms;
   }
 
   private toMcpConnector(): LLMDecisionConnector {
