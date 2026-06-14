@@ -12,6 +12,11 @@ const EXPECTED_PATHS = [
   '/api/dionysys/admin/config',
   '/api/dionysys/admin/config/reset',
   '/api/dionysys/admin/config/export',
+  '/api/dionysys/admin/bandit',
+  '/api/dionysys/admin/bandit/reset',
+  '/api/dionysys/admin/bandit/export',
+  '/api/dionysys/admin/bandit/import',
+  '/api/dionysys/admin/bandit/decay',
 ];
 
 describe('buildOpenApiDocument', () => {

@@ -609,6 +609,17 @@ components:
                   default: 3
                   exclusiveMinimum: 0
                   type: number
+                decay:
+                  default: {}
+                  properties:
+                    effectiveWindow:
+                      default: 200
+                      exclusiveMinimum: 1
+                      type: number
+                    enabled:
+                      default: true
+                      type: boolean
+                  type: object
                 enabled:
                   default: true
                   type: boolean
@@ -889,6 +900,131 @@ info:
   version: 1.0.0
 openapi: 3.1.0
 paths:
+  /api/dionysys/admin/bandit:
+    get:
+      responses:
+        "200":
+          description: Bandit overview
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Inspect bandit arms (posterior mean, credible interval, P(best),
+        evidence weight) and an optional decision trace
+      tags:
+        - Admin
+  /api/dionysys/admin/bandit/decay:
+    post:
+      responses:
+        "200":
+          description: Number of arms decayed
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Decay all bandit arms toward their priors once (discounted Thompson
+        sampling)
+      tags:
+        - Admin
+  /api/dionysys/admin/bandit/export:
+    get:
+      responses:
+        "200":
+          description: Bandit snapshot (exportedAt + arms)
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Export a snapshot of learned bandit arms
+      tags:
+        - Admin
+  /api/dionysys/admin/bandit/import:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                arms:
+                  items:
+                    additionalProperties: {}
+                    type: object
+                  type: array
+              required:
+                - arms
+              type: object
+      responses:
+        "200":
+          description: Number of arms imported
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Restore bandit arms from a snapshot
+      tags:
+        - Admin
+  /api/dionysys/admin/bandit/reset:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                stateId:
+                  type: string
+                variant:
+                  type: string
+              type: object
+      responses:
+        "200":
+          description: Number of arms reset
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Reset a bandit arm, a whole context, or all arms to their priors
+      tags:
+        - Admin
   /api/dionysys/admin/config:
     get:
       responses:
@@ -1505,6 +1641,17 @@ paths:
                                 default: 3
                                 exclusiveMinimum: 0
                                 type: number
+                              decay:
+                                default: {}
+                                properties:
+                                  effectiveWindow:
+                                    default: 200
+                                    exclusiveMinimum: 1
+                                    type: number
+                                  enabled:
+                                    default: true
+                                    type: boolean
+                                type: object
                               enabled:
                                 default: true
                                 type: boolean
@@ -2260,6 +2407,17 @@ paths:
                               default: 3
                               exclusiveMinimum: 0
                               type: number
+                            decay:
+                              default: {}
+                              properties:
+                                effectiveWindow:
+                                  default: 200
+                                  exclusiveMinimum: 1
+                                  type: number
+                                enabled:
+                                  default: true
+                                  type: boolean
+                              type: object
                             enabled:
                               default: true
                               type: boolean
@@ -2996,6 +3154,17 @@ paths:
                                 default: 3
                                 exclusiveMinimum: 0
                                 type: number
+                              decay:
+                                default: {}
+                                properties:
+                                  effectiveWindow:
+                                    default: 200
+                                    exclusiveMinimum: 1
+                                    type: number
+                                  enabled:
+                                    default: true
+                                    type: boolean
+                                type: object
                               enabled:
                                 default: true
                                 type: boolean
@@ -3759,6 +3928,17 @@ paths:
                                 default: 3
                                 exclusiveMinimum: 0
                                 type: number
+                              decay:
+                                default: {}
+                                properties:
+                                  effectiveWindow:
+                                    default: 200
+                                    exclusiveMinimum: 1
+                                    type: number
+                                  enabled:
+                                    default: true
+                                    type: boolean
+                                type: object
                               enabled:
                                 default: true
                                 type: boolean
@@ -4519,6 +4699,17 @@ paths:
                                 default: 3
                                 exclusiveMinimum: 0
                                 type: number
+                              decay:
+                                default: {}
+                                properties:
+                                  effectiveWindow:
+                                    default: 200
+                                    exclusiveMinimum: 1
+                                    type: number
+                                  enabled:
+                                    default: true
+                                    type: boolean
+                                type: object
                               enabled:
                                 default: true
                                 type: boolean
