@@ -101,7 +101,12 @@ The client calls:
 POST /api/dionysys/decisions:resolve
 ```
 
-The server reads recent events, computes deterministic or MCP context, invokes the configured connector when needed, validates the result, stores the decision, and returns a full decision object.
+The server reads recent events, computes the deterministic context, always consults the configured connector, and resolves the decision through a confidence gate:
+
+- **Strong signal** (enough modality events and a clear score margin) — deterministic rules decide; the connector's answer is honored only when it agrees with the locked modality and clears `minConfidence`.
+- **Weak / ambiguous signal** — the connector's choice is blended with a per-context Thompson-sampling bandit. Each candidate modality scores `(1 - wBandit)·llmConfidence + wBandit·thompsonSample`, where `wBandit = n / (n + banditEvidenceK)`. With no bandit history the blend reduces to the model's free choice; as evidence accrues the bandit dominates.
+
+Invalid or low-confidence output falls back to a configured safe action. The stored decision carries `metadata.signalStrength`, `metadata.resolvedBy` (`deterministic` | `blended` | `fallback`), and `metadata.blend` for observability. Feedback then updates the `(stateId, modality)` bandit arm so later weak-signal decisions in the same context shift toward what worked — see [Feedback Loop](./feedback-loop.md). The gate and bandit are tunable via `mcp.gate` / `mcp.bandit` in [Configuration](./configuration.md).
 
 ### 4. React application
 

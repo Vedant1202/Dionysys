@@ -4,6 +4,17 @@ The feedback loop lets end users tell and show whether a persona-driven UI chang
 
 The loop never changes the active UI mid-session. Feedback shapes the *next* decision — the bandit reweights variant selection on later decisions, and a cross-session prior warm-starts the next session.
 
+## SDK learning loop (canonical)
+
+The canonical learning loop lives in `@dionysys/server` and runs in MCP mode (no beta flags required). After a weak-signal blend decision is applied, feedback updates a per-context Thompson-sampling bandit:
+
+- **Explicit** keep/revert → `bandit.keepReward` / `bandit.revertReward` applied to the `(stateId, modality)` arm (`FeedbackService.submit` / `evaluate`).
+- **Passive** session reward on `POST /api/dionysys/feedback/:sessionId/complete` → applied at `bandit.passiveRewardWeight`.
+
+At decision time `DecisionService` reads the arms for the current context and blends them with the connector via `wBandit = n / (n + banditEvidenceK)` (`n` derived from the arm's `alpha + beta` minus priors). The context key is `stateId = "<modality>:<expertise>"` (the deterministic guess); the arms are the applied modality. Cold arms reduce the blend to the model's free choice. Tune everything via `mcp.gate` / `mcp.bandit` — see [Configuration](./configuration.md).
+
+> The sections below describe the older Excalidraw **demo-beta** prototype — its own demo-local services and `/api/reward` · `/api/adaptive-feedback` routes — which predates the SDK extraction and remains beta-gated behind the flags below. The canonical mechanism above is the one shipped in `@dionysys/server`.
+
 ## Enabling it
 
 Set both flags:

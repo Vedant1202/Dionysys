@@ -194,3 +194,30 @@ GET  /api/dionysys/admin/overview/stream  Server-sent events stream
 ```
 
 Use the React `AdminConsole` to edit runtime config in memory. Export a snapshot when you want to promote tuned configuration back into source control.
+
+## MCP gate and bandit
+
+MCP-mode decisions run through a confidence gate and an evidence-weighted bandit blend. Both live under `mcp` in the admin config, are tunable at runtime in the admin console's **Modes** tab, and are carried through export/import. All fields default to safe values, so existing configs and the demo work unchanged.
+
+### `mcp.gate`
+
+| Field | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `lockMinEvents` | `number` | `2` | Minimum modality events before the deterministic signal counts as "strong" |
+| `lockMargin` | `number` (0–1) | `0.15` | Minimum gap between the top and runner-up modality scores for a "strong" signal |
+
+When the signal is strong, deterministic rules decide. When it is weak, the LLM and bandit blend.
+
+### `mcp.bandit`
+
+| Field | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | `true` | Master switch; when false, weak-signal decisions are a pure LLM choice and no bandit reads/updates occur |
+| `banditEvidenceK` | `number` | `3` | Observation count at which the bandit and the LLM carry equal weight (`wBandit = n / (n + K)`) |
+| `priorAlpha` | `number` | `1` | Beta prior alpha for a fresh arm |
+| `priorBeta` | `number` | `1` | Beta prior beta for a fresh arm |
+| `keepReward` | `number` (0–1) | `1` | Reward applied to the chosen arm on explicit "keep" |
+| `revertReward` | `number` (0–1) | `0` | Reward applied on explicit "revert" |
+| `passiveRewardWeight` | `number` (0–1) | `0.25` | Weight of the passive session reward relative to explicit feedback |
+
+See [Feedback Loop](./feedback-loop.md) for how feedback updates the bandit arms.
