@@ -9,6 +9,7 @@ import {
   type PersonalityResourcesByAxis,
   type SummarizableInteractionEvent,
 } from './index.js';
+import { createSeededRng, type BanditArm } from '../bandit/index.js';
 
 const modalityResources: PersonalityResource[] = [
   {
@@ -178,6 +179,11 @@ const events: SummarizableInteractionEvent[] = [
   },
 ];
 
+// One drawing event: too few/ambiguous to lock deterministically => WEAK signal.
+const weakEvents: SummarizableInteractionEvent[] = [
+  { eventType: 'element_drawn', timestamp: 1_010, payload: { type: 'rectangle', elementId: 'el-1' } },
+];
+
 describe('MCP schemas', () => {
   it('validates personality resources with actions and scoring rules', () => {
     expect(PersonalityResourceSchema.parse(expertiseResources[0]).id).toBe('novice');
@@ -297,5 +303,71 @@ describe('McpModeResolver', () => {
     expect(decision.uiState.showWelcomeScreen).toBe(true);
     expect(decision.uiState.toolbar).toEqual({ mode: 'blocklist', tools: [] });
     expect(decision.uiState.mainMenuItems).not.toEqual(['help']);
+  });
+
+  it('ignores a confident LLM that disagrees with a strong deterministic lock', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => ({ personalityId: 'text_first', actionId: 'show_text_toolbar', confidence: 0.95 }),
+    };
+
+    const decision = await new McpModeResolver({ resourcesByAxis, llmConnector: connector, rng: createSeededRng(1) })
+      .resolve({ events });
+
+    expect(decision.signalStrength).toBe('strong');
+    expect(decision.selectedModality).toBe('draw_first'); // deterministic lock wins over the LLM
+    expect(decision.isFallback).toBe(true);
+    expect(decision.resolvedBy).toBe('fallback');
+  });
+
+  it('lets the LLM choose freely across personas on weak signal (cold arms)', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => ({ personalityId: 'text_first', actionId: 'show_text_toolbar', confidence: 0.9 }),
+    };
+
+    const decision = await new McpModeResolver({ resourcesByAxis, llmConnector: connector, rng: createSeededRng(1) })
+      .resolve({ events: weakEvents });
+
+    expect(decision.signalStrength).toBe('weak');
+    expect(decision.selectedModality).toBe('text_first'); // free LLM choice, not the locked neutral
+    expect(decision.isFallback).toBe(false);
+    expect(decision.resolvedBy).toBe('blended');
+    expect(decision.blend?.chosenModality).toBe('text_first');
+    expect(decision.blend?.banditWeight).toBe(0);
+  });
+
+  it('lets a strongly rewarded bandit arm override the LLM on weak signal', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => ({ personalityId: 'draw_first', actionId: 'show_draw_toolbar', confidence: 0.6 }),
+    };
+    const banditArms: Record<string, BanditArm> = {
+      text_first: { alpha: 50, beta: 1, observations: 50 },
+    };
+
+    const decision = await new McpModeResolver({
+      resourcesByAxis,
+      llmConnector: connector,
+      banditArms,
+      banditEvidenceK: 3,
+      rng: createSeededRng(7),
+    }).resolve({ events: weakEvents });
+
+    expect(decision.signalStrength).toBe('weak');
+    expect(decision.selectedModality).toBe('text_first'); // bandit-favored arm wins the blend
+    expect(decision.resolvedBy).toBe('blended');
+    expect(decision.isFallback).toBe(false);
+    expect(decision.blend?.banditWeight).toBeGreaterThan(0.9);
+  });
+
+  it('falls back when a cold weak-signal LLM pick is below minConfidence', async () => {
+    const connector: LLMDecisionConnector = {
+      decide: async () => ({ personalityId: 'text_first', actionId: 'show_text_toolbar', confidence: 0.3 }),
+    };
+
+    const decision = await new McpModeResolver({ resourcesByAxis, llmConnector: connector, rng: createSeededRng(1) })
+      .resolve({ events: weakEvents });
+
+    expect(decision.signalStrength).toBe('weak');
+    expect(decision.isFallback).toBe(true);
+    expect(decision.resolvedBy).toBe('fallback');
   });
 });
