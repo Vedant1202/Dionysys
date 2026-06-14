@@ -242,9 +242,9 @@ P1 Core foundation  (config types/schemas, signalStrength, ThompsonBandit)
 **Files:** `packages/react/src/admin-console/sections/ModesPanel.tsx`, `sections/FeedbackLoopPanel.tsx`, `sections/OverviewPanel.tsx`
 **Scope:** Medium
 
-### Checkpoint: Admin Knobs
-- [ ] `npm run build` and `npm run test` for `packages/react`
-- [ ] Knobs render, edit, and export; existing console behavior intact.
+### Checkpoint: Admin Knobs — ✅ complete (commit 5440864)
+- [x] `npm run build` + `npm run test` (tsc --noEmit) for `packages/react` green; full monorepo build green (demo frontend + backend included)
+- [x] Gate + bandit knobs edit via `updateConfig` and flow through Save/Export (export serializes the whole config); OverviewPanel shows a read-only summary. Live in-app render verified in Phase 6 (admin console needs a running backend, so a frontend-only preview can't exercise it).
 
 ## Phase 6: Demo Verification and Docs
 
