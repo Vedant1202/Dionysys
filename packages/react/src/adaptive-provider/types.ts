@@ -6,10 +6,12 @@ import type {
   AdaptivePersistenceMode,
   AdaptivePresentationMode,
   AdaptiveUIDefinition,
+  ComponentEmbedding,
   ExpertisePersona,
   ModalityPersona,
   PendingAdaptiveDecision,
 } from '@dionysys/core';
+import type { DionysysClient } from '@dionysys/client';
 
 export type MaybePromise<T> = T | Promise<T>;
 
@@ -60,6 +62,7 @@ export interface AdaptiveUIState {
   personaProbs: Record<string, number>;
   eventsSentCount: number;
   isPolicyLocked: boolean;
+  componentEmbeddings: Record<string, ComponentEmbedding>;
   setPersonaProbs: (probs: Record<string, number>) => void;
   incrementEventsSent: (count?: number) => void;
   lockPolicy: (selection: string | DeterministicAdaptiveSelection) => void;
@@ -72,6 +75,8 @@ export interface AdaptiveUIState {
 
 export interface AdaptiveProviderProps {
   children: ReactNode;
+  /** Preferred integration path for new consumers. */
+  client?: DionysysClient;
   mode?: AdaptiveMode;
   presentationMode?: AdaptivePresentationMode;
   decisionApplication?: AdaptiveDecisionApplication;
@@ -79,9 +84,7 @@ export interface AdaptiveProviderProps {
   sessionId?: string;
   defaultVariant: string;
   defaultUIState?: AdaptiveUIDefinition;
-  pollInference?: () => Promise<Record<string, number>>;
-  evaluatePolicy?: () => Promise<string | DeterministicAdaptiveSelection>;
-  resolveDecision?: () => Promise<AdaptiveDecision>;
+  componentEmbeddings?: Record<string, ComponentEmbedding>;
   loadPendingDecision?: LoadPendingDecision;
   savePendingDecision?: SavePendingDecision;
   clearPendingDecision?: ClearPendingDecision;

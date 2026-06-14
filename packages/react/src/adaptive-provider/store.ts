@@ -10,6 +10,7 @@ export interface CreateAdaptiveUIStoreArgs {
   defaultVariant: string;
   defaultUIState?: AdaptiveUIDefinition | undefined;
   initialPendingDecision?: PendingAdaptiveDecision | undefined;
+  componentEmbeddings?: Record<string, import('@dionysys/core').ComponentEmbedding>;
 }
 
 export const AdaptiveUIContext = React.createContext<StoreApi<AdaptiveUIState> | null>(null);
@@ -20,6 +21,7 @@ export function createAdaptiveUIStore({
   defaultVariant,
   defaultUIState,
   initialPendingDecision,
+  componentEmbeddings = {},
 }: CreateAdaptiveUIStoreArgs): StoreApi<AdaptiveUIState> {
   const initialVariant = initialPendingDecision?.variant ?? defaultVariant;
   const initialAxisSelection = splitComposedUiVariant(initialPendingDecision?.composedUiVariant ?? initialVariant);
@@ -37,9 +39,10 @@ export function createAdaptiveUIStore({
     pendingDecision: undefined,
     pendingPersonality: undefined,
     hasPendingUIChange: false,
-    personaProbs: initialPendingDecision?.modalityScores ?? initialPendingDecision?.personaScores ?? {},
+    personaProbs: initialPendingDecision?.modalityScores ?? initialPendingDecision?.personaScores ?? { [initialVariant]: 1.0 },
     eventsSentCount: 0,
     isPolicyLocked: false,
+    componentEmbeddings,
     setPersonaProbs: (probs) => set({ personaProbs: probs }),
     incrementEventsSent: (count = 1) => set((state) => ({ eventsSentCount: state.eventsSentCount + count })),
     lockPolicy: (selection) => set(() => applyDeterministicSelection(selection)),
@@ -93,7 +96,7 @@ export function createAdaptiveUIStore({
       selectedExpertise: selection.selectedExpertise ?? splitComposedUiVariant(selection.variant).expertise,
       decisionConfidence: selection.confidence ?? state.decisionConfidence,
       lastDecision: selection.decision ?? state.lastDecision,
-      personaProbs: selection.personaScores ?? state.personaProbs,
+      personaProbs: selection.personaScores ?? { [selection.variant]: 1.0 },
     })),
   }));
 }
@@ -113,6 +116,6 @@ function applyDeterministicSelection(selection: string | DeterministicAdaptiveSe
     pendingDecision: undefined,
     pendingPersonality: undefined,
     hasPendingUIChange: false,
-    personaProbs: typeof selection === 'string' ? {} : selection.modalityScores,
+    personaProbs: typeof selection === 'string' ? { [selection]: 1.0 } : (selection.modalityScores ?? { [variant]: 1.0 }),
   };
 }

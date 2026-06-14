@@ -8,6 +8,8 @@ import { CalculationsPanel } from './sections/CalculationsPanel.js';
 import { DataPanel } from './sections/DataPanel.js';
 import { ApisPanel } from './sections/ApisPanel.js';
 import { ExportPanel } from './sections/ExportPanel.js';
+import { ExplorerPanel } from './sections/ExplorerPanel.js';
+import { ComponentsPanel } from './sections/ComponentsPanel.js';
 import { adminConsoleStyles as styles } from './styles.js';
 import { useAdminConsoleState } from './useAdminConsoleState.js';
 import type { AdminConsoleProps } from './types.js';
@@ -15,6 +17,7 @@ import type { AdminConsoleProps } from './types.js';
 export type { AdminConsoleProps } from './types.js';
 
 export function AdminConsole({
+  client,
   apiBaseUrl = 'http://localhost:3001',
   sessionId,
   persistenceMode,
@@ -22,6 +25,7 @@ export function AdminConsole({
   onRandomizeSession,
   onClose,
   onConfigSaved,
+  defaultTab = 'overview',
 }: AdminConsoleProps) {
   const {
     activeTab,
@@ -43,61 +47,65 @@ export function AdminConsole({
     resetConfig,
     exportConfig,
     applyJsonDraft,
-  } = useAdminConsoleState({ apiBaseUrl, sessionId, onConfigSaved });
+    clearNotice,
+  } = useAdminConsoleState({ client, apiBaseUrl, sessionId, onConfigSaved, defaultTab });
+
+  const handleNavigation = React.useCallback((tab: typeof activeTab) => {
+    setActiveTab(tab);
+    clearNotice();
+  }, [setActiveTab, clearNotice]);
 
   return (
-    <section style={styles.shell} aria-label="Dionysys admin console">
-      <header style={styles.header}>
+    <section className={styles.shell} aria-label="Dionysys admin console">
+      <header className={styles.header}>
         <div>
-          <p style={styles.eyebrow}>Runtime control center</p>
-          <h1 style={styles.title}>Dionysys Admin Console</h1>
-          <p style={styles.subtitle}>
-            Inspect and edit adaptive modes, personality resources, scoring rules, session summaries, and MCP decision APIs.
-          </p>
+          <p className={styles.eyebrow}>Runtime control center</p>
+          <h1 className={styles.title}>Admin Console</h1>
         </div>
-        <div style={styles.headerActions}>
-          <button type="button" style={styles.secondaryButton} onClick={() => void loadAdminState()} disabled={isLoading}>
+        <div className={styles.headerActions}>
+          <button type="button" className={styles.secondaryButton} onClick={() => void loadAdminState()} disabled={isLoading}>
             Refresh
           </button>
-          <button type="button" style={styles.secondaryButton} onClick={exportConfig} disabled={!config}>
+          <button type="button" className={styles.secondaryButton} onClick={exportConfig} disabled={!config}>
             Export
           </button>
-          <button type="button" style={styles.dangerButton} onClick={() => void resetConfig()} disabled={isSaving}>
+          <button type="button" className={styles.dangerButton} onClick={() => void resetConfig()} disabled={isSaving}>
             Reset
           </button>
-          <button type="button" style={styles.primaryButton} onClick={() => void saveConfig()} disabled={!config || isSaving}>
-            {isSaving ? 'Saving...' : 'Save runtime config'}
+          <button type="button" className={styles.primaryButton} onClick={() => void saveConfig()} disabled={!config || isSaving}>
+            {isSaving ? 'Saving…' : 'Save config'}
           </button>
           {onClose && (
-            <button type="button" style={styles.iconButton} onClick={onClose} aria-label="Close admin console">
-              x
+            <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close admin console">
+              ✕
             </button>
           )}
         </div>
       </header>
 
-      {(notice || error) && (
-        <div style={error ? styles.errorBanner : styles.noticeBanner}>
-          {error ?? notice}
-        </div>
-      )}
+      <nav className={styles.navBar} aria-label="Admin console sections">
+        {ADMIN_CONSOLE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={activeTab === tab.id ? styles.activeNavTab : styles.navTab}
+            onClick={() => handleNavigation(tab.id)}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-      <div style={styles.layout}>
-        <nav style={styles.sidebar} aria-label="Admin console sections">
-          {ADMIN_CONSOLE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              style={activeTab === tab.id ? styles.activeTabButton : styles.tabButton}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      <div className={styles.layout}>
+        <main className={styles.content}>
+          {(notice || error) && (
+            <div className={error ? styles.errorBanner : styles.noticeBanner}>
+              {error ?? notice}
+            </div>
+          )}
 
-        <main style={styles.content}>
-          {isLoading && <EmptyState title="Loading admin console" description="Reading runtime configuration from the backend." />}
+          {isLoading && <EmptyState title="Loading" description="Reading runtime configuration from the backend." />}
           {!isLoading && !config && !error && (
             <EmptyState title="No configuration loaded" description="The admin endpoint did not return a configuration payload." />
           )}
@@ -126,8 +134,11 @@ export function AdminConsole({
           {!isLoading && config && activeTab === 'calculations' && (
             <CalculationsPanel config={config} updateConfig={updateConfig} />
           )}
+          {!isLoading && config && activeTab === 'components' && (
+            <ComponentsPanel config={config} updateConfig={updateConfig} />
+          )}
           {!isLoading && config && activeTab === 'data' && (
-            <DataPanel overview={overview} />
+            <DataPanel overview={overview} apiBaseUrl={apiBaseUrl} client={client} />
           )}
           {!isLoading && config && activeTab === 'apis' && (
             <ApisPanel
@@ -143,6 +154,9 @@ export function AdminConsole({
               applyJsonDraft={applyJsonDraft}
               exportConfig={exportConfig}
             />
+          )}
+          {!isLoading && config && activeTab === 'explorer' && (
+            <ExplorerPanel config={config} updateConfig={updateConfig} overview={overview} />
           )}
         </main>
       </div>

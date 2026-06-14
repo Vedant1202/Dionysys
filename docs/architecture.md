@@ -1,53 +1,134 @@
 # Architecture Overview
 
-Dionysys is organized as a small set of packages plus a backend and a reference frontend. The design goal is to keep decision logic, React orchestration, and app-specific rendering separate enough that contributors can understand each layer without reading the whole repo at once.
+Dionysys is organized around one public path through the system:
 
-## `@dionysys/core`
+```text
+app UI
+  -> @dionysys/client
+    -> /api/dionysys/*
+      -> @dionysys/server
+        -> storage adapter + decision connector
+          -> @dionysys/core contracts and logic
+```
 
-`@dionysys/core` is the framework-neutral layer. It owns validated contracts and the decision logic that can run on the backend or in any non-React environment.
+## Package graph
 
-- `schema/`: UI and config schemas such as `AdaptiveUIDefinition`
-- `inference/`: deterministic persona inference types and `InferenceEngine`
-- `policy/`: contextual bandit policy selection with `PolicyEngine`
-- `reward/`: reward/baseline metrics contracts and `RewardEngine`
-- `mcp/`: interaction summarization, personality resources, scoring, resolver logic, and MCP schemas
-- `admin/`: runtime/admin config contracts shared between backend and package UI
+```text
+@dionysys/core
+  ^-- @dionysys/client
+        ^-- @dionysys/react
+  ^-- @dionysys/server
+        ^-- @dionysys/storage-mongodb
+        ^-- @dionysys/connector-openai
+        ^-- @dionysys/connector-gemini
+        ^-- @dionysys/connector-anthropic
+        (also: mockConnector, customHttpConnector — built into @dionysys/server)
+```
 
-The core package is where scoring, policy selection, MCP validation, and shared data contracts belong. Event payloads are typed with `unknown` at package boundaries so apps must narrow them intentionally instead of inheriting `any`.
+## Package roles
 
-## `@dionysys/react`
+### `@dionysys/core`
 
-`@dionysys/react` is the React-facing package. It keeps the public API compact while splitting internal responsibilities into feature folders.
+Framework-neutral contracts and adaptive logic:
 
-- `adaptive-provider/`: `AdaptiveProvider`, Zustand store creation, pending-decision persistence helpers, and provider-facing types
-- `admin-console/`: reusable runtime control center split into shell, state hook, sections, primitives, and styles
-- `feedback/`: `AdaptiveFeedback` for front-facing production feedback
-- `hooks/`: `useAdaptiveUI()` and related React access
+- Event, session, decision, and admin schemas (Zod)
+- Deterministic inference and policy logic
+- MCP resource schemas and decision-support contracts
+- Shared validation and contract boundaries
+- Re-exports `z` from `zod` for downstream consumers
 
-Top-level exports remain stable. Consumers still import from `@dionysys/react`, even though the internal code is now organized by responsibility.
+### `@dionysys/server`
 
-## Backend and Demo
+Self-hosted backend SDK:
 
-- `backend/`: session event ingestion, deterministic inference/policy endpoints, MCP decision routing, admin APIs, and the Excalidraw resource bridge
-- `frontend/`: Excalidraw demo that renders deterministic variants or MCP-selected UI state, plus prototype/production controls for validation
-- `web-docs/`: Docusaurus shell that renders the root `docs/` markdown as the canonical documentation site
+- Mounts the primary `/api/dionysys/*` routes (sessions, events, decisions, feedback, admin)
+- Coordinates session, event, decision, feedback, and admin services
+- Depends on a storage implementation and a decision connector
+- Includes built-in `mockConnector` and `customHttpConnector`
 
-## Runtime Flow
+### `@dionysys/client`
 
-1. The app emits interaction events and associates them with a shared session id.
-2. The backend stores events and exposes deterministic or MCP decision endpoints.
-3. `AdaptiveProvider` polls or resolves decisions through app-supplied hooks.
-4. The provider updates a package-owned Zustand store and exposes state through `useAdaptiveUI()`.
-5. In `immediate` mode, the chosen variant or MCP UI state is applied right away.
-6. In `next-refresh` mode, the provider stores a pending decision for the next mount while also persisting the currently applied adaptive UI for later refreshes.
+Framework-agnostic API client:
 
-## Adaptive Persistence Model
+- Session CRUD and current-session persistence
+- Buffered event tracking with explicit flush
+- Decision resolution
+- Feedback submission and passive evaluation
+- Admin config and overview access
 
-The provider is now intentionally split into:
+### `@dionysys/react`
 
-- a public API layer (`AdaptiveProvider` props and exported hook types)
-- a store layer (state plus actions)
-- a persistence layer (load/save/clear pending and applied decision helpers)
-- a runtime orchestration layer (polling, decision resolution, next-refresh behavior)
+React-facing runtime:
 
-That split keeps package consumers on stable exports while making the implementation easier to extend. Manual layout previews should go through `setManualOverride(...)` rather than mutating the raw store directly.
+- `AdaptiveProvider` — wraps the app and drives adaptive state
+- `useAdaptiveUI` — reads current variant, UI state, and pending decisions
+- `AdaptiveFeedback` — connected feedback widget
+- `AdminConsole` — runtime config and session overview UI
+
+The preferred React integration is `client={dionysysClient}`.
+
+### `@dionysys/storage-mongodb`
+
+MongoDB-backed implementation of the server storage contract.
+
+### `@dionysys/connector-openai`
+
+OpenAI-backed implementation of the decision connector contract.
+
+### `@dionysys/connector-gemini`
+
+Gemini-backed implementation of the decision connector contract.
+
+### `@dionysys/connector-anthropic`
+
+Anthropic-backed implementation of the decision connector contract.
+
+## Request flow
+
+### 1. Session bootstrap
+
+The app creates or restores a current session through `@dionysys/client`.
+
+### 2. Event collection
+
+App code translates local interaction events into `DionysysEvent` envelopes and sends them through `client.events.track(...)`.
+
+### 3. Decision resolution
+
+The client calls:
+
+```http
+POST /api/dionysys/decisions:resolve
+```
+
+The server reads recent events, computes deterministic or MCP context, invokes the configured connector when needed, validates the result, stores the decision, and returns a full decision object.
+
+### 4. React application
+
+`AdaptiveProvider` stores the active and pending adaptive state and exposes it through `useAdaptiveUI()`.
+
+### 5. Feedback and admin
+
+Feedback and admin operations use the same `/api/dionysys/*` route family rather than separate ad hoc endpoints.
+
+## OpenAPI document
+
+The full REST API surface is described in `docs/openapi/dionysys-api.yaml`.
+
+To regenerate after schema or route changes:
+
+```bash
+npm run openapi:build --workspace=packages/server
+```
+
+The generated YAML is checked in and deterministic — running the command twice on a clean tree produces no `git diff`. Hand-edits to the file are not allowed; corrections go in the source schemas or route registrations.
+
+## Excalidraw as reference app
+
+The Excalidraw demo is intentionally app-specific at the edges:
+
+- It translates Excalidraw events in frontend-only adapter code
+- It keeps demo UX decisions in app code
+- It serves as the living example of the public SDK APIs
+
+That split is important. Public packages stay generic; demo behavior stays local.

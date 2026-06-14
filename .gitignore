@@ -31,6 +31,8 @@ Thumbs.db
 explanation.md
 .skills.readme.md
 .agents/
+agents/
+skills/
 planning.md
 SPEC.md
 mapping_persona.md
@@ -38,6 +40,19 @@ task.md
 walkthrough.md
 implementation_plan.md
 review.md
+
+# Agent Skills
+skills/
+agents/
+references/
+/hooks/
+.gemini/
+.claude/
+.claude-plugin/
+.opencode/
+AGENTS.md
+CLAUDE.md
+plugins/agent-skills/
 
 # Web docs generated output
 web-docs/.docusaurus/
@@ -47,3 +62,16 @@ tasks/
 blog/
 blog-current/
 .vercel
+references/
+/hooks/
+plugins/
+.claude-plugin/
+.claude/
+.gemini/
+AGENTS.md
+CLAUDE.md
+
+.antigravitycli/
+
+# Testing & Coverage
+coverage/

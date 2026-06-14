@@ -5,13 +5,18 @@ const sidebars: SidebarsConfig = {
     'index',
     'usage',
     'configuration',
+    'architecture',
+    'openapi',
     'admin-console',
     'excalidraw-configuration',
-    'architecture',
+    'feedback-loop',
     {
       type: 'category',
       label: 'Specs',
-      items: ['specs/mcp-mode', 'specs/admin-console'],
+      items: [
+        'sdk-upgrade-spec',
+        'sdk-upgrade-plan',
+      ],
     },
   ],
 };

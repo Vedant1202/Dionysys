@@ -75,8 +75,8 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/docs/specs/mcp-mode',
-          label: 'MCP Mode',
+          to: '/docs/sdk-upgrade-spec',
+          label: 'SDK Spec',
           position: 'left',
         },
         {
@@ -118,8 +118,8 @@ const config: Config = {
               to: '/docs/excalidraw-configuration',
             },
             {
-              label: 'MCP Mode Spec',
-              to: '/docs/specs/mcp-mode',
+              label: 'SDK Spec',
+              to: '/docs/sdk-upgrade-spec',
             },
             {
               label: 'Repository',

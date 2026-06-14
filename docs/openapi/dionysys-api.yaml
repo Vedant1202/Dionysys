@@ -1,0 +1,559 @@
+components:
+  parameters: {}
+  schemas:
+    DionysysApiError:
+      properties:
+        error:
+          properties:
+            code:
+              type: string
+            details: {}
+            message:
+              type: string
+          required:
+            - code
+            - message
+          type: object
+      required:
+        - error
+      type: object
+    DionysysConnectorDecision:
+      properties:
+        actionId:
+          type: string
+        confidence:
+          maximum: 1
+          minimum: 0
+          type: number
+        metadata:
+          additionalProperties: {}
+          type: object
+        personaId:
+          type: string
+        rationale:
+          type: string
+      required:
+        - personaId
+        - actionId
+        - confidence
+      type: object
+    DionysysDecision:
+      properties:
+        id:
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+        mode:
+          enum:
+            - deterministic
+            - mcp
+          type: string
+        rationale:
+          type: string
+        scores:
+          additionalProperties:
+            type: number
+          type: object
+        selectedPersona:
+          properties:
+            confidence:
+              type: number
+            id:
+              type: string
+          required:
+            - id
+            - confidence
+          type: object
+        sessionId:
+          type: string
+        uiState:
+          additionalProperties: {}
+          type: object
+        variant:
+          type: string
+      required:
+        - id
+        - sessionId
+        - mode
+        - variant
+        - selectedPersona
+        - scores
+      type: object
+    DionysysDecisionResolve:
+      additionalProperties: {}
+      properties:
+        metadata:
+          additionalProperties: {}
+          type: object
+        sessionId:
+          minLength: 1
+          type: string
+      required:
+        - sessionId
+      type: object
+    DionysysEvent:
+      properties:
+        action:
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+        payload:
+          additionalProperties: {}
+          type: object
+        sessionId:
+          type: string
+        subject:
+          type: string
+        timestamp:
+          anyOf:
+            - type: number
+            - type: string
+            - type: string
+        type:
+          minLength: 1
+          type: string
+        userId:
+          type: string
+      required:
+        - type
+      type: object
+    DionysysSession:
+      properties:
+        createdAt:
+          anyOf:
+            - type: number
+            - type: string
+            - type: string
+        id:
+          minLength: 1
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+        updatedAt:
+          anyOf:
+            - type: number
+            - type: string
+            - type: string
+      required:
+        - id
+      type: object
+    DionysysSessionCreate:
+      properties:
+        id:
+          type: string
+        metadata:
+          additionalProperties: {}
+          type: object
+      type: object
+    DionysysSessionUpdate:
+      properties:
+        metadata:
+          additionalProperties: {}
+          type: object
+      type: object
+info:
+  description: REST API for the Dionysys adaptive UI SDK. Provides session
+    management, event ingestion, adaptive decision resolution, user feedback,
+    and admin configuration.
+  title: Dionysys API
+  version: 1.0.0
+openapi: 3.1.0
+paths:
+  /api/dionysys/admin/config:
+    get:
+      responses:
+        "200":
+          description: Current admin configuration object
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Read admin configuration
+      tags:
+        - Admin
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                config:
+                  additionalProperties: {}
+                  type: object
+              required:
+                - config
+              type: object
+      responses:
+        "200":
+          description: Updated admin configuration object
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Update admin configuration at runtime
+      tags:
+        - Admin
+  /api/dionysys/admin/config/export:
+    get:
+      responses:
+        "200":
+          description: Admin configuration export including exportedAt timestamp
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Export admin configuration as JSON
+      tags:
+        - Admin
+  /api/dionysys/admin/config/reset:
+    post:
+      responses:
+        "200":
+          description: Reset admin configuration object
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Admin console is disabled
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Reset admin configuration to file defaults
+      tags:
+        - Admin
+  /api/dionysys/decisions:resolve:
+    post:
+      description: Preferred SDK route. The server also accepts
+        /api/dionysys/decisions/resolve as a compatibility alias.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DionysysDecisionResolve"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysDecision"
+          description: Resolved decision
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Resolve an adaptive decision
+      tags:
+        - Decisions
+  /api/dionysys/events:
+    post:
+      description: Accepts a single event object or an array of events.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DionysysEvent"
+      responses:
+        "202":
+          description: Events accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Ingest events
+      tags:
+        - Events
+  /api/dionysys/feedback:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                comment:
+                  type: string
+                sentiment:
+                  enum:
+                    - helpful
+                    - in_the_way
+                  type: string
+                sessionId:
+                  minLength: 1
+                  type: string
+              required:
+                - sessionId
+                - sentiment
+              type: object
+      responses:
+        "200":
+          description: Feedback submitted and graph recommendation returned
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: No applied decision found for session
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Submit explicit user feedback
+      tags:
+        - Feedback
+  /api/dionysys/feedback/evaluate:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                sessionId:
+                  minLength: 1
+                  type: string
+              required:
+                - sessionId
+              type: object
+      responses:
+        "200":
+          description: Evaluation result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: No applied decision found for session
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Trigger passive feedback evaluation
+      tags:
+        - Feedback
+  /api/dionysys/sessions:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DionysysSessionCreate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysSession"
+          description: Created session
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Create a session
+      tags:
+        - Sessions
+  /api/dionysys/sessions/{sessionId}:
+    delete:
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        "204":
+          description: Session deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Delete a session
+      tags:
+        - Sessions
+    get:
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysSession"
+          description: Session found
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Session not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Get a session
+      tags:
+        - Sessions
+    patch:
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DionysysSessionUpdate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysSession"
+          description: Updated session
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Validation error
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Session not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: Update session metadata
+      tags:
+        - Sessions
+  /api/dionysys/sessions/{sessionId}/end:
+    post:
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            minLength: 1
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysSession"
+          description: Ended session
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Session not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DionysysApiError"
+          description: Internal error
+      summary: End a session
+      tags:
+        - Sessions
+servers:
+  - description: Dionysys backend
+    url: "{baseUrl}"
+    variables:
+      baseUrl:
+        default: http://localhost:3001
+        description: Base URL of the Dionysys backend server.
+webhooks: {}

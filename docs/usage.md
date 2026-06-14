@@ -1,227 +1,87 @@
-# Package Usage Guide
+# SDK Usage Guide
 
-This guide shows how to use the Dionysys packages outside the Excalidraw demo. Use `@dionysys/core` on the server or in framework-neutral logic, and use `@dionysys/react` to expose adaptive state to a React UI.
+This guide shows the preferred Dionysys integration path today:
 
-## What the Packages Provide
+1. mount `@dionysys/server` in your backend
+2. create a `@dionysys/client` instance in your app
+3. pass that client into `@dionysys/react`
 
-- `@dionysys/core`: inference, policy selection, rewards, MCP-style personality resources, interaction summarization, persona scoring, and MCP decision resolution.
-- `@dionysys/react`: `<AdaptiveProvider />`, `useAdaptiveUI()`, `<AdaptiveFeedback />`, and `<AdminConsole />` for storing adaptive state, collecting front-facing feedback, and optionally editing runtime experiment configuration from a package-owned UI.
-
-The package supports two modes:
-
-- `deterministic`: events are scored by `InferenceEngine`, then `PolicyEngine` selects a variant.
-- `mcp`: validated personality resources define scoring rules and UI actions; the resolver summarizes events, computes persona scores, calls a configurable LLM connector, and returns an action-backed UI state.
-
-The React package also supports two presentation modes:
-
-- `prototype`: show diagnostics, scores, personalities, variants, pending decisions, and admin controls while testing configurations.
-- `production`: hide experiment details from front-facing users and expose only the experience plus feedback controls.
-
-## Package Structure
-
-The package docs now follow the refactored source layout:
-
-- `@dionysys/core`
-  - `schema/`: validated UI and config contracts
-  - `inference/`: deterministic persona inference types and engine
-  - `policy/`: contextual bandit policy selection
-  - `reward/`: baseline metrics and reward calculation
-  - `mcp/`: interaction summarization, personality scoring, schemas, and MCP resolution
-  - `admin/`: runtime admin config contracts
-- `@dionysys/react`
-  - `adaptive-provider/`: provider, store, pending-decision persistence, and provider-facing types
-  - `admin-console/`: runtime control-center shell, state hook, sections, primitives, and styles
-  - `feedback/`: front-facing feedback component
-  - `hooks/`: `useAdaptiveUI()` and other React-facing accessors
-
-Top-level package exports remain stable, so consumers should still import from `@dionysys/core` and `@dionysys/react` rather than from internal folders.
-
-## Install or Link
-
-Inside this monorepo, the packages are npm workspaces:
+## Install
 
 ```bash
-npm install
-npm run build --workspace=packages/core
-npm run build --workspace=packages/react
+npm install @dionysys/server @dionysys/client @dionysys/react
 ```
 
-In another app, install the package names once they are published, or link/build them from this workspace during local development.
+Add adapters as needed:
 
-## Deterministic Mode
+```bash
+npm install @dionysys/storage-mongodb @dionysys/connector-openai
+npm install @dionysys/connector-gemini
+npm install @dionysys/connector-anthropic
+```
 
-Use deterministic mode when you want repeatable inference and policy selection with no LLM decision step.
+## Backend setup
 
 ```ts
-import { InferenceEngine, PolicyEngine } from '@dionysys/core';
+import express from 'express';
+import { createDionysysServer } from '@dionysys/server';
+import { createMongoDionysysStorage } from '@dionysys/storage-mongodb';
+import { openAiConnector } from '@dionysys/connector-openai';
+// import { geminiConnector } from '@dionysys/connector-gemini';
+// import { anthropicConnector } from '@dionysys/connector-anthropic';
 
-const inference = new InferenceEngine({
-  personas: ['neutral', 'draw_first', 'text_first'],
-  initialCounts: {
-    neutral: 1,
-    draw_first: 1,
-    text_first: 1,
-  },
-  eventWeights: {
-    element_drawn: { draw_first: 2 },
-    text_added: { text_first: 3 },
-  },
+const app = express();
+
+const dionysys = createDionysysServer({
+  storage: createMongoDionysysStorage({
+    uri: process.env.MONGODB_URI,
+  }),
+  llmConnector: openAiConnector({
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.DIONYSYS_OPENAI_MODEL ?? 'gpt-5',
+  }),
+  admin: { enabled: true },
 });
 
-const policy = new PolicyEngine({
-  personas: ['neutral', 'draw_first', 'text_first'],
-  epsilon: 0.1,
-});
-
-const personaProbs = inference.inferPersona(events);
-const { chosenVariant, propensity } = policy.selectVariant(personaProbs);
+app.use('/api/dionysys', dionysys.router());
 ```
 
-Expose those backend decisions to React through `pollInference` and `evaluatePolicy`:
+For Gemini, use `geminiConnector({ apiKey: process.env.GEMINI_API_KEY })`.
+For Anthropic, use `anthropicConnector({ apiKey: process.env.ANTHROPIC_API_KEY })`.
+
+Keep provider keys like `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `ANTHROPIC_API_KEY` on the server only.
+
+## Client setup
+
+```ts
+import { createDionysysClient } from '@dionysys/client';
+
+export const dionysys = createDionysysClient({
+  apiBaseUrl: 'http://localhost:3001',
+  session: {
+    persistence: 'browser',
+  },
+});
+```
+
+The client handles:
+
+- session CRUD and current-session persistence
+- event tracking
+- decision resolution
+- feedback submission and passive evaluation
+- admin config and overview access
+
+## React setup
 
 ```tsx
 import { AdaptiveProvider } from '@dionysys/react';
+import { dionysys } from './dionysysClient';
 
 export function App() {
   return (
     <AdaptiveProvider
-      mode="deterministic"
-      presentationMode="production"
-      decisionApplication="next-refresh"
-      persistenceMode="browser"
-      sessionId="session_123"
-      defaultVariant="neutral"
-      pollingIntervalMs={3000}
-      minEventsBeforeLock={5}
-      pollInference={async () => {
-        const response = await fetch('/api/inference/session_123');
-        const data = await response.json();
-        return data.probabilities;
-      }}
-      evaluatePolicy={async () => {
-        const response = await fetch('/api/adaptive/decision', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: 'session_123', mode: 'deterministic' }),
-        });
-        const data = await response.json();
-        return data.variant;
-      }}
-    >
-      <AdaptiveCanvas />
-    </AdaptiveProvider>
-  );
-}
-```
-
-## MCP Mode
-
-Use MCP mode when a backend-hosted resource set should define the persona candidates, deterministic score rules, and available UI actions. The LLM connector does not invent personas or actions; it chooses from the resource set after receiving the summarized interaction data and computed scores.
-
-### Define Resources
-
-```ts
-import type { PersonalityResource } from '@dionysys/core';
-
-export const resources: PersonalityResource[] = [
-  {
-    id: 'guided_novice',
-    name: 'Guided Novice',
-    description: 'A user who appears early in the workflow and benefits from fewer choices.',
-    decisionHints: ['Low event volume', 'Low tool diversity'],
-    scoring: {
-      baseWeight: 1,
-      signals: [
-        {
-          id: 'low_event_volume',
-          description: 'User has not generated many events yet.',
-          metric: 'totalEvents',
-          operator: '<',
-          value: 5,
-          weight: 3,
-        },
-        {
-          id: 'low_tool_diversity',
-          description: 'User has used very few tools.',
-          metric: 'toolDiversity',
-          operator: '<=',
-          value: 2,
-          weight: 2,
-        },
-      ],
-    },
-    actions: [
-      {
-        id: 'show_guided_toolbar',
-        description: 'Show a reduced toolbar and welcome guidance.',
-        isSafeFallback: true,
-        uiState: {
-          variant: 'guided_novice',
-          showWelcomeScreen: true,
-          toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
-          canvasActions: { saveAsImage: false, clearCanvas: false },
-          mainMenu: { allowedItems: ['help'] },
-          mainMenuItems: ['help'],
-        },
-      },
-    ],
-  },
-];
-```
-
-### Resolve a Decision
-
-```ts
-import {
-  McpModeResolver,
-  type LLMDecisionConnector,
-  type LLMDecisionInput,
-  type LLMDecisionResult,
-} from '@dionysys/core';
-import { resources } from './resources';
-
-const connector: LLMDecisionConnector = {
-  async decide(input: LLMDecisionInput): Promise<LLMDecisionResult> {
-    const [personalityId] = Object.entries(input.personaScores)
-      .sort((a, b) => b[1] - a[1])[0];
-    const personality = input.personalities.find((item) => item.id === personalityId)!;
-    return {
-      personalityId: personality.id,
-      actionId: personality.actions[0].id,
-      confidence: input.personaScores[personality.id],
-      rationale: 'Selected the highest deterministic persona score.',
-    };
-  },
-};
-
-const resolver = new McpModeResolver({
-  resources,
-  llmConnector: connector,
-  minConfidence: 0.5,
-  fallbackVariant: 'neutral',
-});
-
-const decision = await resolver.resolve({
-  events,
-  summaryOptions: {
-    sessionStartMs,
-    recentEventLimit: 10,
-    maxStringLength: 120,
-  },
-});
-```
-
-`McpModeResolver` validates resources, summarizes raw events, computes `rawScores` and normalized `personaScores`, validates the connector response, and falls back to a safe/default action if the response is invalid, unknown, or below `minConfidence`.
-
-### React Integration
-
-```tsx
-import { AdaptiveProvider } from '@dionysys/react';
-
-export function App() {
-  return (
-    <AdaptiveProvider
-      key="mcp"
+      client={dionysys}
       mode="mcp"
       presentationMode="production"
       decisionApplication="next-refresh"
@@ -229,123 +89,106 @@ export function App() {
       sessionId="session_123"
       defaultVariant="neutral"
       minEventsBeforeLock={5}
-      resolveDecision={async () => {
-        const response = await fetch('/api/adaptive/decision', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: 'session_123', mode: 'mcp' }),
-        });
-        return response.json();
-      }}
     >
-      <AdaptiveCanvas />
+      <Workspace />
     </AdaptiveProvider>
   );
 }
 ```
 
-## Reading Adaptive State
 
-Use `useAdaptiveUI()` anywhere under the provider:
+## Tracking events
+
+The client accepts loose event envelopes:
+
+```ts
+await dionysys.events.track({
+  sessionId: 'session_123',
+  events: [
+    {
+      type: 'ui.interaction',
+      subject: 'toolbar.text',
+      action: 'selected',
+      payload: {
+        tool: 'text',
+      },
+      metadata: {
+        source: 'my-app',
+      },
+    },
+  ],
+});
+```
+
+Recommended naming:
+
+- `type`: lowercase dot namespace, such as `ui.interaction`
+- `subject`: lowercase dot namespace, such as `toolbar.text`
+- `action`: simple verb, such as `selected`, `opened`, `completed`
+- `payload` and `metadata`: camelCase keys
+
+Keep app-specific translation in your app. The Excalidraw demo does this in a frontend-only adapter instead of leaking Excalidraw event names into the public SDK.
+
+## Resolving decisions
+
+### Deterministic
+
+```ts
+const decision = await dionysys.decisions.resolve({
+  sessionId: 'session_123',
+  mode: 'deterministic',
+});
+```
+
+### MCP
+
+```ts
+const decision = await dionysys.decisions.resolve({
+  sessionId: 'session_123',
+  mode: 'mcp',
+});
+```
+
+Both use the same primary backend route:
+
+```http
+POST /api/dionysys/decisions:resolve
+```
+
+## Reading adaptive state
 
 ```tsx
 import { useAdaptiveUI } from '@dionysys/react';
 
-export function AdaptiveCanvas() {
+export function Workspace() {
   const {
-    mode,
-    presentationMode,
     currentVariant,
     currentUIState,
     currentPersonality,
-    decisionConfidence,
-    lastDecision,
     pendingDecision,
-    pendingPersonality,
     hasPendingUIChange,
-    personaProbs,
-    eventsSentCount,
-    isPolicyLocked,
-    incrementEventsSent,
     setManualOverride,
   } = useAdaptiveUI();
 
-  const toolbar = mode === 'mcp'
-    ? currentUIState?.toolbar
-    : variantConfigs[currentVariant].toolbar;
-
-  return <Toolbar config={toolbar} />;
-}
-```
-
-Use `presentationMode` to decide what the user should see. In production, avoid rendering persona names, variant names, probability charts, debug panels, and admin entry points.
-
-State fields:
-
-| Field | Meaning |
-| --- | --- |
-| `mode` | Current adaptive mode: `deterministic` or `mcp`. |
-| `presentationMode` | `prototype` shows diagnostics and controls; `production` should hide experiment details. |
-| `persistenceMode` | Built-in persistence lifetime: `memory`, `tab`, or `browser`. |
-| `currentVariant` | Active variant name. Deterministic mode gets this from policy; MCP mode gets it from the selected action UI state. |
-| `currentUIState` | MCP action UI state, or the optional default UI state. |
-| `currentPersonality` | Selected MCP personality id. |
-| `decisionConfidence` | LLM connector confidence from the latest MCP decision. |
-| `lastDecision` | Full `AdaptiveDecision`, including summary, raw scores, normalized scores, matched signals, and fallback status. |
-| `pendingDecision` | Decision resolved for next refresh without changing the active UI mid-session. |
-| `pendingPersonality` | Stored personality for the pending next-refresh decision. |
-| `hasPendingUIChange` | Whether the next refresh will apply a queued UI change. |
-| `personaProbs` | Live deterministic probabilities or MCP resource-driven persona scores. |
-| `eventsSentCount` | Count of events flushed by the application telemetry layer. |
-| `isPolicyLocked` | Whether the provider has locked the adaptive decision after the event threshold. |
-| `setManualOverride` | Preferred manual/debug override for changing the visible variant or UI state without mutating the raw store. |
-
-Call `incrementEventsSent(count)` after your telemetry layer successfully sends events. The provider uses this count to decide when to evaluate deterministic policy or resolve MCP mode.
-
-`useAdaptiveUI()._store` still exists as a compatibility shim for older integrations, but it is deprecated. Prefer the explicit hook fields plus `setManualOverride(...)` instead of calling `_store.setState(...)` from app code.
-
-## Manual Overrides
-
-Use `setManualOverride(...)` for debug tooling, prototyping controls, or custom “preview another layout” affordances:
-
-```tsx
-import { useAdaptiveUI } from '@dionysys/react';
-
-export function LayoutSwitcher() {
-  const { setManualOverride } = useAdaptiveUI();
-
   return (
-    <button
-      type="button"
-      onClick={() =>
-        setManualOverride({
-          variant: 'guided_novice',
-          personalityId: 'guided_novice',
-          uiState: {
-            variant: 'guided_novice',
-            showWelcomeScreen: true,
-            toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
-            mainMenuItems: ['help'],
-            mainMenu: { allowedItems: ['help'] },
-          },
-        })
-      }
-    >
-      Preview Guided Layout
-    </button>
+    <div>
+      <pre>{JSON.stringify({ currentVariant, currentPersonality, pendingDecision, hasPendingUIChange }, null, 2)}</pre>
+      <button
+        type="button"
+        onClick={() => setManualOverride({ variant: 'neutral' })}
+      >
+        Reset preview
+      </button>
+    </div>
   );
 }
 ```
 
-This is the supported override boundary for React consumers. It keeps the provider/store split internal while still giving apps a clean way to drive manual previews.
+`useAdaptiveUI()._store` still exists as a compatibility shim, but new code should use the explicit hook fields and `setManualOverride(...)`.
 
-## Presentation Modes
+## Feedback
 
-Presentation mode is separate from adaptive mode. `mode="deterministic"` or `mode="mcp"` controls how decisions are made; `presentationMode="prototype"` or `"production"` controls what the user sees.
-
-Prototype mode is meant for builders and testers. It can show the admin console, active variant, inferred personality, persona probabilities, confidence, pending refresh status, and raw configuration context.
-
-Production mode is meant for front-facing users. It should hide personality, variant, score, debug, and admin information. Pair it with `AdaptiveFeedback` so users can react to the experience without seeing the experiment internals:
+Use the package-owned feedback component in connected mode:
 
 ```tsx
 import { AdaptiveFeedback } from '@dionysys/react';
@@ -353,191 +196,47 @@ import { AdaptiveFeedback } from '@dionysys/react';
 export function FeedbackSlot() {
   return (
     <AdaptiveFeedback
-      onSubmit={async (feedback) => {
-        await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'session_123',
-            events: [{
-              eventType: 'feedback_submitted',
-              timestamp: Date.now(),
-              payload: feedback,
-            }],
-          }),
-        });
+      sessionId="session_123"
+      client={dionysys}
+      onRevert={() => {
+        console.log('User accepted revert');
       }}
     />
   );
 }
 ```
 
-## Refresh-Safe Decisions
-
-Use `decisionApplication="next-refresh"` when changing the UI mid-workflow would confuse users. Dionysys still infers the user at the normal threshold, but it splits persistence into two records:
-
-- a pending decision that represents the queued change for the next refresh
-- an applied decision that represents the currently visible adaptive UI for that session
-
-That means the first refresh applies the queued UI, and later refreshes keep that applied UI until a newer decision replaces it or the session is reset.
-
-Use `persistenceMode` to control how both the session id and built-in pending-decision persistence survive reloads:
-
-- `memory` resets on full refresh
-- `tab` persists within the same browser tab
-- `browser` persists across refreshes using `localStorage`
-
-With `sessionId`, `persistenceMode="browser"` is the demo-friendly path and requires no extra persistence API:
-
-```tsx
-<AdaptiveProvider
-  mode="mcp"
-  presentationMode="production"
-  decisionApplication="next-refresh"
-  persistenceMode="browser"
-  sessionId="session_123"
-  defaultVariant="neutral"
-  resolveDecision={resolveDecision}
->
-  <Workspace />
-</AdaptiveProvider>
-```
-
-Apps can replace local storage with server persistence by providing both pending and applied hooks. Use this when decisions must survive device changes, authenticated sessions, or server-side analytics joins:
-
-```tsx
-<AdaptiveProvider
-  decisionApplication="next-refresh"
-  loadPendingDecision={() => fetch('/api/pending-decision').then((res) => res.json())}
-  savePendingDecision={(decision) => fetch('/api/pending-decision', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(decision),
-  })}
-  clearPendingDecision={() => fetch('/api/pending-decision', { method: 'DELETE' })}
-  loadAppliedDecision={() => fetch('/api/applied-decision').then((res) => res.json())}
-  saveAppliedDecision={(decision) => fetch('/api/applied-decision', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(decision),
-  })}
-  clearAppliedDecision={() => fetch('/api/applied-decision', { method: 'DELETE' })}
-  defaultVariant="neutral"
-/>
-```
-
-## Runtime Admin Console
-
-Use `AdminConsole` when you want an in-app information and control center for modes, personality resources, scoring calculations, session summaries, MCP APIs, and exportable configuration.
+## Admin console
 
 ```tsx
 import { AdminConsole } from '@dionysys/react';
 
-export function AdminOverlay({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
+export function AdminPage() {
   return (
     <AdminConsole
-      apiBaseUrl="http://localhost:3001"
-      sessionId={sessionId}
-      onClose={onClose}
-      onConfigSaved={(config) => {
-        console.log('Runtime mode changed to', config.mode.defaultMode);
-      }}
+      client={dionysys}
+      sessionId="session_123"
+      defaultTab="overview"
     />
   );
 }
 ```
 
-The console expects the backend admin API to be enabled with `ADMIN_CONSOLE_ENABLED=true`. It edits in-memory runtime config only; source files are not rewritten. Use the Export tab to download the active config JSON for future use.
+The admin console edits runtime state only. It does not rewrite source config files.
 
-Internally, the package console is now split into a shell component, a state/orchestration hook, section modules, and shared primitives. Consumers still use the same `AdminConsole` export from the package root.
+## Persistence modes
 
-## Event Summaries and Scoring
+`@dionysys/client` and `@dionysys/react` share the same persistence vocabulary:
 
-MCP mode uses `InteractionSummarizer` before any connector call. The summary includes:
+- `memory`: page lifetime only
+- `tab`: `sessionStorage`
+- `browser`: `localStorage`
 
-- `totalEvents`
-- `eventCountsByType`
-- `elementCountsByType`
-- `toolDiversity`
-- `textToShapeRatio`
-- `timeToFirstEventMs`
-- `timeSinceLastEventMs`
-- `recentEventTypes`
-- capped, sanitized `recentEvents`
-- `derivedSignals`
+Use `decisionApplication="next-refresh"` when you want decisions to queue safely instead of changing the interface mid-task.
 
-`PersonalityScorer` evaluates each `PersonalityResource` independently:
+## Where to go next
 
-1. Start with `baseWeight` or `1`.
-2. Add each matching signal weight.
-3. Clamp each raw score to `>= 0`.
-4. Normalize by total score.
-5. Return a uniform distribution if all raw scores are `0`.
-
-Supported signal metrics are `totalEvents`, `eventCount`, `eventRatio`, `elementCount`, `toolDiversity`, `textToShapeRatio`, `timeToFirstEventMs`, `timeSinceLastEventMs`, and `recentEventType`.
-
-## Backend Contract
-
-A typical backend endpoint accepts a session and mode:
-
-```http
-POST /api/adaptive/decision
-Content-Type: application/json
-
-{
-  "sessionId": "session_123",
-  "mode": "mcp"
-}
-```
-
-Deterministic responses should include a variant:
-
-```json
-{
-  "mode": "deterministic",
-  "variant": "draw_first",
-  "personaScores": {
-    "neutral": 0.2,
-    "draw_first": 0.7,
-    "text_first": 0.1
-  }
-}
-```
-
-MCP responses should return an `AdaptiveDecision`:
-
-```json
-{
-  "mode": "mcp",
-  "variant": "guided_novice",
-  "personalityId": "guided_novice",
-  "actionId": "show_guided_toolbar",
-  "confidence": 0.74,
-  "isFallback": false,
-  "uiState": {
-    "variant": "guided_novice",
-    "toolbar": { "mode": "allowlist", "tools": ["selection", "rectangle", "text"] }
-  },
-  "personaScores": {
-    "guided_novice": 0.55,
-    "draw_first": 0.27,
-    "text_first": 0.09,
-    "neutral": 0.09
-  }
-}
-```
-
-Keep provider API keys on the backend. Send summaries and scores to external connectors, not raw uncapped event payloads.
-
-## Verification
-
-Useful package-level checks:
-
-```bash
-npm run build --workspace=packages/core
-npm run build --workspace=packages/react
-npm run test --workspace=packages/core
-npm run build
-```
-
-The demo-specific configuration workflow is documented in `docs/excalidraw-configuration.md`.
+- **[Configuration reference](configuration.md)** — every env var, storage option, and connector selection guide.
+- **[Architecture overview](architecture.md)** — package graph and request-flow walk-through.
+- **[OpenAPI reference](openapi.md)** — full REST API spec at `docs/openapi/dionysys-api.yaml`.
+- **[Excalidraw demo](https://github.com/Vedant1202/Dionysys/tree/main/demos/excalidraw)** — living example of the public SDK APIs in a real app.

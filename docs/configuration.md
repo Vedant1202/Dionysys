@@ -1,178 +1,196 @@
 # Configuration Guide
 
-The true power of the modular framework is that you do not need to rewrite A/B testing backend code. You inject your logic structures immediately into the engines.
+This guide covers every environment variable, client option, and connector selection used by the Dionysys SDK stack.
 
-## Configuration Boundaries
+## Runtime configuration layers
 
-The refactored packages intentionally separate where different kinds of configuration live:
+| Layer | Responsibility |
+| --- | --- |
+| `@dionysys/core` | Schemas, deterministic logic, MCP resources, shared contracts |
+| `@dionysys/server` | Route wiring, storage integration, connector dispatch, admin orchestration |
+| `@dionysys/client` | API transport and current-session persistence |
+| `@dionysys/react` | Provider behavior, feedback UI, admin console UI |
+| App code | Event translation, UI rendering, app-specific metadata |
 
-- `@dionysys/core`: deterministic inference config, policy config, reward formulas, MCP personality resources, interaction summaries, admin/runtime config contracts, and UI schemas.
-- `@dionysys/react`: provider wiring, pending-decision persistence hooks, runtime presentation/application settings, and reusable UI like the admin console and feedback panel.
-- App or demo code: concrete UI rendering details, telemetry transport, session ids, toolbar/menu render mappings, and any app-specific filtering or adapters.
+## Backend environment variables
 
-That split is useful when deciding where to add new behavior. If it changes scoring, schemas, decisions, or validated contracts, it likely belongs in `@dionysys/core`. If it changes React orchestration or package-owned UI, it likely belongs in `@dionysys/react`. If it is specific to Excalidraw or one product surface, keep it in the app.
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `PORT` | `number` | `3001` | Port the Express server binds to |
+| `ALLOWED_ORIGIN` | `string` | `http://localhost:5173` | CORS allowed origin(s); comma-separate for multiple; `*` allows all |
+| `MONGO_URI` | `string` | `mongodb://127.0.0.1:27017/autoui_ab_testing` | MongoDB connection string when using the MongoDB storage adapter |
+| `ADMIN_CONSOLE_ENABLED` | `boolean` | `false` | Enables the admin config endpoints (`/api/dionysys/admin/*`) |
+| `DIONYSYS_STORAGE` | `memory\|mongodb` | `memory` | Storage backend; `mongodb` requires `MONGO_URI` |
+| `DIONYSYS_LLM_PROVIDER` | `mock\|custom-http\|openai\|gemini\|anthropic` | `mock` | Decision connector to use |
 
-## InferenceEngine Configuration
-The `InferenceEngine` relies on a declarative configuration to score behaviors.
+### OpenAI connector variables
 
-```typescript
-import { InferenceEngine, InferenceConfig } from '@dionysys/core';
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | `string` | — | **Server-side only.** Required when `DIONYSYS_LLM_PROVIDER=openai` |
+| `DIONYSYS_OPENAI_MODEL` | `string` | `gpt-4o` | OpenAI model to use for MCP decision calls |
+| `DIONYSYS_OPENAI_TEMPERATURE` | `number` | `0.2` | Sampling temperature (0–2) |
+| `DIONYSYS_OPENAI_TIMEOUT_MS` | `number` | `15000` | Request timeout in milliseconds |
 
-const myConfig: InferenceConfig = {
-  // 1. Define your valid personas
-  personas: ['neutral', 'draw_first', 'text_first'],
-  
-  // 2. Define your Baseline priors
-  initialCounts: {
-    neutral: 1,
-    draw_first: 1,
-    text_first: 1 
+### Gemini connector variables
+
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | `string` | — | **Server-side only.** Required when `DIONYSYS_LLM_PROVIDER=gemini` |
+| `DIONYSYS_GEMINI_MODEL` | `string` | `gemini-3.1-flash-lite` | Gemini model to use for MCP decision calls |
+| `DIONYSYS_GEMINI_TEMPERATURE` | `number` | provider default | Sampling temperature |
+
+### Anthropic connector variables
+
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `ANTHROPIC_API_KEY` | `string` | — | **Server-side only.** Required when `DIONYSYS_LLM_PROVIDER=anthropic` |
+| `DIONYSYS_ANTHROPIC_MODEL` | `string` | `claude-3-5-haiku-20241022` | Anthropic model to use for MCP decision calls |
+| `DIONYSYS_ANTHROPIC_TEMPERATURE` | `number` | provider default | Sampling temperature |
+| `DIONYSYS_ANTHROPIC_MAX_TOKENS` | `number` | `1024` | Maximum output tokens for the decision tool call |
+
+### Custom HTTP connector variables
+
+| Variable | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `DIONYSYS_CUSTOM_CONNECTOR_ENDPOINT` | `string` | — | Required. Full URL of the custom connector endpoint |
+| `DIONYSYS_CUSTOM_CONNECTOR_METHOD` | `string` | `POST` | HTTP method |
+| `DIONYSYS_CUSTOM_CONNECTOR_BEARER_TOKEN` | `string` | — | Bearer token added to `Authorization` header |
+| `DIONYSYS_CUSTOM_CONNECTOR_HEADERS_JSON` | `string` | — | JSON-serialized object of additional request headers |
+| `DIONYSYS_CUSTOM_CONNECTOR_TIMEOUT_MS` | `number` | `15000` | Request timeout in milliseconds |
+
+> **Security:** Never expose `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or connector credentials to the browser. All connector variables are server-side only.
+
+## Connector selection
+
+Choose a decision connector based on your needs:
+
+```
+Need deterministic scoring only?
+  └─ Leave DIONYSYS_LLM_PROVIDER=mock (default) — no LLM calls, always returns deterministic output.
+
+Need an OpenAI-powered MCP connector?
+  └─ DIONYSYS_LLM_PROVIDER=openai + OPENAI_API_KEY + optional DIONYSYS_OPENAI_MODEL
+
+Need a Gemini-powered MCP connector?
+  └─ DIONYSYS_LLM_PROVIDER=gemini + GEMINI_API_KEY + optional DIONYSYS_GEMINI_MODEL
+
+Need an Anthropic-powered MCP connector?
+  └─ DIONYSYS_LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY + optional DIONYSYS_ANTHROPIC_MODEL
+
+Need to call your own inference endpoint?
+  └─ DIONYSYS_LLM_PROVIDER=custom-http + DIONYSYS_CUSTOM_CONNECTOR_ENDPOINT
+```
+
+In code:
+
+```ts
+import { createDionysysServer } from '@dionysys/server';
+import { openAiConnector } from '@dionysys/connector-openai';
+import { geminiConnector } from '@dionysys/connector-gemini';
+import { anthropicConnector } from '@dionysys/connector-anthropic';
+import { mockConnector } from '@dionysys/server';  // built-in
+
+// OpenAI
+createDionysysServer({ llmConnector: openAiConnector({ apiKey: process.env.OPENAI_API_KEY }) });
+
+// Gemini
+createDionysysServer({ llmConnector: geminiConnector({ apiKey: process.env.GEMINI_API_KEY }) });
+
+// Anthropic
+createDionysysServer({ llmConnector: anthropicConnector({ apiKey: process.env.ANTHROPIC_API_KEY }) });
+
+// Mock (deterministic only, no LLM)
+createDionysysServer({ llmConnector: mockConnector() });
+
+// Custom HTTP
+createDionysysServer({
+  llmConnector: customHttpConnector({ endpoint: process.env.DIONYSYS_CUSTOM_CONNECTOR_ENDPOINT }),
+});
+```
+
+## Client configuration
+
+```ts
+import { createDionysysClient } from '@dionysys/client';
+
+export const dionysys = createDionysysClient({
+  apiBaseUrl: 'http://localhost:3001',
+  session: {
+    persistence: 'browser',      // 'memory' | 'tab' | 'browser'
+    storageKey: 'dionysys_current_session',  // optional, customise the storage key
   },
-
-  // 3. Define event impacts
-  eventWeights: {
-    // Static mapping
-    'scrolled_fast': { draw_first: 2, text_first: -1 },
-
-    // Dynamic payload-based evaluation mapping
-    'element_created': (payload) => {
-       if (payload.type === 'text') return { text_first: 3 };
-       return { draw_first: 2 };
-    }
-  },
-
-  // 4. (Optional) Run heuristics against the full array of events in bulk
-  heuristics: [
-    (events) => {
-       if (events.length < 5) return { guided_novice: 2 };
-       return {};
-    }
-  ]
-};
-
-const engine = new InferenceEngine(myConfig);
+});
 ```
 
-## PolicyEngine Configuration
-The `PolicyEngine` transforms the mapped probabilities into definitive decisions using contextual bandit algorithms.
+`persistence` options:
 
-```typescript
-import { PolicyEngine, PolicyConfig } from '@dionysys/core';
+| Value | Storage | Lifetime |
+| --- | --- | --- |
+| `memory` | In-memory | Page lifetime only |
+| `tab` | `sessionStorage` | Tab lifetime |
+| `browser` | `localStorage` | Persistent across tabs and refreshes |
 
-const policyConfig: PolicyConfig = {
-  personas: ['neutral', 'draw_first', 'text_first'],
-  epsilon: 0.1, // 10% of the time, the engine explores a random UI variant instead of exploiting
-  
-  // Optional: If your inferred personas don't 1:1 match your UI variant names
-  variantMapping: {
-    'draw_first': 'creative_layout_v2'
-  }
-};
+## React provider configuration
 
-const policy = new PolicyEngine(policyConfig);
+```tsx
+<AdaptiveProvider
+  client={dionysys}
+  mode="mcp"                      // 'deterministic' | 'mcp'
+  presentationMode="production"   // 'prototype' | 'production'
+  decisionApplication="next-refresh" // 'immediate' | 'next-refresh'
+  persistenceMode="browser"       // 'memory' | 'tab' | 'browser'
+  sessionId="session_123"
+  defaultVariant="neutral"
+  minEventsBeforeLock={5}
+  pollingIntervalMs={3000}
+/>
 ```
 
-## MCP Mode Configuration
+Key settings:
 
-MCP mode uses personality resources instead of hard-coded persona mappings. Each resource defines scoring rules and the UI actions the LLM is allowed to choose from.
+| Prop | Type | Effect |
+| --- | --- | --- |
+| `mode` | `deterministic\|mcp` | Deterministic uses local scoring; MCP calls the connector |
+| `presentationMode` | `prototype\|production` | Prototype shows decision debug UI; production is silent |
+| `decisionApplication` | `immediate\|next-refresh` | Immediate applies instantly; next-refresh queues until next page load |
+| `persistenceMode` | `memory\|tab\|browser` | Where the provider stores pending/applied decision state |
+| `minEventsBeforeLock` | `number` | Minimum events collected before a decision can lock in |
+| `pollingIntervalMs` | `number` | Interval between automatic passive feedback evaluations |
 
-```typescript
-import type { PersonalityResource } from '@dionysys/core';
+## Event envelope guidance
 
-export const resources: PersonalityResource[] = [
-  {
-    id: 'guided_novice',
-    name: 'Guided Novice',
-    description: 'A user who appears early in the workflow and benefits from fewer visible choices.',
-    scoring: {
-      baseWeight: 1,
-      signals: [
-        {
-          id: 'low_event_volume',
-          description: 'User has not generated many events yet.',
-          metric: 'totalEvents',
-          operator: '<',
-          value: 5,
-          weight: 3,
-        },
-      ],
-    },
-    actions: [
-      {
-        id: 'show_guided_toolbar',
-        description: 'Show a reduced toolbar and welcome guidance.',
-        isSafeFallback: true,
-        uiState: {
-          variant: 'guided_novice',
-          toolbar: { mode: 'allowlist', tools: ['selection', 'rectangle', 'text'] },
-          mainMenu: { allowedItems: ['help'] },
-          showWelcomeScreen: true,
-        },
-      },
-    ],
-  },
-];
-```
+Preferred envelope:
 
-The backend summarizes raw interactions before LLM calls. The LLM connector receives resource metadata, `InteractionSummary`, `rawScores`, and normalized `personaScores`; it must return one exposed `{ personalityId, actionId, confidence }`.
-
-## Adaptive UI Schema
-
-`AdaptiveUIDefinition` is now a formal package contract rather than an informal extension bag. In addition to `variant`, `toolbar`, and `mainMenu`, the schema explicitly supports:
-
-- `showWelcomeScreen`
-- `canvasActions`
-- `mainMenuItems`
-
-Apps may still extend the shape for local UI needs, but those fields are now part of the documented baseline and can be used directly by deterministic configs, MCP action payloads, and runtime admin editing.
-
-## Runtime Admin Configuration
-
-For local tuning and demos, enable the admin console instead of editing files for every iteration:
-
-```bash
-ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
-```
-
-The backend seeds runtime configuration from the existing deterministic and MCP files, then exposes:
-
-```http
-GET  /api/admin/config
-PUT  /api/admin/config
-POST /api/admin/config/reset
-GET  /api/admin/config/export
-GET  /api/admin/overview
-```
-
-`@dionysys/react` provides `<AdminConsole />` to edit that runtime config. Saves update in-memory backend state and affect subsequent deterministic/MCP decisions. They do not write to source files. Use the Export tab or `/api/admin/config/export` to capture a JSON snapshot.
-
-The mode config also controls presentation and application timing:
-
-```json
+```ts
 {
-  "mode": {
-    "defaultMode": "mcp",
-    "presentationMode": "prototype",
-    "decisionApplication": "next-refresh",
-    "persistenceMode": "browser",
-    "minEventsBeforeLock": 5,
-    "pollingIntervalMs": 3000
-  }
+  type: 'ui.interaction',
+  subject: 'toolbar.text',
+  action: 'selected',
+  payload: { tool: 'text' },
+  metadata: { source: 'my-app' }
 }
 ```
 
-Use `presentationMode: "production"` for front-facing users so personalities, scores, variants, and admin controls are hidden. Use `decisionApplication: "next-refresh"` to store the inferred personality/decision without changing the active workspace UI until refresh.
+Naming conventions:
 
-Use `persistenceMode` to keep the session id and built-in adaptive state storage aligned:
+- `type` — required; lowercase dot namespace (e.g. `ui.interaction`, `session.start`)
+- `subject` — recommended; lowercase dot namespace targeting the UI element
+- `action` — recommended; simple verb (`selected`, `opened`, `completed`)
+- `payload` — app-specific structured detail; camelCase keys
+- `metadata` — optional non-decision context; camelCase keys
 
-- `memory`: keep session state only for the current page lifetime
-- `tab`: persist within the current browser tab via `sessionStorage`
-- `browser`: persist across refreshes via `localStorage`
+## Admin runtime config
 
-For `next-refresh`, the provider stores both a queued pending decision and the currently applied adaptive state. After the first refresh consumes the pending decision, later refreshes continue to load the applied UI instead of falling back to neutral.
+When `ADMIN_CONSOLE_ENABLED=true` the backend exposes runtime admin state:
 
-The file-seeded Excalidraw demo default is `presentationMode: "prototype"` plus `decisionApplication: "next-refresh"` and `persistenceMode: "browser"` so builders can see diagnostics while the active canvas UI still stays stable until refresh. `decisionApplication: "immediate"` remains useful for tests, demos, and backward-compatible integrations where mid-session UI changes are acceptable; prefer `next-refresh` for real active workspaces.
+```http
+GET  /api/dionysys/admin/config         Read current config
+PUT  /api/dionysys/admin/config         Update config at runtime
+POST /api/dionysys/admin/config/reset   Reset to file defaults
+GET  /api/dionysys/admin/config/export  Export as downloadable JSON
+GET  /api/dionysys/admin/overview       Current session overview snapshot
+GET  /api/dionysys/admin/overview/stream  Server-sent events stream
+```
 
-In non-production builds, the admin console includes a session tool to randomize the current session id. It clears the active mode-scoped session id, queued pending decision, and applied adaptive state, then reloads the app so you can verify persistence behavior cleanly.
-
-For the current Excalidraw demo, see `docs/excalidraw-configuration.md` for the exact files to edit when changing deterministic variants, MCP personality resources, scoring rules, toolbar tools, menu items, or connector environment variables.
+Use the React `AdminConsole` to edit runtime config in memory. Export a snapshot when you want to promote tuned configuration back into source control.

@@ -17,12 +17,14 @@ export function OverviewPanel({
   const expertiseResources = config.mcp.axes.expertiseResources;
 
   return (
-    <div style={styles.panelGrid}>
-      <MetricCard label="Default mode" value={config.mode.defaultMode} detail={`${config.mode.minEventsBeforeLock} events before decision`} />
-      <MetricCard label="Presentation" value={config.mode.presentationMode} detail={`${config.mode.decisionApplication} decisions`} />
-      <MetricCard label="MCP resources" value={String(modalityResources.length + expertiseResources.length)} detail={`Confidence floor ${formatPercent(config.mcp.minConfidence)}`} />
-      <MetricCard label="Connector" value={overview?.connector.type ?? 'unknown'} detail={overview?.connector.endpointConfigured ? 'External endpoint configured' : 'Mock connector'} />
-      <MetricCard label="Session events" value={String(session?.eventCount ?? 0)} detail={session ? 'Live session summary loaded' : 'No session selected'} />
+    <div className={styles.stack}>
+      <div className={styles.panelGrid}>
+        <MetricCard label="Default mode" value={config.mode.defaultMode} detail={`${config.mode.minEventsBeforeLock} events before decision`} />
+        <MetricCard label="Presentation" value={config.mode.presentationMode} detail={`${config.mode.decisionApplication} decisions`} />
+        <MetricCard label="MCP resources" value={String(modalityResources.length + expertiseResources.length)} detail={`Confidence floor ${formatPercent(config.mcp.minConfidence)}`} />
+        <MetricCard label="Connector" value={overview?.connector.type ?? 'unknown'} detail={overview?.connector.endpointConfigured ? 'External endpoint configured' : 'Mock connector'} />
+        <MetricCard label="Session events" value={String(session?.eventCount ?? 0)} detail={session ? 'Live session summary loaded' : 'No session selected'} />
+      </div>
 
       <SectionCard title="Current Calculation Snapshot">
         <ComparisonRows
@@ -38,12 +40,12 @@ export function OverviewPanel({
       </SectionCard>
 
       <SectionCard title="Resources and UI Surface">
-        <div style={styles.resourceChips}>
+        <div className={styles.resourceChips}>
           {modalityResources.map((resource) => (
-            <span key={resource.id} style={styles.chip}>{resource.name}</span>
+            <span key={resource.id} className={styles.chip}>{resource.name}</span>
           ))}
           {expertiseResources.map((resource) => (
-            <span key={resource.id} style={styles.chip}>{resource.name}</span>
+            <span key={resource.id} className={styles.chip}>{resource.name}</span>
           ))}
         </div>
         <ComparisonRows

@@ -1,5 +1,11 @@
 import * as React from 'react';
-import type { AdaptiveDecision, PendingAdaptiveDecision } from '@dionysys/core';
+import type {
+  AdaptiveDecision,
+  DionysysDecision,
+  ExpertisePersona,
+  ModalityPersona,
+  PendingAdaptiveDecision,
+} from '@dionysys/core';
 import {
   buildPendingDecisionFromMcp,
   buildPendingDecisionFromVariant,
@@ -81,6 +87,7 @@ function areUIStatesEquivalent(
 
 export function AdaptiveProvider({
   children,
+  client,
   mode = 'deterministic',
   presentationMode = 'prototype',
   decisionApplication = 'immediate',
@@ -88,9 +95,7 @@ export function AdaptiveProvider({
   sessionId,
   defaultVariant,
   defaultUIState,
-  pollInference,
-  evaluatePolicy,
-  resolveDecision,
+  componentEmbeddings = {},
   loadPendingDecision,
   savePendingDecision,
   clearPendingDecision,
@@ -161,24 +166,19 @@ export function AdaptiveProvider({
     syncAppliedDecision,
   ]);
 
-  React.useEffect(() => {
-    if (!pollInference) return;
+  const clientBackedEvaluatePolicy = React.useMemo(() => {
+    if (!client || mode !== 'deterministic' || !sessionId) return undefined;
+    return async () => toDeterministicSelection(await client.decisions.resolve({ sessionId, mode: 'deterministic' }));
+  }, [client, mode, sessionId]);
 
-    const interval = window.setInterval(async () => {
-      try {
-        const probs = await pollInference();
-        store.getState().setPersonaProbs(probs);
-      } catch (err) {
-        console.error('Failed to poll inference', err);
-      }
-    }, pollingIntervalMs);
-
-    return () => clearInterval(interval);
-  }, [pollInference, pollingIntervalMs, store]);
+  const clientBackedResolveDecision = React.useMemo(() => {
+    if (!client || mode !== 'mcp' || !sessionId) return undefined;
+    return async () => toAdaptiveDecision(await client.decisions.resolve({ sessionId, mode: 'mcp' }));
+  }, [client, mode, sessionId]);
 
   React.useEffect(() => {
-    if (mode === 'deterministic' && !evaluatePolicy) return;
-    if (mode === 'mcp' && !resolveDecision) return;
+    if (mode === 'deterministic' && !clientBackedEvaluatePolicy) return;
+    if (mode === 'mcp' && !clientBackedResolveDecision) return;
 
     const clearPendingDecisionState = () => {
       store.getState().clearPendingDecision();
@@ -294,12 +294,12 @@ export function AdaptiveProvider({
       resolutionStateRef.current.rerunRequested = false;
       const evaluatedEventCount = currentState.eventsSentCount;
 
-      const resolution = mode === 'mcp' && resolveDecision
-        ? resolveDecision().then((decision) => {
+      const resolution = mode === 'mcp' && clientBackedResolveDecision
+        ? clientBackedResolveDecision().then((decision) => {
           if (!decision) return;
           applyMcpDecision(decision);
         })
-        : evaluatePolicy?.().then((selection) => {
+        : clientBackedEvaluatePolicy?.().then((selection) => {
           if (!selection) return;
           applyDeterministicDecision(selection);
         });
@@ -340,11 +340,11 @@ export function AdaptiveProvider({
     clearPendingDecision,
     saveAppliedDecision,
     decisionApplication,
-    evaluatePolicy,
+    clientBackedEvaluatePolicy,
     minEventsBeforeLock,
     mode,
     persistenceMode,
-    resolveDecision,
+    clientBackedResolveDecision,
     savePendingDecision,
     sessionId,
     store,
@@ -355,4 +355,104 @@ export function AdaptiveProvider({
       {children}
     </AdaptiveUIContext.Provider>
   );
+}
+
+function toDeterministicSelection(decision: DionysysDecision) {
+  const metadata = decision.metadata ?? {};
+  const modalityScores = toPersonaScoreRecord<ModalityPersona>(metadata['modalityScores']);
+  const expertiseScores = toPersonaScoreRecord<ExpertisePersona>(metadata['expertiseScores']);
+
+  return {
+    mode: 'deterministic' as const,
+    variant: decision.variant,
+    chosenVariant: decision.variant,
+    propensity: decision.selectedPersona.confidence,
+    modalityScores,
+    expertiseScores,
+    selectedModality: asModalityPersona(metadata['selectedModality']),
+    selectedExpertise: asExpertisePersona(metadata['selectedExpertise']),
+    composedUiVariant: typeof metadata['composedUiVariant'] === 'string' ? metadata['composedUiVariant'] : decision.variant,
+    personaScores: decision.scores,
+  };
+}
+
+function toAdaptiveDecision(decision: DionysysDecision): AdaptiveDecision {
+  const metadata = decision.metadata ?? {};
+
+  return {
+    mode: 'mcp',
+    variant: decision.variant,
+    personalityId: decision.selectedPersona.id,
+    actionId: typeof metadata['actionId'] === 'string' ? metadata['actionId'] : 'unknown_action',
+    confidence: decision.selectedPersona.confidence,
+    uiState: (decision.uiState ?? { variant: decision.variant }) as AdaptiveDecision['uiState'],
+    rationale: decision.rationale,
+    modalityScores: toPersonaScoreRecord<ModalityPersona>(metadata['modalityScores']),
+    expertiseScores: toPersonaScoreRecord<ExpertisePersona>(metadata['expertiseScores']),
+    selectedModality: asModalityPersona(metadata['selectedModality']),
+    selectedExpertise: asExpertisePersona(metadata['selectedExpertise']),
+    composedUiVariant: typeof metadata['composedUiVariant'] === 'string' ? metadata['composedUiVariant'] : decision.variant,
+    personaScores: decision.scores,
+    rawScores: toNumberRecord(metadata['rawScores']),
+    matchedSignals: toStringArrayRecord(metadata['matchedSignals']),
+    axisRawScores: {
+      modality: toNestedNumberRecord(metadata['axisRawScores'], 'modality'),
+      expertise: toNestedNumberRecord(metadata['axisRawScores'], 'expertise'),
+    },
+    axisMatchedSignals: {
+      modality: toNestedStringArrayRecord(metadata['axisMatchedSignals'], 'modality'),
+      expertise: toNestedStringArrayRecord(metadata['axisMatchedSignals'], 'expertise'),
+    },
+    interactionSummary: (metadata['interactionSummary'] ?? {
+      totalEvents: 0,
+      eventCountsByType: {},
+      elementCountsByType: {},
+      toolDiversity: 0,
+      textToShapeRatio: 0,
+      recentEventTypes: [],
+      recentEvents: [],
+      derivedSignals: [],
+    }) as AdaptiveDecision['interactionSummary'],
+    isFallback: metadata['isFallback'] === true,
+  };
+}
+
+function toPersonaScoreRecord<T extends string>(value: unknown): Record<T, number> {
+  const raw = toNumberRecord(value);
+  return raw as Record<T, number>;
+}
+
+function toNumberRecord(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => typeof item === 'number'),
+  );
+}
+
+function toStringArrayRecord(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      Array.isArray(item) ? item.filter((entry): entry is string => typeof entry === 'string') : [],
+    ]),
+  );
+}
+
+function toNestedNumberRecord(value: unknown, key: string): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return toNumberRecord((value as Record<string, unknown>)[key]);
+}
+
+function toNestedStringArrayRecord(value: unknown, key: string): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return toStringArrayRecord((value as Record<string, unknown>)[key]);
+}
+
+function asModalityPersona(value: unknown): ModalityPersona {
+  return value === 'draw_first' || value === 'text_first' ? value : 'neutral';
+}
+
+function asExpertisePersona(value: unknown): ExpertisePersona {
+  return value === 'novice' || value === 'power_user' ? value : 'standard';
 }

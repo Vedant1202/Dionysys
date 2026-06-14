@@ -19,20 +19,45 @@ import {
 - `useAdaptiveUI()`: reads adaptive state from the provider
 - `AdminConsole`: reusable runtime configuration UI
 - `AdaptiveFeedback`: front-facing feedback component for production experiences
+- `useFeedback` / `useFeedbackTrigger`: hooks that submit feedback and decide when to show the prompt (time gate plus activity gate, with dismiss and auto-dismiss)
 
 ## Package layout
 
 - `src/adaptive-provider/` - provider, store, persistence, and provider-facing types
 - `src/admin-console/` - runtime control center split into sections, primitives, styles, and state orchestration
-- `src/feedback/` - lightweight feedback component
+- `src/feedback/` - feedback component plus the `useFeedback` and `useFeedbackTrigger` hooks
 - `src/hooks/` - React hooks such as `useAdaptiveUI`
 
 Root files remain as compatibility re-exports so existing imports continue to work.
 
 ## Preferred usage
 
+Use `@dionysys/react` with `@dionysys/client`:
+
 ```tsx
+import { createDionysysClient } from '@dionysys/client';
 import { AdaptiveProvider, useAdaptiveUI, AdminConsole, AdaptiveFeedback } from '@dionysys/react';
+
+const dionysys = createDionysysClient({
+  apiBaseUrl: 'http://localhost:3001',
+  session: { persistence: 'browser' },
+});
+
+export function App() {
+  return (
+    <AdaptiveProvider
+      client={dionysys}
+      mode="mcp"
+      sessionId="session_123"
+      defaultVariant="neutral"
+      presentationMode="production"
+      decisionApplication="next-refresh"
+      persistenceMode="browser"
+    >
+      <Workspace />
+    </AdaptiveProvider>
+  );
+}
 ```
 
 Use the package root as the stable import surface. The internal folder structure is for contributors, not for consumer import paths.
@@ -66,6 +91,7 @@ export function VariantPreviewButton() {
 ## Deprecations
 
 - `useAdaptiveUI()._store` is now a compatibility shim and should be treated as deprecated.
+- `baseUrl` and `apiBaseUrl` are legacy compatibility props. Prefer `client={dionysysClient}`.
 - Prefer explicit hook fields and `setManualOverride(...)` for manual/debug layout changes.
 
 The raw store still exists so older integrations do not break, but it is no longer the recommended extension point for new consumers.

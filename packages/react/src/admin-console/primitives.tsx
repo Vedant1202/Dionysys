@@ -5,8 +5,8 @@ import { formatJson, humanize } from './utils.js';
 
 export function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={styles.card}>
-      <h2 style={styles.cardTitle}>{title}</h2>
+    <section className={styles.card}>
+      <h2 className={styles.cardTitle}>{title}</h2>
       {children}
     </section>
   );
@@ -14,18 +14,18 @@ export function SectionCard({ title, children }: { title: string; children: Reac
 
 export function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <section style={styles.metricCard}>
-      <span style={styles.metricLabel}>{label}</span>
-      <strong style={styles.metricValue}>{value}</strong>
-      <span style={styles.metricDetail}>{detail}</span>
+    <section className={styles.metricCard}>
+      <span className={styles.metricLabel}>{label}</span>
+      <strong className={styles.metricValue}>{value}</strong>
+      <span className={styles.metricDetail}>{detail}</span>
     </section>
   );
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={styles.fieldGroup}>
-      <span style={styles.label}>{label}</span>
+    <label className={styles.fieldGroup}>
+      <span className={styles.label}>{label}</span>
       {children}
     </label>
   );
@@ -33,11 +33,11 @@ export function Field({ label, children }: { label: string; children: React.Reac
 
 export function ComparisonRows({ rows }: { rows: Array<[string, string]> }) {
   return (
-    <dl style={styles.comparisonRows}>
+    <dl className={styles.comparisonRows}>
       {rows.map(([label, value]) => (
-        <div key={label} style={styles.comparisonRow}>
-          <dt style={styles.comparisonLabel}>{label}</dt>
-          <dd style={styles.comparisonValue}>{value}</dd>
+        <div key={label} className={styles.comparisonRow}>
+          <dt className={styles.comparisonLabel}>{label}</dt>
+          <dd className={styles.comparisonValue}>{value}</dd>
         </div>
       ))}
     </dl>
@@ -45,14 +45,14 @@ export function ComparisonRows({ rows }: { rows: Array<[string, string]> }) {
 }
 
 export function JsonBlock({ value }: { value: unknown }) {
-  return <pre style={styles.jsonBlock}>{formatJson(value)}</pre>;
+  return <pre className={styles.jsonBlock}>{formatJson(value)}</pre>;
 }
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div style={styles.emptyState}>
-      <h2 style={styles.emptyTitle}>{title}</h2>
-      <p style={styles.helpText}>{description}</p>
+    <div className={styles.emptyState}>
+      <h2 className={styles.emptyTitle}>{title}</h2>
+      <p className={styles.helpText}>{description}</p>
     </div>
   );
 }
@@ -84,15 +84,15 @@ export function JsonSection<T>({
 
   return (
     <SectionCard title={title}>
-      {error && <div style={styles.inlineError}>{error}</div>}
+      {error && <div className={styles.inlineError}>{error}</div>}
       <textarea
-        style={styles.jsonTextarea}
+        className={styles.jsonTextarea}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         spellCheck={false}
       />
-      <div style={styles.rowActions}>
-        <button type="button" style={styles.secondaryButton} onClick={applyDraft}>
+      <div className={styles.rowActions}>
+        <button type="button" className={styles.secondaryButton} onClick={applyDraft}>
           Apply {title}
         </button>
       </div>
@@ -110,14 +110,14 @@ export function KeyValueNumberEditor({
   onChange: (value: Record<string, number>) => void;
 }) {
   return (
-    <div style={styles.fieldGroup}>
-      <span style={styles.label}>{title}</span>
-      <div style={styles.keyValueList}>
+    <div className={styles.fieldGroup}>
+      <span className={styles.label}>{title}</span>
+      <div className={styles.keyValueList}>
         {Object.entries(value).map(([key, count]) => (
-          <label key={key} style={styles.keyValueRow}>
-            <span style={styles.keyLabel}>{humanize(key)}</span>
+          <label key={key} className={styles.keyValueRow}>
+            <span className={styles.keyLabel}>{humanize(key)}</span>
             <input
-              style={styles.smallInput}
+              className={styles.smallInput}
               type="number"
               value={count}
               onChange={(event) => onChange({
@@ -138,18 +138,18 @@ export function EndpointTable({ endpoints }: { endpoints: AdminApiEndpoint[] }) 
   }
 
   return (
-    <div style={styles.table} role="table" aria-label="Admin API endpoints">
-      <div style={styles.tableHeader} role="row">
+    <div className={styles.table} role="table" aria-label="Admin API endpoints">
+      <div className={styles.tableHeader} role="row">
         <span>Method</span>
         <span>Path</span>
         <span>Status</span>
         <span>Description</span>
       </div>
       {endpoints.map((endpoint) => (
-        <div key={`${endpoint.method}-${endpoint.path}`} style={styles.tableRow} role="row">
-          <code style={styles.methodCode}>{endpoint.method}</code>
-          <code style={styles.pathCode}>{endpoint.path}</code>
-          <span style={endpoint.enabled ? styles.enabledBadge : styles.disabledBadge}>
+        <div key={`${endpoint.method}-${endpoint.path}`} className={styles.tableRow} role="row">
+          <code className={styles.methodCode}>{endpoint.method}</code>
+          <code className={styles.pathCode}>{endpoint.path}</code>
+          <span className={endpoint.enabled  ? styles.enabledBadge : styles.disabledBadge}>
             {endpoint.enabled ? 'Enabled' : 'Disabled'}
           </span>
           <span>{endpoint.description}</span>

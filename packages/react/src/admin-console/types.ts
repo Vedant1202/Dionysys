@@ -4,10 +4,15 @@ import type {
   AdminConsoleOverview,
   PersonalityResource,
 } from '@dionysys/core';
+import type { DionysysClient } from '@dionysys/client';
 
-export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'data' | 'apis' | 'export';
+export type AdminConsoleTab = 'overview' | 'modes' | 'personalities' | 'calculations' | 'components' | 'data' | 'apis' | 'export' | 'explorer';
 
 export interface AdminConsoleProps {
+  client?: Pick<DionysysClient, 'admin'>;
+  /**
+   * @deprecated Compatibility API. Prefer `client` when possible.
+   */
   apiBaseUrl?: string;
   sessionId?: string;
   persistenceMode?: AdaptivePersistenceMode;
@@ -15,6 +20,7 @@ export interface AdminConsoleProps {
   onRandomizeSession?: () => void;
   onClose?: () => void;
   onConfigSaved?: (config: AdminConsoleConfig) => void;
+  defaultTab?: AdminConsoleTab;
 }
 
 export interface AdminConfigResponse {
@@ -49,4 +55,5 @@ export interface AdminConsoleState {
   resetConfig: () => Promise<void>;
   exportConfig: () => void;
   applyJsonDraft: () => void;
+  clearNotice: () => void;
 }

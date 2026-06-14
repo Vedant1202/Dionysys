@@ -84,6 +84,19 @@ export interface AdminUIConfig {
   supportedMenuItems: string[];
 }
 
+export interface FeedbackWeights {
+  creationWeight: number;
+  textAdditionWeight: number;
+  modificationWeight: number;
+  deletionPenalty: number;
+  hiddenToolPenalty: number;
+}
+
+export interface ComponentEmbedding {
+  coordinate: Record<string, number>;
+  threshold?: number | undefined;
+}
+
 export interface AdminConsoleConfig {
   version: 1;
   updatedAt: string;
@@ -91,10 +104,12 @@ export interface AdminConsoleConfig {
   deterministic: AdminDeterministicConfig;
   mcp: AdminMcpConfig;
   ui: AdminUIConfig;
+  feedbackWeights: FeedbackWeights;
+  componentEmbeddings?: Record<string, ComponentEmbedding> | undefined;
 }
 
 export interface AdminConnectorStatus {
-  type: 'mock' | 'fetch';
+  type: 'mock' | 'custom-http' | 'openai' | 'gemini' | 'anthropic';
   endpointConfigured: boolean;
   apiKeyConfigured: boolean;
   model?: string | undefined;
@@ -123,6 +138,7 @@ export interface AdminConsoleOverview {
   connector: AdminConnectorStatus;
   endpoints: AdminApiEndpoint[];
   session?: AdminSessionOverview | undefined;
+  feedbackLoop?: unknown | undefined;
 }
 
 export interface AdminConfigExport {

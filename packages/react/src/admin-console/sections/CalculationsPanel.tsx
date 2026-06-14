@@ -1,4 +1,4 @@
-import type { AdminConsoleConfig, AdminEventWeightRule, AdminHeuristicRule } from '@dionysys/core';
+import type { AdminConsoleConfig, AdminEventWeightRule, AdminHeuristicRule, FeedbackWeights } from '@dionysys/core';
 import { Field, JsonSection, KeyValueNumberEditor, SectionCard } from '../primitives.js';
 import { adminConsoleStyles as styles } from '../styles.js';
 import { toBoundedNumber } from '../utils.js';
@@ -12,11 +12,11 @@ export function CalculationsPanel({
   updateConfig: AdminConfigUpdater;
 }) {
   return (
-    <div style={styles.twoColumn}>
+    <div className={styles.twoColumn}>
       <SectionCard title="Deterministic Policy">
         <Field label="Modality personas (comma separated)">
           <input
-            style={styles.input}
+            className={styles.input}
             value={config.deterministic.axes.modality.personas.join(', ')}
             onChange={(event) => updateConfig((current) => ({
               ...current,
@@ -35,7 +35,7 @@ export function CalculationsPanel({
         </Field>
         <Field label="Expertise personas (comma separated)">
           <input
-            style={styles.input}
+            className={styles.input}
             value={config.deterministic.axes.expertise.personas.join(', ')}
             onChange={(event) => updateConfig((current) => ({
               ...current,
@@ -54,7 +54,7 @@ export function CalculationsPanel({
         </Field>
         <Field label="Epsilon">
           <input
-            style={styles.input}
+            className={styles.input}
             type="number"
             min={0}
             max={1}
@@ -102,7 +102,39 @@ export function CalculationsPanel({
         />
       </SectionCard>
 
-      <div style={styles.stack}>
+      <SectionCard title="Activity Score Weights">
+        <p className={styles.helpText}>
+          Tune how each action type contributes to the post-decision activity score used by the feedback graph.
+        </p>
+        {(
+          [
+            ['creationWeight',    'Creation weight (element_drawn)'],
+            ['textAdditionWeight','Text addition weight (text_added)'],
+            ['modificationWeight','Modification weight'],
+            ['deletionPenalty',  'Deletion penalty'],
+            ['hiddenToolPenalty','Hidden tool penalty'],
+          ] as [keyof FeedbackWeights, string][]
+        ).map(([key, label]) => (
+          <Field key={key} label={label}>
+            <input
+              className={styles.input}
+              type="number"
+              step={0.5}
+              value={config.feedbackWeights[key]}
+              onChange={(event) => {
+                const val = parseFloat(event.target.value);
+                if (!Number.isFinite(val)) return;
+                updateConfig((current) => ({
+                  ...current,
+                  feedbackWeights: { ...current.feedbackWeights, [key]: val },
+                }));
+              }}
+            />
+          </Field>
+        ))}
+      </SectionCard>
+
+      <div className={styles.stack}>
         <JsonSection
           title="Modality Event Weight Rules"
           value={config.deterministic.axes.modality.eventRules}

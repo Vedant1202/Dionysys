@@ -25,7 +25,7 @@ The Excalidraw demo defaults to `prototype` plus `next-refresh`.
 Admin routes are disabled unless the backend opt-in flag is set:
 
 ```bash
-ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=backend
+ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=@dionysys-demo/excalidraw-backend
 ```
 
 To disable the backend admin API, omit `ADMIN_CONSOLE_ENABLED` or set it to anything other than `true`.
@@ -43,7 +43,7 @@ GET  /api/admin/overview?sessionId=session_123
 The Excalidraw demo renders the admin console as an in-app overlay, not as a standalone browser route. The demo shows the Admin button in development or when the frontend flag is enabled:
 
 ```bash
-VITE_ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=frontend
+VITE_ADMIN_CONSOLE_ENABLED=true npm run dev --workspace=@dionysys-demo/excalidraw-frontend
 ```
 
 The backend remains the authority. If the frontend button is visible but `ADMIN_CONSOLE_ENABLED` is not set, the console will show that the admin API is disabled.
@@ -148,7 +148,7 @@ Use Export to download:
 }
 ```
 
-The export is for future use outside the current runtime session. It does not overwrite `frontend/src/config/variantConfig.ts` or `backend/src/services/ExcalidrawMcpResources.ts`.
+The export is for future use outside the current runtime session. It does not overwrite `demos/excalidraw/frontend/src/config/variantConfig.ts` or `demos/excalidraw/backend/src/services/ExcalidrawMcpResources.ts`.
 
 The same rule applies to every control in the console: it edits validated runtime state only. The browser does not rewrite tracked markdown, TypeScript, or config files in the repository.
 
