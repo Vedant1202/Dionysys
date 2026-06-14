@@ -6,6 +6,8 @@ import {
   PersonalityScorer,
   buildLockedModalityScores,
   countModalityEvents,
+  discountTowardPrior,
+  effectiveWindowToGamma,
   getTopScoredKey,
   inferDeterministicAxesFromAdminConfig,
   selectVariantFromAdminConfig,
@@ -29,6 +31,8 @@ export interface DecisionServiceOptions {
   llmConnector: DionysysDecisionConnector;
   // Injectable RNG for the Thompson bandit blend; defaults to Math.random.
   rng?: () => number;
+  // Injectable clock for read-time quiet-arm decay; defaults to Date.now.
+  now?: () => number;
 }
 
 export interface ResolveDecisionInput {
@@ -163,17 +167,37 @@ export class DecisionService {
     modalityResources: PersonalityResource[],
     banditConfig: AdminMcpBanditConfig,
   ): Promise<Record<string, BanditArm>> {
-    const priorTotal = banditConfig.priorAlpha + banditConfig.priorBeta;
+    const { priorAlpha, priorBeta } = banditConfig;
+    const priorTotal = priorAlpha + priorBeta;
+
+    // Read-time quiet-arm decay (non-persisting). A context that has gone quiet
+    // should drift back toward its prior so the bandit re-explores it. We apply a
+    // per-day discount gamma^(days since lastUpdated) to the in-memory arm only —
+    // storage is never written here; persistent decay is the on-update path and
+    // the explicit /admin/bandit/decay trigger. Disabled => today's exact behavior.
+    const decay = banditConfig.decay;
+    const decayEnabled = decay?.enabled === true;
+    const gammaPerDay = decayEnabled ? effectiveWindowToGamma(decay!.effectiveWindow) : 1;
+    const nowMs = this.options.now?.() ?? Date.now();
+
     const arms: Record<string, BanditArm> = {};
     for (const resource of modalityResources) {
       const params = await this.options.storage.getBanditParams(stateId, resource.id);
-      if (params) {
-        arms[resource.id] = {
-          alpha: params.alpha,
-          beta: params.beta,
-          observations: Math.max(0, (params.alpha + params.beta) - priorTotal),
-        };
+      if (!params) continue;
+
+      let alpha = params.alpha;
+      let beta = params.beta;
+      if (decayEnabled && gammaPerDay < 1) {
+        const daysQuiet = Math.max(0, (nowMs - toTimestamp(params.lastUpdated)) / 86_400_000);
+        const gammaT = Math.pow(gammaPerDay, daysQuiet);
+        ({ alpha, beta } = discountTowardPrior(alpha, beta, gammaT, priorAlpha, priorBeta));
       }
+
+      arms[resource.id] = {
+        alpha,
+        beta,
+        observations: Math.max(0, (alpha + beta) - priorTotal),
+      };
     }
     return arms;
   }

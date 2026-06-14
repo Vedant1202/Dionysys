@@ -1,4 +1,4 @@
-import { rewardToIncrements, type AdminConsoleConfig, type DionysysEvent, type FeedbackWeights } from '@dionysys/core';
+import { discountTowardPrior, effectiveWindowToGamma, rewardToIncrements, type AdminConsoleConfig, type DionysysEvent, type FeedbackWeights } from '@dionysys/core';
 import type {
   DionysysAppliedDecision,
   DionysysFeedbackRecommendation,
@@ -167,6 +167,36 @@ export class FeedbackService {
     return null;
   }
 
+  // Apply a Beta increment to an arm. When decay is enabled this is discounted
+  // Thompson sampling (read -> discount toward prior -> add increment -> upsert);
+  // when disabled it stays the atomic increment so behavior matches pre-decay exactly.
+  private async applyBanditUpdate(stateId: string, variant: string, alphaInc: number, betaInc: number): Promise<void> {
+    const bandit = this.config?.mcp.bandit;
+    const decay = bandit?.decay;
+    if (!decay?.enabled) {
+      await this.storage.incrementBanditParams(stateId, variant, alphaInc, betaInc);
+      return;
+    }
+    const priorAlpha = bandit?.priorAlpha ?? 1;
+    const priorBeta = bandit?.priorBeta ?? 1;
+    const gamma = effectiveWindowToGamma(decay.effectiveWindow);
+    const existing = await this.storage.getBanditParams(stateId, variant);
+    const discounted = discountTowardPrior(
+      existing?.alpha ?? priorAlpha,
+      existing?.beta ?? priorBeta,
+      gamma,
+      priorAlpha,
+      priorBeta,
+    );
+    await this.storage.upsertBanditParams({
+      stateId,
+      variant,
+      alpha: discounted.alpha + alphaInc,
+      beta: discounted.beta + betaInc,
+      lastUpdated: Date.now(),
+    });
+  }
+
   private async applyExplicitBanditReward(
     sessionId: string,
     recommendation: DionysysFeedbackRecommendation,
@@ -178,7 +208,7 @@ export class FeedbackService {
     if (!arm) return;
     const reward = recommendation === 'keep' ? bandit.keepReward : bandit.revertReward;
     const { alphaInc, betaInc } = rewardToIncrements(reward, 1);
-    await this.storage.incrementBanditParams(arm.stateId, arm.modality, alphaInc, betaInc);
+    await this.applyBanditUpdate(arm.stateId, arm.modality, alphaInc, betaInc);
   }
 
   private async applyPassiveBanditReward(sessionId: string, reward: number): Promise<void> {
@@ -187,7 +217,7 @@ export class FeedbackService {
     const arm = await this.resolveLatestMcpArm(sessionId);
     if (!arm) return;
     const { alphaInc, betaInc } = rewardToIncrements(reward, bandit.passiveRewardWeight);
-    await this.storage.incrementBanditParams(arm.stateId, arm.modality, alphaInc, betaInc);
+    await this.applyBanditUpdate(arm.stateId, arm.modality, alphaInc, betaInc);
   }
 }
 

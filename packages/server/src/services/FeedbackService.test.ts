@@ -3,18 +3,6 @@ import { createMemoryStorage } from '../storage/memoryStorage.js';
 import { createDefaultDionysysConfig } from '../config/defaultConfig.js';
 import { FeedbackService, computePassiveReward } from './FeedbackService.js';
 
-type IncrementCall = { stateId: string; variant: string; alphaInc: number; betaInc: number };
-
-function trackIncrements(storage: ReturnType<typeof createMemoryStorage>): IncrementCall[] {
-  const calls: IncrementCall[] = [];
-  const original = storage.incrementBanditParams.bind(storage);
-  storage.incrementBanditParams = async (stateId, variant, alphaInc, betaInc) => {
-    calls.push({ stateId, variant, alphaInc, betaInc });
-    return original(stateId, variant, alphaInc, betaInc);
-  };
-  return calls;
-}
-
 async function seedMcpDecision(
   storage: ReturnType<typeof createMemoryStorage>,
   sessionId: string,
@@ -76,32 +64,29 @@ describe('FeedbackService', () => {
 });
 
 describe('FeedbackService bandit learning', () => {
-  it('credits the bandit arm with success on explicit keep', async () => {
+  it('credits the arm with success on explicit keep', async () => {
     const storage = createMemoryStorage();
-    const calls = trackIncrements(storage);
     await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
 
     await new FeedbackService(storage, createDefaultDionysysConfig()).submit({ sessionId: 's1', sentiment: 'helpful' });
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ stateId: 'neutral:standard', variant: 'text_first' });
-    expect(calls[0]!.alphaInc).toBeGreaterThan(calls[0]!.betaInc); // keep -> success
+    const arm = await storage.getBanditParams('neutral:standard', 'text_first');
+    expect(arm).not.toBeNull();
+    expect(arm!.alpha).toBeGreaterThan(arm!.beta); // keep -> success mass on alpha
   });
 
-  it('credits the bandit arm with failure on explicit revert', async () => {
+  it('credits the arm with failure on explicit revert', async () => {
     const storage = createMemoryStorage();
-    const calls = trackIncrements(storage);
     await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
 
     await new FeedbackService(storage, createDefaultDionysysConfig()).submit({ sessionId: 's1', sentiment: 'in_the_way' });
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]!.betaInc).toBeGreaterThan(calls[0]!.alphaInc); // revert -> failure
+    const arm = await storage.getBanditParams('neutral:standard', 'text_first');
+    expect(arm!.beta).toBeGreaterThan(arm!.alpha); // revert -> failure mass on beta
   });
 
   it('does not credit the bandit when disabled or without config', async () => {
     const storage = createMemoryStorage();
-    const calls = trackIncrements(storage);
     await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
     const disabled = createDefaultDionysysConfig();
     disabled.mcp.bandit = { ...disabled.mcp.bandit!, enabled: false };
@@ -109,28 +94,24 @@ describe('FeedbackService bandit learning', () => {
     await new FeedbackService(storage, disabled).submit({ sessionId: 's1', sentiment: 'helpful' });
     await new FeedbackService(storage).submit({ sessionId: 's1', sentiment: 'helpful' });
 
-    expect(calls).toHaveLength(0);
+    expect(await storage.getBanditParams('neutral:standard', 'text_first')).toBeNull();
   });
 
   it('applies a low-weight passive reward on session completion', async () => {
     const storage = createMemoryStorage();
-    const calls = trackIncrements(storage);
     await storage.createSession('s1');
     await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
     await storage.saveEvents([{ type: 'element_drawn', sessionId: 's1', timestamp: 300 }]); // creative activity -> graded passive reward
 
     await new FeedbackService(storage, createDefaultDionysysConfig()).complete({ sessionId: 's1' });
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ stateId: 'neutral:standard', variant: 'text_first' });
-    expect(calls[0]!.alphaInc).toBeGreaterThan(0);
-    // rewardToIncrements splits the weight: alphaInc + betaInc === passiveRewardWeight (0.25)
-    expect(calls[0]!.alphaInc + calls[0]!.betaInc).toBeCloseTo(0.25, 10);
+    const arm = await storage.getBanditParams('neutral:standard', 'text_first');
+    expect(arm).not.toBeNull();
+    expect(arm!.alpha).toBeGreaterThan(1); // passive success mass added above the prior
   });
 
   it('does not credit the bandit for deterministic-only decisions', async () => {
     const storage = createMemoryStorage();
-    const calls = trackIncrements(storage);
     await storage.saveDecision({
       id: 'det1',
       sessionId: 's1',
@@ -145,7 +126,34 @@ describe('FeedbackService bandit learning', () => {
 
     await new FeedbackService(storage, createDefaultDionysysConfig()).submit({ sessionId: 's1', sentiment: 'helpful' });
 
-    expect(calls).toHaveLength(0);
+    expect(await storage.getAllBanditParams()).toHaveLength(0);
+  });
+
+  it('discounts a warm arm toward the prior on update when decay is enabled', async () => {
+    const storage = createMemoryStorage();
+    await storage.upsertBanditParams({ stateId: 'neutral:standard', variant: 'text_first', alpha: 50, beta: 1, lastUpdated: 0 });
+    await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
+    const config = createDefaultDionysysConfig();
+    config.mcp.bandit = { ...config.mcp.bandit!, decay: { enabled: true, effectiveWindow: 2 } }; // gamma 0.5
+
+    await new FeedbackService(storage, config).submit({ sessionId: 's1', sentiment: 'helpful' });
+
+    const arm = await storage.getBanditParams('neutral:standard', 'text_first');
+    expect(arm!.alpha).toBeCloseTo(26.5, 5); // 1 + 0.5*(50-1) discounted, then + keepReward 1
+    expect(arm!.alpha).toBeLessThan(51); // strictly below the atomic-increment result
+  });
+
+  it('uses the atomic increment (no discount) when decay is disabled', async () => {
+    const storage = createMemoryStorage();
+    await storage.upsertBanditParams({ stateId: 'neutral:standard', variant: 'text_first', alpha: 50, beta: 1, lastUpdated: 0 });
+    await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
+    const config = createDefaultDionysysConfig();
+    config.mcp.bandit = { ...config.mcp.bandit!, decay: { enabled: false, effectiveWindow: 2 } };
+
+    await new FeedbackService(storage, config).submit({ sessionId: 's1', sentiment: 'helpful' });
+
+    const arm = await storage.getBanditParams('neutral:standard', 'text_first');
+    expect(arm!.alpha).toBe(51); // 50 + keepReward 1, no discount
   });
 });
 
