@@ -3,6 +3,7 @@ import { createDefaultDionysysConfig } from '../config/defaultConfig.js';
 import { createMemoryStorage } from '../storage/memoryStorage.js';
 import type { DionysysFeedbackRecommendation, DionysysFeedbackRecord, DionysysFeedbackSentiment } from '../storage/types.js';
 import { AdminConfigService } from './AdminConfigService.js';
+import { FeedbackService } from './FeedbackService.js';
 
 function makeFeedbackRecord(
   sessionId: string,
@@ -111,5 +112,38 @@ describe('AdminConfigService', () => {
     expect(cohort.byVariant.draw_first.recommendations).toEqual({ keep: 1, revert: 1, observe: 0 });
     expect(cohort.byVariant.draw_first.avgActivityScore).toBe(7); // (10 + 4) / 2
     expect(cohort.byVariant.text_first.sentiments.helpful).toBe(1);
+  });
+
+  it('includes a per-session feedback-loop overview when a provider is configured', async () => {
+    const storage = createMemoryStorage();
+    await storage.saveEvents([
+      { type: 'dionysys.decision_applied', sessionId: 's1', timestamp: 1, payload: { decision: { variant: 'draw_first' } } },
+      { type: 'element_drawn', sessionId: 's1', timestamp: 2 },
+    ]);
+    const feedbackService = new FeedbackService(storage, createDefaultDionysysConfig());
+    await feedbackService.submit({ sessionId: 's1', sentiment: 'helpful' });
+
+    const service = new AdminConfigService({
+      config: createDefaultDionysysConfig(),
+      storage,
+      enabled: true,
+      feedbackOverview: (sessionId) => feedbackService.getOverview(sessionId),
+    });
+
+    const overview = await service.buildOverview('s1');
+
+    expect(overview.feedbackLoop).toBeDefined();
+    expect((overview.feedbackLoop as { summary: { totalRecords: number } }).summary.totalRecords).toBe(1);
+  });
+
+  it('omits feedbackLoop when no provider is configured', async () => {
+    const service = new AdminConfigService({
+      config: createDefaultDionysysConfig(),
+      storage: createMemoryStorage(),
+      enabled: true,
+    });
+
+    const overview = await service.buildOverview('s1');
+    expect(overview.feedbackLoop).toBeUndefined();
   });
 });

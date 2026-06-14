@@ -48,6 +48,7 @@ export function createDionysysServer(options: CreateDionysysServerOptions) {
       endpointConfigured: Boolean(options.llmConnector),
       apiKeyConfigured: false,
     },
+    feedbackOverview: (sessionId: string) => feedbackService.getOverview(sessionId),
   });
 
   return {

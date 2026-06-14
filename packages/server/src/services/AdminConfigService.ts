@@ -29,6 +29,10 @@ export interface AdminConfigServiceOptions {
     apiKeyConfigured: boolean;
     model?: string;
   };
+  // Optional provider for the per-session feedback-loop overview surfaced in the
+  // admin Data tab and explorer. Decoupled (a function) to avoid a hard dependency
+  // on FeedbackService. When omitted, overview.feedbackLoop is left undefined.
+  feedbackOverview?: (sessionId: string) => Promise<unknown>;
 }
 
 export interface CohortVariantStats {
@@ -96,6 +100,9 @@ export class AdminConfigService {
       }) as AdminConsoleOverview['connector'],
       endpoints: this.getEndpoints(),
       session: sessionId ? this.computeSessionOverview(sessionId, events) : undefined,
+      feedbackLoop: sessionId && this.options.feedbackOverview
+        ? await this.options.feedbackOverview(sessionId)
+        : undefined,
     };
   }
 
