@@ -175,3 +175,71 @@ describe('admin deterministic config helpers', () => {
     expect(selected.propensity).toBeGreaterThan(0);
   });
 });
+
+describe('AdminMcpConfig gate and bandit', () => {
+  it('applies gate and bandit defaults when absent (backward compatible)', () => {
+    const parsed = AdminConsoleConfigSchema.parse(config);
+
+    expect(parsed.mcp.gate).toEqual({ lockMinEvents: 2, lockMargin: 0.15 });
+    expect(parsed.mcp.bandit).toEqual({
+      enabled: true,
+      banditEvidenceK: 3,
+      priorAlpha: 1,
+      priorBeta: 1,
+      keepReward: 1,
+      revertReward: 0,
+      passiveRewardWeight: 0.25,
+    });
+  });
+
+  it('preserves explicit gate and bandit values', () => {
+    const parsed = AdminConsoleConfigSchema.parse({
+      ...config,
+      mcp: {
+        ...config.mcp,
+        gate: { lockMinEvents: 4, lockMargin: 0.25 },
+        bandit: {
+          enabled: false,
+          banditEvidenceK: 8,
+          priorAlpha: 2,
+          priorBeta: 2,
+          keepReward: 1,
+          revertReward: 0,
+          passiveRewardWeight: 0.5,
+        },
+      },
+    });
+
+    expect(parsed.mcp.gate.lockMinEvents).toBe(4);
+    expect(parsed.mcp.gate.lockMargin).toBe(0.25);
+    expect(parsed.mcp.bandit.enabled).toBe(false);
+    expect(parsed.mcp.bandit.banditEvidenceK).toBe(8);
+  });
+
+  it('fills partial gate/bandit objects with field-level defaults', () => {
+    const parsed = AdminConsoleConfigSchema.parse({
+      ...config,
+      mcp: { ...config.mcp, gate: { lockMinEvents: 5 }, bandit: { banditEvidenceK: 10 } },
+    });
+
+    expect(parsed.mcp.gate.lockMinEvents).toBe(5);
+    expect(parsed.mcp.gate.lockMargin).toBe(0.15);
+    expect(parsed.mcp.bandit.banditEvidenceK).toBe(10);
+    expect(parsed.mcp.bandit.enabled).toBe(true);
+  });
+
+  it('rejects out-of-range gate and bandit values', () => {
+    expect(() => AdminConsoleConfigSchema.parse({
+      ...config, mcp: { ...config.mcp, gate: { lockMargin: 1.5 } },
+    })).toThrow();
+    expect(() => AdminConsoleConfigSchema.parse({
+      ...config, mcp: { ...config.mcp, gate: { lockMinEvents: -1 } },
+    })).toThrow();
+    expect(() => AdminConsoleConfigSchema.parse({
+      ...config, mcp: { ...config.mcp, bandit: { banditEvidenceK: 0 } },
+    })).toThrow();
+    expect(() => AdminConsoleConfigSchema.parse({
+      ...config, mcp: { ...config.mcp, bandit: { keepReward: 2 } },
+    })).toThrow();
+  });
+});

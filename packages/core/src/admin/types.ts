@@ -70,6 +70,28 @@ export interface AdminModeConfig {
   pollingIntervalMs: number;
 }
 
+export interface AdminMcpGateConfig {
+  // Minimum modality events before the deterministic signal counts as "strong".
+  lockMinEvents: number;
+  // Minimum gap between the top and runner-up modality scores to count as "confident".
+  lockMargin: number;
+}
+
+export interface AdminMcpBanditConfig {
+  enabled: boolean;
+  // Observation count at which the bandit and the LLM carry equal weight in the
+  // blend (wBandit = n / (n + banditEvidenceK)).
+  banditEvidenceK: number;
+  // Beta priors for a fresh arm (1/1 = uniform).
+  priorAlpha: number;
+  priorBeta: number;
+  // Explicit-feedback reward applied to the chosen arm on "keep" vs "revert".
+  keepReward: number;
+  revertReward: number;
+  // Weight of the passive session-level reward relative to explicit feedback.
+  passiveRewardWeight: number;
+}
+
 export interface AdminMcpConfig {
   axes: {
     modalityResources: PersonalityResource[];
@@ -77,6 +99,8 @@ export interface AdminMcpConfig {
   };
   minConfidence: number;
   fallbackVariant: string;
+  gate?: AdminMcpGateConfig | undefined;
+  bandit?: AdminMcpBanditConfig | undefined;
 }
 
 export interface AdminUIConfig {
