@@ -1,4 +1,4 @@
-import { rewardToIncrements, type AdminConsoleConfig, type DionysysEvent } from '@dionysys/core';
+import { rewardToIncrements, type AdminConsoleConfig, type DionysysEvent, type FeedbackWeights } from '@dionysys/core';
 import type {
   DionysysAppliedDecision,
   DionysysFeedbackRecommendation,
@@ -7,6 +7,44 @@ import type {
   DionysysFeedbackSource,
   DionysysStorage,
 } from '../storage/types.js';
+
+// Raw score at which the passive reward reaches 0.5 — controls how quickly activity
+// saturates toward a reward of 1.
+const PASSIVE_REWARD_HALF_SATURATION = 10;
+
+const DEFAULT_FEEDBACK_WEIGHTS: FeedbackWeights = {
+  creationWeight: 3,
+  textAdditionWeight: 3,
+  modificationWeight: 1,
+  deletionPenalty: 2,
+  hiddenToolPenalty: 3,
+};
+
+/**
+ * Graded passive reward in [0,1) from a session's events: productive activity raises
+ * it, friction (deletions, hidden-tool clicks) lowers it. Replaces the previous binary
+ * "any creative event => 1" so the bandit gets a discriminating signal.
+ */
+export function computePassiveReward(events: DionysysEvent[], weights: FeedbackWeights): number {
+  const countByType = (type: string) => events.filter((event) => event.type === type).length;
+  const creations = countByType('element_drawn');
+  const textAdditions = countByType('text_added');
+  const modifications = countByType('element_modified') + countByType('text_updated');
+  const deletions = countByType('element_deleted');
+  const hiddenToolClicks = events.filter(
+    (event) => event.type === 'tool_selected' && toRecord(event.payload)?.['wasHiddenByPersona'] === true,
+  ).length;
+
+  const raw =
+    weights.creationWeight * creations
+    + weights.textAdditionWeight * textAdditions
+    + weights.modificationWeight * modifications
+    - weights.deletionPenalty * deletions
+    - weights.hiddenToolPenalty * hiddenToolClicks;
+
+  if (raw <= 0) return 0;
+  return raw / (raw + PASSIVE_REWARD_HALF_SATURATION);
+}
 
 export interface SubmitFeedbackInput {
   sessionId: string;
@@ -57,7 +95,7 @@ export class FeedbackService {
     const events = await this.storage.getEventsBySession(input.sessionId);
     await this.storage.endSession(input.sessionId).catch(() => undefined);
     const creativeEvents = events.filter((event) => event.type === 'element_drawn' || event.type === 'text_added');
-    const reward = creativeEvents.length > 0 ? 1 : 0;
+    const reward = computePassiveReward(events, this.config?.feedbackWeights ?? DEFAULT_FEEDBACK_WEIGHTS);
     await this.applyPassiveBanditReward(input.sessionId, reward);
     return {
       sessionId: input.sessionId,

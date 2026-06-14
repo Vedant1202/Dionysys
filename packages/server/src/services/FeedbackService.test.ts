@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryStorage } from '../storage/memoryStorage.js';
 import { createDefaultDionysysConfig } from '../config/defaultConfig.js';
-import { FeedbackService } from './FeedbackService.js';
+import { FeedbackService, computePassiveReward } from './FeedbackService.js';
 
 type IncrementCall = { stateId: string; variant: string; alphaInc: number; betaInc: number };
 
@@ -62,14 +62,15 @@ describe('FeedbackService', () => {
     expect(await service.evaluate({ sessionId: 's2', source: 'passive' })).toBeNull();
   });
 
-  it('completes sessions with simple reward metrics', async () => {
+  it('completes sessions with a graded reward in (0,1)', async () => {
     const storage = createMemoryStorage();
     await storage.createSession('s3');
     await storage.saveEvents([{ type: 'text_added', sessionId: 's3' }]);
 
     const result = await new FeedbackService(storage).complete({ sessionId: 's3' });
 
-    expect(result.reward).toBe(1);
+    expect(result.reward).toBeGreaterThan(0);
+    expect(result.reward).toBeLessThan(1);
     expect(result.metrics.totalCreativeEvents).toBe(1);
   });
 });
@@ -116,14 +117,15 @@ describe('FeedbackService bandit learning', () => {
     const calls = trackIncrements(storage);
     await storage.createSession('s1');
     await seedMcpDecision(storage, 's1', 'text_first', 'neutral:standard');
-    await storage.saveEvents([{ type: 'element_drawn', sessionId: 's1', timestamp: 300 }]); // creative -> passive reward 1
+    await storage.saveEvents([{ type: 'element_drawn', sessionId: 's1', timestamp: 300 }]); // creative activity -> graded passive reward
 
     await new FeedbackService(storage, createDefaultDionysysConfig()).complete({ sessionId: 's1' });
 
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({ stateId: 'neutral:standard', variant: 'text_first' });
-    expect(calls[0]!.alphaInc).toBeCloseTo(0.25, 10); // passiveRewardWeight (0.25) * reward (1)
-    expect(calls[0]!.betaInc).toBeCloseTo(0, 10);
+    expect(calls[0]!.alphaInc).toBeGreaterThan(0);
+    // rewardToIncrements splits the weight: alphaInc + betaInc === passiveRewardWeight (0.25)
+    expect(calls[0]!.alphaInc + calls[0]!.betaInc).toBeCloseTo(0.25, 10);
   });
 
   it('does not credit the bandit for deterministic-only decisions', async () => {
@@ -144,5 +146,44 @@ describe('FeedbackService bandit learning', () => {
     await new FeedbackService(storage, createDefaultDionysysConfig()).submit({ sessionId: 's1', sentiment: 'helpful' });
 
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('computePassiveReward', () => {
+  const weights = {
+    creationWeight: 3,
+    textAdditionWeight: 3,
+    modificationWeight: 1,
+    deletionPenalty: 2,
+    hiddenToolPenalty: 3,
+  };
+  const ev = (type: string) => ({ type });
+
+  it('is 0 with no events', () => {
+    expect(computePassiveReward([], weights)).toBe(0);
+  });
+
+  it('grades by amount of productive activity rather than returning a binary 0/1', () => {
+    const few = computePassiveReward([ev('element_drawn')], weights);
+    const many = computePassiveReward(Array.from({ length: 5 }, () => ev('element_drawn')), weights);
+
+    expect(few).toBeGreaterThan(0);
+    expect(few).toBeLessThan(1);
+    expect(many).toBeGreaterThan(few);
+    expect(many).toBeLessThan(1);
+  });
+
+  it('is reduced by friction events (deletions)', () => {
+    const productive = Array.from({ length: 5 }, () => ev('element_drawn'));
+    const clean = computePassiveReward(productive, weights);
+    const withFriction = computePassiveReward([...productive, ev('element_deleted'), ev('element_deleted')], weights);
+
+    expect(withFriction).toBeLessThan(clean);
+  });
+
+  it('stays within [0,1]', () => {
+    const reward = computePassiveReward(Array.from({ length: 100 }, () => ev('element_drawn')), weights);
+    expect(reward).toBeGreaterThanOrEqual(0);
+    expect(reward).toBeLessThanOrEqual(1);
   });
 });
