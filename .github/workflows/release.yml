@@ -1,0 +1,37 @@
+name: Release (publish @dionysys/* to npm)
+
+# Publishes the SDK packages to the public npm registry when a vX.Y.Z tag is pushed.
+# Uses npm Trusted Publishing (OIDC) — no NPM_TOKEN needed once each package has a
+# trusted publisher configured on npmjs.com pointing at this workflow file.
+# Provenance is generated automatically because this runs in GitHub Actions with id-token: write.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write # required for OIDC (trusted publishing + provenance)
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      # Build only the SDK packages, in dependency order (core -> client/server -> ...).
+      - run: npm run build:packages
+
+      - run: npm test
+
+      # Demos are private and are skipped automatically.
+      # First-ever publish still needs the package names to exist (bootstrap) — see docs/npm-publishing-plan.md Phase 4.
+      - run: npm publish --workspaces --access public --provenance

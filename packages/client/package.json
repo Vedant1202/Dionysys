@@ -21,10 +21,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@dionysys/core": "*"
+    "@dionysys/core": "^1.1.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
     "vitest": "^4.1.2"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   }
 }
