@@ -27,7 +27,11 @@
     "docs:serve": "npm --prefix web-docs run serve",
     "docs:typecheck": "npm --prefix web-docs run typecheck",
     "pack:check": "node scripts/pack-check.mjs",
-    "release": "commit-and-tag-version"
+    "changelog": "commit-and-tag-version --skip.bump --skip.commit --skip.tag",
+    "release": "commit-and-tag-version",
+    "release:dry": "commit-and-tag-version --dry-run",
+    "publish:packages": "npm run build:packages && npm publish --workspaces --access public",
+    "ship": "commit-and-tag-version && git push --follow-tags"
   },
   "devDependencies": {
     "commit-and-tag-version": "^12.7.3",
