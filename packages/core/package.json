@@ -27,5 +27,9 @@
     "@vitest/coverage-v8": "^4.1.2",
     "typescript": "^5.0.0",
     "vitest": "^4.1.2"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   }
 }

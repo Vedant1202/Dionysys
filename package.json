@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @dionysys/core -w @dionysys/client -w @dionysys/server -w @dionysys/react -w @dionysys/storage-mongodb -w @dionysys/connector-openai -w @dionysys/connector-gemini -w @dionysys/connector-anthropic --if-present && npm run build -w @dionysys-demo/excalidraw-frontend -w @dionysys-demo/excalidraw-backend --if-present",
+    "build:packages": "npm run build -w @dionysys/core -w @dionysys/client -w @dionysys/server -w @dionysys/react -w @dionysys/storage-mongodb -w @dionysys/connector-openai -w @dionysys/connector-gemini -w @dionysys/connector-anthropic",
     "build:demo:backend": "npm run build --workspace=@dionysys-demo/excalidraw-backend",
     "build:demo:frontend": "npm run build --workspace=@dionysys-demo/excalidraw-frontend",
     "build:blog-preview": "node blog-current/build-preview.mjs",
