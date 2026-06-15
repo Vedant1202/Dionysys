@@ -68,4 +68,4 @@ The bandit learning itself (the canonical section) is fully wired; the items abo
 - The demo feedback UI is disabled unless both beta flags are true; the SDK bandit loop runs in MCP mode without any flags.
 - Feedback applies to the next decision in the same context — never a mid-session auto-revert.
 
-For the broader productization roadmap, see the [SDK upgrade spec](./sdk-upgrade-spec.md).
+For the broader productization roadmap, see the [SDK upgrade spec](https://github.com/Vedant1202/Dionysys/blob/main/docs/sdk-upgrade-spec.md) in the repository.

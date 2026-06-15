@@ -10,14 +10,6 @@ const sidebars: SidebarsConfig = {
     'admin-console',
     'excalidraw-configuration',
     'feedback-loop',
-    {
-      type: 'category',
-      label: 'Specs',
-      items: [
-        'sdk-upgrade-spec',
-        'sdk-upgrade-plan',
-      ],
-    },
   ],
 };
 

@@ -33,6 +33,9 @@ const config: Config = {
           path: '../docs',
           routeBasePath: 'docs',
           sidebarPath: './sidebars.ts',
+          // Internal planning artifacts live alongside the published docs but are not
+          // user-facing (and contain math/JSX-like syntax MDX can't parse). Keep them out of the site.
+          exclude: ['**/*-plan.md', '**/*-spec.md'],
           editUrl: ({docPath}) =>
             `https://github.com/Vedant1202/Dionysys/edit/main/docs/${docPath}`,
         },
@@ -75,11 +78,6 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/docs/sdk-upgrade-spec',
-          label: 'SDK Spec',
-          position: 'left',
-        },
-        {
           href: 'https://github.com/Vedant1202/Dionysys',
           label: 'GitHub',
           position: 'right',
@@ -116,10 +114,6 @@ const config: Config = {
             {
               label: 'Excalidraw Configuration',
               to: '/docs/excalidraw-configuration',
-            },
-            {
-              label: 'SDK Spec',
-              to: '/docs/sdk-upgrade-spec',
             },
             {
               label: 'Repository',
