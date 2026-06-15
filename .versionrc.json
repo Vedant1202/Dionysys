@@ -1,0 +1,33 @@
+{
+  "header": "# Changelog\n\nAll notable changes to the `@dionysys/*` packages are documented here.\nThis project follows [Conventional Commits](https://www.conventionalcommits.org) and [Semantic Versioning](https://semver.org).\n",
+  "preset": "conventionalcommits",
+  "tagPrefix": "v",
+  "packageFiles": [
+    { "filename": "packages/core/package.json", "type": "json" }
+  ],
+  "bumpFiles": [
+    { "filename": "packages/core/package.json", "type": "json" },
+    { "filename": "packages/client/package.json", "type": "json" },
+    { "filename": "packages/server/package.json", "type": "json" },
+    { "filename": "packages/react/package.json", "type": "json" },
+    { "filename": "packages/storage-mongodb/package.json", "type": "json" },
+    { "filename": "packages/connector-openai/package.json", "type": "json" },
+    { "filename": "packages/connector-gemini/package.json", "type": "json" },
+    { "filename": "packages/connector-anthropic/package.json", "type": "json" }
+  ],
+  "scripts": {
+    "postbump": "npm install --package-lock-only --ignore-scripts && git add package-lock.json"
+  },
+  "types": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "refactor", "section": "Refactoring" },
+    { "type": "chore", "hidden": true },
+    { "type": "ci", "hidden": true },
+    { "type": "build", "hidden": true },
+    { "type": "test", "hidden": true },
+    { "type": "style", "hidden": true }
+  ]
+}
