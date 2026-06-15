@@ -17,7 +17,7 @@ Self-hosted adaptive UI infrastructure for products that want persona-aware deci
 ## Reference links
 
 - Demo: [https://dionysys-frontend.vercel.app/](https://dionysys-frontend.vercel.app/)
-- Docs: [https://personal-db95a29b.mintlify.app/](https://personal-db95a29b.mintlify.app/)
+- Docs: [https://vedant1202.github.io/Dionysys/](https://vedant1202.github.io/Dionysys/)
 
 ## Quick start
 

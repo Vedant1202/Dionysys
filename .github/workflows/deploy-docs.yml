@@ -1,0 +1,52 @@
+name: Deploy docs (GitHub Pages)
+
+# Builds the Docusaurus site in web-docs/ (which reads the canonical Markdown from docs/)
+# and publishes it to GitHub Pages at https://vedant1202.github.io/Dionysys/.
+# Requires: repo Settings -> Pages -> Source: "GitHub Actions" (one-time).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'web-docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent Pages deployment; don't cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install web-docs dependencies
+        working-directory: web-docs
+        run: npm ci
+      - name: Build Docusaurus site
+        working-directory: web-docs
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-docs/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
